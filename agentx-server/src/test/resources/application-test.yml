@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/agentx_test
+    username: agentx
+    password: agentx
+  flyway:
+    clean-disabled: false
