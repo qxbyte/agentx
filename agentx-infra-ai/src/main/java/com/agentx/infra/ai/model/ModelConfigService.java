@@ -4,9 +4,11 @@ import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
 import com.agentx.common.util.UuidV7;
 import com.agentx.infra.ai.crypto.ApiKeyCrypto;
+import com.agentx.infra.ai.client.ModelConfigChangedEvent;
 import com.agentx.infra.ai.web.dto.ModelConfigDtos.UpsertRequest;
 import com.agentx.infra.ai.web.dto.ModelConfigDtos.View;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.UUID;
 public class ModelConfigService {
     private final ModelConfigRepository repository;
     private final ApiKeyCrypto crypto;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<View> list() {
         return repository.findAll().stream().map(this::toView).toList();
@@ -37,12 +40,15 @@ public class ModelConfigService {
     public View update(UUID id, UpsertRequest req) {
         ModelConfig c = get(id);
         apply(c, req);
-        return toView(repository.save(c));
+        View view = toView(repository.save(c));
+        eventPublisher.publishEvent(new ModelConfigChangedEvent(id));
+        return view;
     }
 
     @Transactional
     public void delete(UUID id) {
         repository.delete(get(id));
+        eventPublisher.publishEvent(new ModelConfigChangedEvent(id));
     }
 
     @Transactional
@@ -59,6 +65,15 @@ public class ModelConfigService {
     public ModelConfig getDefaultChat() {
         return repository.findFirstByTypeAndDefaultModelTrueAndEnabledTrue(ModelType.CHAT)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "未配置默认 CHAT 模型"));
+    }
+
+    /** 按 ID 取启用中的配置（工厂消费）。 */
+    public ModelConfig getEnabled(UUID id) {
+        ModelConfig c = get(id);
+        if (!c.isEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "模型配置已禁用: " + c.getName());
+        }
+        return c;
     }
 
     public String decryptedApiKey(ModelConfig c) {
