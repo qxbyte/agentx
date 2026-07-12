@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: agentx-mcp-server
+  ai:
+    mcp:
+      server:
+        name: agentx-demo-mcp
+        version: 0.1.0
+        protocol: STREAMABLE
+
+server:
+  port: 8090
+
+---
+# stdio 模式：mvn spring-boot:run -Dspring-boot.run.profiles=stdio
+spring:
+  config:
+    activate:
+      on-profile: stdio
+  main:
+    web-application-type: none
+    banner-mode: off
+  ai:
+    mcp:
+      server:
+        stdio: true
+        protocol: STDIO
+
+logging:
+  pattern:
+    console: ""
