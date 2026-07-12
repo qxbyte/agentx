@@ -10,6 +10,9 @@ import com.agentx.infra.ai.audit.AiCallAuditor;
 import com.agentx.infra.ai.client.ChatClientFactory;
 import com.agentx.infra.ai.sse.SseEmitterSender;
 import com.agentx.infra.ai.sse.SseEvent;
+import com.agentx.infra.ai.stream.ChatStreamContext;
+import com.agentx.infra.ai.stream.ChatStreamCustomizer;
+import com.agentx.infra.ai.stream.ToolEventSink;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -23,6 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -45,6 +50,7 @@ public class ChatStreamService {
     private final ChatMemory chatMemory;
     private final AiCallAuditor auditor;
     private final ObjectMapper objectMapper;
+    private final List<ChatStreamCustomizer> customizers;
 
     public SseEmitter stream(AuthPrincipal user, StreamRequest req) {
         ChatConversation conversation = resolveConversation(user, req);
@@ -64,12 +70,20 @@ public class ChatStreamService {
         ChatClient client = resolveClient(conversation, req);
         StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId);
 
-        Flux<ChatResponse> flux = client.prompt()
+        ToolEventSink toolEventSink = new SseToolEventSink(sender, aggregator);
+        ChatStreamContext context = new ChatStreamContext(
+                user.id(), conversation.getId(), conversation.getAgentId(), toolEventSink);
+
+        ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())
                 .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation.getId().toString()))
-                .stream()
-                .chatResponse();
+                .toolContext(Map.of(
+                        "userId", user.id().toString(),
+                        "conversationId", conversation.getId().toString()));
+        customizers.forEach(c -> c.customize(context, spec));
+
+        Flux<ChatResponse> flux = spec.stream().chatResponse();
 
         flux.bufferTimeout(FRAME_MAX_ITEMS, FRAME_MAX_WAIT)
                 .subscribe(
@@ -94,6 +108,24 @@ public class ChatStreamService {
                 : chatClientFactory.getDefault();
     }
 
+    /** 工具事件 → SSE 帧 + 聚合器记录（最终随 ASSISTANT 消息落库）。 */
+    private record SseToolEventSink(SseEmitterSender sender, StreamAggregator aggregator)
+            implements ToolEventSink {
+        @Override
+        public void onToolCall(String callId, String toolName, String argsJson) {
+            aggregator.recordToolCall(callId, toolName, argsJson);
+            sender.send(SseEvent.toolCall(callId, toolName, argsJson));
+        }
+
+        @Override
+        public void onToolResult(String callId, String toolName, String result) {
+            String truncated = result != null && result.length() > 2000
+                    ? result.substring(0, 2000) + "…" : result;
+            aggregator.recordToolResult(callId, truncated);
+            sender.send(SseEvent.toolResult(callId, toolName, truncated));
+        }
+    }
+
     /** 聚合一次流式应答的可变状态，终态负责落库/审计/终帧。 */
     private class StreamAggregator {
         private final AuthPrincipal user;
@@ -105,11 +137,27 @@ public class ChatStreamService {
         private long promptTokens;
         private long completionTokens;
         private String modelName = "";
+        private final java.util.List<Map<String, Object>> toolCallRecords =
+                java.util.Collections.synchronizedList(new java.util.ArrayList<>());
 
         StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId) {
             this.user = user;
             this.conversation = conversation;
             this.assistantMessageId = assistantMessageId;
+        }
+
+        void recordToolCall(String callId, String toolName, String argsJson) {
+            toolCallRecords.add(new java.util.LinkedHashMap<>(Map.of(
+                    "id", callId, "name", toolName, "args", argsJson == null ? "" : argsJson)));
+        }
+
+        void recordToolResult(String callId, String result) {
+            synchronized (toolCallRecords) {
+                toolCallRecords.stream()
+                        .filter(r -> callId.equals(r.get("id")))
+                        .findFirst()
+                        .ifPresent(r -> r.put("result", result == null ? "" : result));
+            }
         }
 
         void onChunk(ChatResponse response, SseEmitterSender sender) {
@@ -173,6 +221,9 @@ public class ChatStreamService {
             assistant.setRole(MessageRole.ASSISTANT);
             assistant.setContent(content.toString());
             assistant.setReasoningContent(reasoning.isEmpty() ? null : reasoning.toString());
+            if (!toolCallRecords.isEmpty()) {
+                assistant.setToolCalls(objectMapper.writeValueAsString(toolCallRecords));
+            }
             if (promptTokens > 0 || completionTokens > 0) {
                 assistant.setTokenUsage("{\"promptTokens\":%d,\"completionTokens\":%d}"
                         .formatted(promptTokens, completionTokens));

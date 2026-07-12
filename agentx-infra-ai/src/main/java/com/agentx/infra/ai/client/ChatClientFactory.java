@@ -60,6 +60,9 @@ public class ChatClientFactory {
                     "无可用的供应商策略: " + config.getProviderType());
         }
         String apiKey = modelConfigService.decryptedApiKey(config);
+        // 工具承载依赖 ChatModel.getOptions() 返回 ToolCallingChatOptions（请求装配以其
+        // mutate 结果为基底拷入 toolCallbacks），官方 provider 模型均满足；自定义
+        // ChatModel（含测试 stub）必须覆写 getOptions()，否则工具被静默丢弃。
         return ChatClient.builder(provider.build(config, apiKey)).build();
     }
 
