@@ -14,6 +14,12 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+    placeholders:
+      vector-dim: ${AGENTX_VECTOR_DIM:1024}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 server:
   port: 8080
@@ -25,6 +31,9 @@ management:
         include: health,info,metrics
 
 agentx:
+  rag:
+    storage-dir: ${AGENTX_RAG_STORAGE:${user.home}/.agentx/uploads}
+    vector-dimensions: ${AGENTX_VECTOR_DIM:1024}
   jwt:
     secret: ${AGENTX_JWT_SECRET:dev-only-secret-change-in-prod-0123456789}
     access-ttl: 2h

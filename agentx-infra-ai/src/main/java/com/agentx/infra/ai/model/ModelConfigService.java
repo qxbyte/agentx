@@ -67,6 +67,13 @@ public class ModelConfigService {
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "未配置默认 CHAT 模型"));
     }
 
+    /** 按类型取默认启用配置（EMBEDDING 等）。 */
+    public ModelConfig getDefaultOf(ModelType type) {
+        return repository.findFirstByTypeAndDefaultModelTrueAndEnabledTrue(type)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND,
+                        "未配置默认 " + type + " 模型"));
+    }
+
     /** 按 ID 取启用中的配置（工厂消费）。 */
     public ModelConfig getEnabled(UUID id) {
         ModelConfig c = get(id);

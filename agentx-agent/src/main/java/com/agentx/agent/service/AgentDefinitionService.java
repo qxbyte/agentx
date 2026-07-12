@@ -46,6 +46,14 @@ public class AgentDefinitionService {
         return objectMapper.readValue(agent.getToolNames(), new TypeReference<List<String>>() {});
     }
 
+    /** kb_ids JSON 数组 → UUID 列表（空安全）。 */
+    public List<UUID> kbIdsOf(AgentDefinition agent) {
+        if (agent.getKbIds() == null || agent.getKbIds().isBlank()) {
+            return List.of();
+        }
+        return objectMapper.readValue(agent.getKbIds(), new TypeReference<List<UUID>>() {});
+    }
+
     @Transactional
     public AgentDefinition create(UpsertRequest req) {
         repository.findByName(req.name()).ifPresent(a -> {

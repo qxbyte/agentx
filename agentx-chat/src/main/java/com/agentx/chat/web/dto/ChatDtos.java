@@ -10,7 +10,8 @@ import java.util.UUID;
 public final class ChatDtos {
     private ChatDtos() {}
 
-    public record CreateConversationRequest(UUID modelConfigId, UUID agentId) {}
+    public record CreateConversationRequest(UUID modelConfigId, UUID agentId,
+                                            java.util.List<UUID> kbIds) {}
 
     public record RenameRequest(@NotBlank String title) {}
 

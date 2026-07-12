@@ -38,8 +38,9 @@ public class ConversationController {
                                                 @RequestBody(required = false) CreateConversationRequest req) {
         UUID modelConfigId = req == null ? null : req.modelConfigId();
         UUID agentId = req == null ? null : req.agentId();
+        java.util.List<UUID> kbIds = req == null ? null : req.kbIds();
         return ApiResponse.ok(ConversationView.of(
-                conversationService.create(user.id(), modelConfigId, agentId)));
+                conversationService.create(user.id(), modelConfigId, agentId, kbIds)));
     }
 
     @PatchMapping("/{id}")

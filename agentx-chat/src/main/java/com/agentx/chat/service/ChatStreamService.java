@@ -71,8 +71,9 @@ public class ChatStreamService {
         StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId);
 
         ToolEventSink toolEventSink = new SseToolEventSink(sender, aggregator);
-        ChatStreamContext context = new ChatStreamContext(
-                user.id(), conversation.getId(), conversation.getAgentId(), toolEventSink);
+        ChatStreamContext context = ChatStreamContext.of(
+                user.id(), conversation.getId(), conversation.getAgentId(),
+                parseKbIds(conversation.getKbIds()), toolEventSink);
 
         ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())
@@ -83,7 +84,9 @@ public class ChatStreamService {
                         "conversationId", conversation.getId().toString()));
         customizers.forEach(c -> c.customize(context, spec));
 
-        Flux<ChatResponse> flux = spec.stream().chatResponse();
+        // chatClientResponse 流：既有模型增量，也携带 advisor 上下文（RAG 命中文档）
+        Flux<org.springframework.ai.chat.client.ChatClientResponse> flux =
+                spec.stream().chatClientResponse();
 
         flux.bufferTimeout(FRAME_MAX_ITEMS, FRAME_MAX_WAIT)
                 .subscribe(
@@ -93,11 +96,20 @@ public class ChatStreamService {
         return emitter;
     }
 
+    private java.util.Set<UUID> parseKbIds(String kbIdsJson) {
+        if (kbIdsJson == null || kbIdsJson.isBlank()) {
+            return java.util.Set.of();
+        }
+        List<UUID> ids = objectMapper.readValue(kbIdsJson,
+                new tools.jackson.core.type.TypeReference<List<UUID>>() {});
+        return new java.util.LinkedHashSet<>(ids);
+    }
+
     private ChatConversation resolveConversation(AuthPrincipal user, StreamRequest req) {
         if (req.conversationId() != null) {
             return conversationService.getOwned(req.conversationId(), user.id());
         }
-        return conversationService.create(user.id(), req.modelConfigId(), null);
+        return conversationService.create(user.id(), req.modelConfigId(), null, null);
     }
 
     private ChatClient resolveClient(ChatConversation conversation, StreamRequest req) {
@@ -139,6 +151,15 @@ public class ChatStreamService {
         private String modelName = "";
         private final java.util.List<Map<String, Object>> toolCallRecords =
                 java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        private final java.util.List<Map<String, Object>> ragSources =
+                java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+        private static String snippet(String text) {
+            if (text == null) {
+                return "";
+            }
+            return text.length() > 120 ? text.substring(0, 120) + "…" : text;
+        }
 
         StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId) {
             this.user = user;
@@ -160,8 +181,30 @@ public class ChatStreamService {
             }
         }
 
-        void onChunk(ChatResponse response, SseEmitterSender sender) {
-            if (response.getResult() == null) {
+        /** RetrievalAugmentationAdvisor 的 advisor context 键（字面量避免依赖 spring-ai-rag）。 */
+        private static final String RAG_DOCUMENT_CONTEXT = "rag_document_context";
+
+        @SuppressWarnings("unchecked")
+        void onChunk(org.springframework.ai.chat.client.ChatClientResponse clientResponse,
+                     SseEmitterSender sender) {
+            Object docs = clientResponse.context().get(RAG_DOCUMENT_CONTEXT);
+            if (docs instanceof List<?> documents && !documents.isEmpty() && ragSources.isEmpty()) {
+                for (Object o : documents) {
+                    if (o instanceof org.springframework.ai.document.Document d) {
+                        ragSources.add(new java.util.LinkedHashMap<>(Map.of(
+                                "docId", String.valueOf(d.getMetadata().get("doc_id")),
+                                "docName", String.valueOf(d.getMetadata().get("doc_name")),
+                                "segmentId", String.valueOf(d.getMetadata().get("segment_id")),
+                                "score", d.getScore() == null ? 0.0 : d.getScore(),
+                                "snippet", snippet(d.getText()))));
+                    }
+                }
+                if (!ragSources.isEmpty()) {
+                    sender.send(SseEvent.ragSource(ragSources));
+                }
+            }
+            ChatResponse response = clientResponse.chatResponse();
+            if (response == null || response.getResult() == null) {
                 return;
             }
             var output = response.getResult().getOutput();
@@ -223,6 +266,9 @@ public class ChatStreamService {
             assistant.setReasoningContent(reasoning.isEmpty() ? null : reasoning.toString());
             if (!toolCallRecords.isEmpty()) {
                 assistant.setToolCalls(objectMapper.writeValueAsString(toolCallRecords));
+            }
+            if (!ragSources.isEmpty()) {
+                assistant.setRagSources(objectMapper.writeValueAsString(ragSources));
             }
             if (promptTokens > 0 || completionTokens > 0) {
                 assistant.setTokenUsage("{\"promptTokens\":%d,\"completionTokens\":%d}"
