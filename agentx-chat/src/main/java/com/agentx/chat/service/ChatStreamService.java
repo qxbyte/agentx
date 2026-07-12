@@ -1,0 +1,184 @@
+package com.agentx.chat.service;
+
+import com.agentx.auth.security.AuthPrincipal;
+import com.agentx.chat.domain.ChatConversation;
+import com.agentx.chat.domain.ChatMessage;
+import com.agentx.chat.domain.MessageRole;
+import com.agentx.chat.web.dto.ChatDtos.StreamRequest;
+import com.agentx.common.util.UuidV7;
+import com.agentx.infra.ai.audit.AiCallAuditor;
+import com.agentx.infra.ai.client.ChatClientFactory;
+import com.agentx.infra.ai.sse.SseEmitterSender;
+import com.agentx.infra.ai.sse.SseEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.deepseek.DeepSeekAssistantMessage;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import tools.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import java.util.UUID;
+
+/**
+ * 流式对话主链路（设计文档 §8.1）：
+ * 用户消息落库 → ChatClient(memory advisor) 流式调用 → SSE 信封推送 →
+ * 完成后聚合落 ASSISTANT 消息 + 审计。全程业务错误走 error 帧，不断流。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ChatStreamService {
+
+    private static final long SSE_TIMEOUT_MS = 300_000L;
+    /** delta 合帧：最多 8 个 token 或 50ms 一帧，避免前端渲染风暴。 */
+    private static final int FRAME_MAX_ITEMS = 8;
+    private static final Duration FRAME_MAX_WAIT = Duration.ofMillis(50);
+
+    private final ConversationService conversationService;
+    private final ChatClientFactory chatClientFactory;
+    private final ChatMemory chatMemory;
+    private final AiCallAuditor auditor;
+    private final ObjectMapper objectMapper;
+
+    public SseEmitter stream(AuthPrincipal user, StreamRequest req) {
+        ChatConversation conversation = resolveConversation(user, req);
+
+        ChatMessage userMessage = new ChatMessage();
+        userMessage.setConversationId(conversation.getId());
+        userMessage.setRole(MessageRole.USER);
+        userMessage.setContent(req.content());
+        conversationService.saveMessage(userMessage);
+        conversationService.applyDefaultTitle(conversation, req.content());
+
+        UUID assistantMessageId = UuidV7.next();
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        SseEmitterSender sender = new SseEmitterSender(emitter, objectMapper);
+        sender.send(SseEvent.meta(conversation.getId().toString(), assistantMessageId.toString()));
+
+        ChatClient client = resolveClient(conversation, req);
+        StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId);
+
+        Flux<ChatResponse> flux = client.prompt()
+                .user(req.content())
+                .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation.getId().toString()))
+                .stream()
+                .chatResponse();
+
+        flux.bufferTimeout(FRAME_MAX_ITEMS, FRAME_MAX_WAIT)
+                .subscribe(
+                        batch -> batch.forEach(r -> aggregator.onChunk(r, sender)),
+                        error -> aggregator.onError(error, sender),
+                        () -> aggregator.onComplete(sender));
+        return emitter;
+    }
+
+    private ChatConversation resolveConversation(AuthPrincipal user, StreamRequest req) {
+        if (req.conversationId() != null) {
+            return conversationService.getOwned(req.conversationId(), user.id());
+        }
+        return conversationService.create(user.id(), req.modelConfigId(), null);
+    }
+
+    private ChatClient resolveClient(ChatConversation conversation, StreamRequest req) {
+        UUID modelConfigId = req.modelConfigId() != null
+                ? req.modelConfigId() : conversation.getModelConfigId();
+        return modelConfigId != null
+                ? chatClientFactory.get(modelConfigId)
+                : chatClientFactory.getDefault();
+    }
+
+    /** 聚合一次流式应答的可变状态，终态负责落库/审计/终帧。 */
+    private class StreamAggregator {
+        private final AuthPrincipal user;
+        private final ChatConversation conversation;
+        private final UUID assistantMessageId;
+        private final StringBuilder content = new StringBuilder();
+        private final StringBuilder reasoning = new StringBuilder();
+        private final long startedAt = System.currentTimeMillis();
+        private long promptTokens;
+        private long completionTokens;
+        private String modelName = "";
+
+        StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId) {
+            this.user = user;
+            this.conversation = conversation;
+            this.assistantMessageId = assistantMessageId;
+        }
+
+        void onChunk(ChatResponse response, SseEmitterSender sender) {
+            if (response.getResult() == null) {
+                return;
+            }
+            var output = response.getResult().getOutput();
+            if (output instanceof DeepSeekAssistantMessage dsm && dsm.getReasoningContent() != null
+                    && !dsm.getReasoningContent().isEmpty()) {
+                reasoning.append(dsm.getReasoningContent());
+                sender.send(SseEvent.reasoning(dsm.getReasoningContent()));
+            }
+            String delta = output.getText();
+            if (delta != null && !delta.isEmpty()) {
+                content.append(delta);
+                sender.send(SseEvent.textDelta(delta));
+            }
+            if (response.getMetadata() != null) {
+                Usage usage = response.getMetadata().getUsage();
+                if (usage != null && usage.getTotalTokens() != null && usage.getTotalTokens() > 0) {
+                    promptTokens = usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
+                    completionTokens = usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens();
+                }
+                if (response.getMetadata().getModel() != null) {
+                    modelName = response.getMetadata().getModel();
+                }
+            }
+        }
+
+        void onComplete(SseEmitterSender sender) {
+            try {
+                persistAssistantMessage(null);
+                auditor.record(user.id(), conversation.getId(), modelName,
+                        promptTokens, completionTokens,
+                        System.currentTimeMillis() - startedAt, AiCallAuditor.CallStatus.OK);
+                sender.send(SseEvent.done(promptTokens, completionTokens, "stop"));
+            } finally {
+                sender.complete();
+            }
+        }
+
+        void onError(Throwable error, SseEmitterSender sender) {
+            log.warn("流式调用失败 conversation={}: {}", conversation.getId(), error.getMessage());
+            try {
+                if (!content.isEmpty()) {
+                    persistAssistantMessage(error.getMessage());
+                }
+                auditor.record(user.id(), conversation.getId(), modelName,
+                        promptTokens, completionTokens,
+                        System.currentTimeMillis() - startedAt, AiCallAuditor.CallStatus.ERROR);
+                sender.send(SseEvent.error("50000", "模型调用失败：" + error.getMessage()));
+            } finally {
+                sender.complete();
+            }
+        }
+
+        private void persistAssistantMessage(String errorNote) {
+            ChatMessage assistant = new ChatMessage();
+            assistant.setId(assistantMessageId);
+            assistant.setConversationId(conversation.getId());
+            assistant.setRole(MessageRole.ASSISTANT);
+            assistant.setContent(content.toString());
+            assistant.setReasoningContent(reasoning.isEmpty() ? null : reasoning.toString());
+            if (promptTokens > 0 || completionTokens > 0) {
+                assistant.setTokenUsage("{\"promptTokens\":%d,\"completionTokens\":%d}"
+                        .formatted(promptTokens, completionTokens));
+            }
+            conversationService.saveMessage(assistant);
+            conversationService.touch(conversation);
+        }
+    }
+}

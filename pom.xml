@@ -20,6 +20,7 @@
     <module>agentx-common</module>
     <module>agentx-infra-ai</module>
     <module>agentx-auth</module>
+    <module>agentx-chat</module>
     <module>agentx-server</module>
   </modules>
 
@@ -56,6 +57,11 @@
       <dependency>
         <groupId>com.agentx</groupId>
         <artifactId>agentx-auth</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.agentx</groupId>
+        <artifactId>agentx-chat</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>
