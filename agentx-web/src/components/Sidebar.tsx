@@ -1,20 +1,25 @@
 import {
+  BookOutlined,
+  CommentOutlined,
+  ControlOutlined,
   DeleteOutlined,
   EditOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MoreOutlined,
   PlusOutlined,
+  RobotOutlined,
 } from '@ant-design/icons'
 import { App as AntdApp, Button, Dropdown, Input, Modal, Tooltip } from 'antd'
 import { useState } from 'react'
 import type { CSSProperties, MouseEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { extractErrorMessage } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
 import type { Conversation } from '../types'
 import Logo from './Logo'
+import NewChatModal from './NewChatModal'
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: '管理员',
@@ -32,21 +37,25 @@ interface SidebarProps {
 
 export default function Sidebar({ hidden = false, style, onCollapse, onNavigate }: SidebarProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { message, modal } = AntdApp.useApp()
 
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const isAdmin = user?.role === 'ADMIN'
 
   const conversations = useChatStore((s) => s.conversations)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const renameConversation = useChatStore((s) => s.renameConversation)
   const removeConversation = useChatStore((s) => s.removeConversation)
+  const loadConversations = useChatStore((s) => s.loadConversations)
   const resetChat = useChatStore((s) => s.reset)
 
   const [renameTarget, setRenameTarget] = useState<Conversation | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [newChatOpen, setNewChatOpen] = useState(false)
 
   const goConversation = (id: string) => {
     navigate(`/c/${id}`)
@@ -57,6 +66,35 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
     navigate('/')
     onNavigate?.()
   }
+
+  const handleConversationCreated = (id: string) => {
+    void loadConversations()
+    navigate(`/c/${id}`)
+    onNavigate?.()
+  }
+
+  const isChatRoute = location.pathname === '/' || location.pathname.startsWith('/c/')
+  const navItems = [
+    { key: 'chat', to: '/', icon: <CommentOutlined />, label: '对话', active: isChatRoute },
+    {
+      key: 'kb',
+      to: '/kb',
+      icon: <BookOutlined />,
+      label: '知识库',
+      active: location.pathname.startsWith('/kb'),
+    },
+    ...(isAdmin
+      ? [
+          {
+            key: 'admin',
+            to: '/admin',
+            icon: <ControlOutlined />,
+            label: '管理后台',
+            active: location.pathname.startsWith('/admin'),
+          },
+        ]
+      : []),
+  ]
 
   const handleRenameOk = async () => {
     if (!renameTarget) return
@@ -119,10 +157,35 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
       </div>
 
       <div className="ax-new-chat">
-        <Button icon={<PlusOutlined />} onClick={handleNewChat}>
+        <Button icon={<PlusOutlined />} onClick={handleNewChat} className="ax-new-chat-main">
           新建对话
         </Button>
+        <Tooltip title="选择 Agent / 知识库新建" placement="right">
+          <Button
+            icon={<RobotOutlined />}
+            className="ax-new-chat-agent"
+            aria-label="选择 Agent 或知识库新建对话"
+            onClick={() => setNewChatOpen(true)}
+          />
+        </Tooltip>
       </div>
+
+      <nav className="ax-nav" aria-label="主导航">
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`ax-nav-item${item.active ? ' ax-nav-item--active' : ''}`}
+            onClick={() => {
+              navigate(item.to)
+              onNavigate?.()
+            }}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       <div className="ax-conv-list ax-scroll">
         {conversations.length > 0 && <div className="ax-conv-section">对话</div>}
@@ -209,6 +272,12 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
           autoFocus
         />
       </Modal>
+
+      <NewChatModal
+        open={newChatOpen}
+        onClose={() => setNewChatOpen(false)}
+        onCreated={handleConversationCreated}
+      />
     </aside>
   )
 }

@@ -49,7 +49,7 @@ export default function ToolCallCard({ call }: ToolCallCardProps) {
         <span className="ax-toolcall-status">
           {finished ? (
             <>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} /> 已完成
+              <CheckCircleOutlined style={{ color: 'var(--ax-success)' }} /> 已完成
             </>
           ) : (
             <>

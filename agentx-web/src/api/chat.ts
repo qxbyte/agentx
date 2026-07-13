@@ -8,6 +8,7 @@ export function listConversations(): Promise<Conversation[]> {
 export function createConversation(payload?: {
   modelConfigId?: string
   agentId?: string
+  kbIds?: string[]
 }): Promise<Conversation> {
   return request<Conversation>({
     url: '/v1/chat/conversations',
