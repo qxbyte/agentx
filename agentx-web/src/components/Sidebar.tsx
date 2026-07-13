@@ -49,6 +49,7 @@ import { extractErrorMessage } from '../api/http'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
 import type { Conversation, Workspace } from '../types'
+import { useKbOptions } from './coding/useKbOptions'
 import WorkspaceFormDialog from './coding/WorkspaceFormDialog'
 import Logo from './Logo'
 import NewChatModal from './NewChatModal'
@@ -87,6 +88,14 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
 
   const projects = useChatStore((s) => s.projects)
   const loadProjects = useChatStore((s) => s.loadProjects)
+  /** 项目信息卡上展示绑定的知识库名（本地+外部统一数据源） */
+  const kbOptions = useKbOptions()
+  const kbLabelOf = (kbId: string | null | undefined): string => {
+    if (!kbId) return '未绑定知识库'
+    const kb = kbOptions.find((o) => o.id === kbId)
+    if (!kb) return '知识库不可用（已删除或停用）'
+    return kb.name + (kb.external ? '（外部）' : '')
+  }
   const refreshProjects = () => void loadProjects()
   useEffect(refreshProjects, [loadProjects])
 
@@ -436,6 +445,10 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MessageSquare className="size-3" />
                       {convs.length} 个对话串
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <BookOpen className="size-3" />
+                      <span className="truncate">{kbLabelOf(p.kbId)}</span>
                     </div>
                     <div className="mt-2 border-t border-border pt-2 font-mono text-[11px] text-muted-foreground">
                       {p.rootPath}

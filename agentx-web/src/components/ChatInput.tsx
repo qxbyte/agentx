@@ -1,4 +1,4 @@
-import { ArrowUp, FolderGit2, Square } from 'lucide-react'
+import { ArrowUp, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -25,10 +25,6 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
   const workspaceId = useChatStore((s) => s.workspaceId)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const projectLocked = useChatStore((s) => s.projectLocked)
-  const kbCount = useChatStore((s) => s.kbIds.length)
-  const projectName = useChatStore(
-    (s) => s.projects.find((p) => p.id === s.workspaceId)?.name ?? null,
-  )
   const coding = workspaceId !== null
   /** 新对话阶段：项目/知识库属于开场选择，会话开始后芯片隐藏 */
   const isNewConversation = activeConversationId === null
@@ -59,28 +55,12 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
 
   return (
     <div className="mx-auto max-w-[780px]">
-      {/* 开场芯片托层（Codex 式）：仅新对话阶段显示。
-          从项目入口新建的对话锁定沿用项目归属与知识库，只读展示不可改 */}
-      {isNewConversation && (
+      {/* 开场芯片托层（Codex 式）：仅独立新对话显示。
+          从项目入口新建的对话锁定沿用项目（归属/知识库见侧栏项目信息卡），不显示托层 */}
+      {isNewConversation && !projectLocked && (
         <div className="-mb-4 mx-4 flex items-center gap-1 rounded-t-[18px] bg-[#f0f0f2] px-3 pb-6 pt-1.5">
-          {projectLocked ? (
-            <span
-              className="flex h-7 items-center gap-1.5 px-2.5 text-xs text-[var(--ax-text-secondary)]"
-              title="此对话属于该项目：归属与知识库沿用项目，不可更改"
-            >
-              <FolderGit2 className="size-3.5" />
-              <span className="max-w-[160px] truncate font-medium text-foreground">
-                {projectName ?? '项目'}
-              </span>
-              <span className="text-[var(--ax-text-faint)]">·</span>
-              <span>{kbCount > 0 ? '沿用项目知识库' : '未绑定知识库'}</span>
-            </span>
-          ) : (
-            <>
-              <ProjectPicker />
-              <KbPicker />
-            </>
-          )}
+          <ProjectPicker />
+          <KbPicker />
         </div>
       )}
 
