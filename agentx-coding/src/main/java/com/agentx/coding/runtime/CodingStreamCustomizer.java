@@ -6,6 +6,7 @@ import com.agentx.coding.tools.DangerousTools;
 import com.agentx.coding.tools.WorkspaceContext;
 import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
+import com.agentx.infra.ai.stream.SseNotifyingToolCallback;
 import com.agentx.tools.registry.ToolRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * CodeAgent 会话定制（设计文档 §5）：会话绑定工作区时注入编码工具集与 system prompt，
@@ -35,6 +37,8 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
             List.of("listDir", "readFile", "grepFiles", "findFiles", "gitStatus", "gitDiff");
     private static final List<String> WRITE_TOOLS =
             List.of("writeFile", "applyPatch", "runShell", "gitCommit");
+    /** 编码会话的工具调用上限（防失控循环）。 */
+    private static final int MAX_TOOL_CALLS = 60;
 
     private final WorkspaceService workspaceService;
     private final ToolRegistry toolRegistry;
@@ -56,15 +60,18 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
         List<String> toolNames = mode == CodingMode.PLAN
                 ? READONLY_TOOLS
                 : concat(READONLY_TOOLS, WRITE_TOOLS);
-        List<ToolCallback> tools = toolRegistry.resolve(toolNames);
 
-        if (mode == CodingMode.ASK) {
-            tools = tools.stream()
-                    .map(t -> DangerousTools.isDangerous(t.getToolDefinition().name())
-                            ? approvalDecorator.decorate(t, context)
-                            : t)
-                    .toList();
-        }
+        // 每个工具先套 SseNotifying（发 tool-call/tool-result 帧 + 循环守卫）；
+        // ASK 模式的危险工具再在外层套审批网关（先审批，批准后才进入 SseNotifying 内层）。
+        AtomicInteger counter = new AtomicInteger();
+        List<ToolCallback> tools = toolRegistry.resolve(toolNames).stream()
+                .<ToolCallback>map(t -> new SseNotifyingToolCallback(
+                        t, context.toolEventSink(), counter, MAX_TOOL_CALLS))
+                .map(t -> mode == CodingMode.ASK
+                        && DangerousTools.isDangerous(t.getToolDefinition().name())
+                        ? approvalDecorator.decorate(t, context)
+                        : t)
+                .toList();
         if (!tools.isEmpty()) {
             spec.toolCallbacks(tools);
         }

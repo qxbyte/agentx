@@ -20,6 +20,7 @@ public record SseEvent(String type, Map<String, Object> data) {
     public static final String TOOL_CALL = "tool-call";
     public static final String TOOL_RESULT = "tool-result";
     public static final String RAG_SOURCE = "rag-source";
+    public static final String APPROVAL_REQUEST = "approval-request";
     public static final String DONE = "done";
     public static final String ERROR = "error";
 
@@ -53,6 +54,13 @@ public record SseEvent(String type, Map<String, Object> data) {
 
     public static SseEvent ragSource(List<? extends Map<String, Object>> sources) {
         return new SseEvent(RAG_SOURCE, Map.of("sources", sources));
+    }
+
+    /** 审批请求帧（CodeAgent Ask 模式）：preview 按 kind 携带 diff/command 等结构化预览。 */
+    public static SseEvent approvalRequest(String approvalId, String toolName, String kind,
+                                           Map<String, Object> preview) {
+        return new SseEvent(APPROVAL_REQUEST, Map.of(
+                "approvalId", approvalId, "toolName", toolName, "kind", kind, "preview", preview));
     }
 
     public static SseEvent done(long promptTokens, long completionTokens, String finishReason) {

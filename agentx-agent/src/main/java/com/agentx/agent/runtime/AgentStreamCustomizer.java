@@ -4,6 +4,7 @@ import com.agentx.agent.domain.AgentDefinition;
 import com.agentx.agent.service.AgentDefinitionService;
 import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
+import com.agentx.infra.ai.stream.SseNotifyingToolCallback;
 import com.agentx.tools.registry.ToolRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

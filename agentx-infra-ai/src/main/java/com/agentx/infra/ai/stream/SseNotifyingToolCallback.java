@@ -1,6 +1,5 @@
-package com.agentx.agent.runtime;
+package com.agentx.infra.ai.stream;
 
-import com.agentx.infra.ai.stream.ToolEventSink;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;

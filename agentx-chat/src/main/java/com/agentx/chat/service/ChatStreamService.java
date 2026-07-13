@@ -51,6 +51,7 @@ public class ChatStreamService {
     private final AiCallAuditor auditor;
     private final ObjectMapper objectMapper;
     private final List<ChatStreamCustomizer> customizers;
+    private final com.agentx.infra.ai.stream.ApprovalRegistry approvalRegistry;
 
     public SseEmitter stream(AuthPrincipal user, StreamRequest req) {
         ChatConversation conversation = resolveConversation(user, req);
@@ -66,6 +67,12 @@ public class ChatStreamService {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         SseEmitterSender sender = new SseEmitterSender(emitter, objectMapper);
         sender.send(SseEvent.meta(conversation.getId().toString(), assistantMessageId.toString()));
+
+        // Ask 模式兜底：流结束/超时/客户端断开时，解冻仍挂起的审批线程，避免虚拟线程泄漏
+        // （正常"批准/拒绝"由回传端点 ApprovalRegistry.resolve 完成，这里只兜住异常终止路径）
+        emitter.onCompletion(() -> approvalRegistry.cancelConversation(conversation.getId()));
+        emitter.onTimeout(() -> approvalRegistry.cancelConversation(conversation.getId()));
+        emitter.onError(e -> approvalRegistry.cancelConversation(conversation.getId()));
 
         ChatClient client = resolveClient(conversation, req);
         StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId);
@@ -135,6 +142,12 @@ public class ChatStreamService {
                     ? result.substring(0, 2000) + "…" : result;
             aggregator.recordToolResult(callId, truncated);
             sender.send(SseEvent.toolResult(callId, toolName, truncated));
+        }
+
+        @Override
+        public void onApprovalRequest(String approvalId, String toolName, String kind,
+                                      java.util.Map<String, Object> preview) {
+            sender.send(SseEvent.approvalRequest(approvalId, toolName, kind, preview));
         }
     }
 
