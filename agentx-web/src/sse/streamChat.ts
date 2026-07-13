@@ -10,6 +10,15 @@ export interface StreamChatParams {
   onEvent: (event: SseEvent) => void
 }
 
+/** 内部哨兵：标记服务端正常关流。fetch-event-source 的 onclose 若正常返回
+ *  会进入自动重连（并重发 POST！），必须抛异常终止，再在外层识别为正常结束。 */
+class StreamClosedError extends Error {
+  constructor() {
+    super('stream closed')
+    this.name = 'StreamClosedError'
+  }
+}
+
 /** 不可重试的流式错误（fetch-event-source 默认会无限重连，必须抛出终止） */
 export class StreamFatalError extends Error {
   status: number | undefined
@@ -35,7 +44,8 @@ export async function streamChat(params: StreamChatParams): Promise<void> {
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  await fetchEventSource('/api/v1/chat/stream', {
+  try {
+    await fetchEventSource('/api/v1/chat/stream', {
     method: 'POST',
     headers,
     body: JSON.stringify(conversationId ? { conversationId, content } : { content }),
@@ -53,12 +63,19 @@ export async function streamChat(params: StreamChatParams): Promise<void> {
       const event = parseSseEvent(message.data)
       if (event) onEvent(event)
     },
-    onclose() {
-      // 服务端主动关闭视为正常结束（done 事件应已先到达）
-    },
-    onerror(err) {
-      // 直接抛出以禁用自动重连，由调用方统一处理
-      throw err
-    },
-  })
+      onclose() {
+        // 服务端主动关闭：抛哨兵终止库的重连循环，外层识别为正常结束
+        throw new StreamClosedError()
+      },
+      onerror(err) {
+        // 直接抛出以禁用自动重连，由调用方统一处理
+        throw err
+      },
+    })
+  } catch (error) {
+    if (error instanceof StreamClosedError) {
+      return // 正常结束
+    }
+    throw error
+  }
 }
