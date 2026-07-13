@@ -322,6 +322,33 @@ export interface ApprovalPreview {
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
+/** 外部知识库（固定三 API 模板接入；enabled=false 检索完全跳过） */
+export interface ExternalKb {
+  id: string
+  name: string
+  baseUrl: string
+  vaultId: string
+  heartbeatPath: string
+  infoPath: string
+  searchPath: string
+  topK: number
+  similarityThreshold: number
+  enabled: boolean
+  createdAt?: string
+}
+
+export interface ExternalKbProbe {
+  alive: boolean
+  service?: string | null
+  vaultName?: string | null
+  embeddingModel?: string | null
+  dims: number
+  chunkCount: number
+  error?: string | null
+  /** embedding 模型不一致等提醒（非空即需注意） */
+  warning?: string | null
+}
+
 export interface ApprovalItem {
   approvalId: string
   toolName: string

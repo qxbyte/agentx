@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { getAccessToken } from './api/tokens'
 import AdminLayout from './pages/admin/AdminLayout'
 import AgentsPage from './pages/admin/AgentsPage'
+import ExternalKbPage from './pages/admin/ExternalKbPage'
 import McpPage from './pages/admin/McpPage'
 import ModelsPage from './pages/admin/ModelsPage'
 import StatsPage from './pages/admin/StatsPage'
@@ -67,6 +68,7 @@ export default function App() {
                 <Route path="mcp" element={<McpPage />} />
                 <Route path="tools" element={<ToolsPage />} />
                 <Route path="agents" element={<AgentsPage />} />
+                <Route path="external-kbs" element={<ExternalKbPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="stats" element={<StatsPage />} />
                 <Route path="*" element={<Navigate to="models" replace />} />

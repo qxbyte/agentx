@@ -1,4 +1,4 @@
-import { Boxes, Cloud, LayoutGrid, LineChart, Bot, Users } from 'lucide-react'
+import { BookOpen, Boxes, Cloud, LayoutGrid, LineChart, Bot, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ const MENU_ITEMS: { key: string; icon: ReactNode; label: string }[] = [
   { key: 'mcp', icon: <Cloud className="size-[15px]" />, label: 'MCP 服务' },
   { key: 'tools', icon: <LayoutGrid className="size-[15px]" />, label: '工具目录' },
   { key: 'agents', icon: <Bot className="size-[15px]" />, label: 'Agent' },
+  { key: 'external-kbs', icon: <BookOpen className="size-[15px]" />, label: '外部知识库' },
   { key: 'users', icon: <Users className="size-[15px]" />, label: '用户' },
   { key: 'stats', icon: <LineChart className="size-[15px]" />, label: '用量统计' },
 ]
@@ -21,7 +22,7 @@ export default function AdminLayout() {
   const current = location.pathname.split('/')[2] ?? 'models'
 
   return (
-    <AppShell title="管理后台" flush>
+    <AppShell title="设置" flush>
       <div className="ax-admin">
         <nav className="ax-admin-menu flex flex-col gap-1 p-2">
           {MENU_ITEMS.map((item) => {
