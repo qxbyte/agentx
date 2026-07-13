@@ -16,6 +16,28 @@ function byUpdatedAtDesc(a: Conversation, b: Conversation): number {
   return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
 }
 
+/** 后端历史消息的 jsonb 字段原样返回字符串，渲染前解析为对象（坏数据回退 null 不崩页） */
+function parseJsonField<T>(v: unknown): T | null {
+  if (v == null) return null
+  if (typeof v === 'string') {
+    try {
+      return JSON.parse(v) as T
+    } catch {
+      return null
+    }
+  }
+  return v as T
+}
+
+function normalizeMessage(m: ChatMessage): ChatMessage {
+  return {
+    ...m,
+    toolCalls: parseJsonField(m.toolCalls),
+    ragSources: parseJsonField(m.ragSources),
+    tokenUsage: parseJsonField(m.tokenUsage),
+  }
+}
+
 interface ChatState {
   conversations: Conversation[]
   conversationsLoading: boolean
@@ -129,7 +151,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       workspaceId: get().conversations.find((c) => c.id === id)?.workspaceId ?? null,
     })
     try {
-      const messages = await chatApi.listMessages(id)
+      const messages = (await chatApi.listMessages(id)).map(normalizeMessage)
       if (get().activeConversationId === id) {
         set({ messages, messagesLoading: false })
       }
@@ -273,9 +295,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         conversationId,
         content: trimmed,
         ...(modelConfigId ? { modelConfigId } : {}),
-        // workspaceId 非空才进入 coding 模式；mode 仅在 coding 时有意义
-        ...(workspaceId ? { workspaceId, mode: codingMode } : {}),
-        ...(kbIds.length > 0 ? { kbIds } : {}),
+        // workspaceId 非空才进入 coding 模式；知识库检索跟随项目，未选项目不发 kbIds
+        ...(workspaceId
+          ? { workspaceId, mode: codingMode, ...(kbIds.length > 0 ? { kbIds } : {}) }
+          : {}),
         signal: controller.signal,
         onEvent: handleEvent,
       })

@@ -6,10 +6,11 @@ import * as kbApi from '../../api/kb'
 import { useChatStore } from '../../stores/chat'
 import type { KnowledgeBase } from '../../types'
 
-/** 知识库多选（紧凑）：独立于项目，指定本次检索追加的知识库。 */
+/** 知识库多选（紧凑）：跟随项目——未选项目时禁用（知识库检索服务于项目内任务）。 */
 export default function KbPicker() {
   const kbIds = useChatStore((s) => s.kbIds)
   const setKbIds = useChatStore((s) => s.setKbIds)
+  const workspaceId = useChatStore((s) => s.workspaceId)
   const [kbs, setKbs] = useState<KnowledgeBase[]>([])
 
   useEffect(() => {
@@ -21,15 +22,19 @@ export default function KbPicker() {
   }
 
   const active = kbIds.length > 0
+  const disabled = workspaceId === null
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
+          title={disabled ? '选择项目后可用（知识库检索跟随项目）' : '选择检索用的知识库'}
           className={cn(
             'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-black/[0.06]',
             active ? 'font-medium text-foreground' : 'text-[var(--ax-text-secondary)]',
+            disabled && 'cursor-not-allowed opacity-45 hover:bg-transparent',
           )}
         >
           <BookOpen className="size-3.5" />

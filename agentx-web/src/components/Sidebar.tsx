@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Bot,
+  ChevronDown,
   FolderGit2,
   LogOut,
   MessageSquare,
@@ -98,6 +99,17 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Workspace | null>(null)
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<Workspace | null>(null)
+  /** 项目目录折叠状态（默认全部展开） */
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  /** 打开操作菜单的项目：此时其悬浮信息卡强制隐藏（两层浮层不叠加） */
+  const [projMenuOpenId, setProjMenuOpenId] = useState<string | null>(null)
+  const toggleProject = (id: string) =>
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   const goConversation = (id: string) => {
     navigate(`/c/${id}`)
@@ -337,86 +349,102 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
         ) : (
           projects.map((p) => {
             const convs = grouped.get(p.id) ?? []
+            const collapsed = collapsedIds.has(p.id)
             return (
               <div key={p.id} className="mb-1">
-                <div
-                  className="ax-conv-item group font-medium"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openProject(p)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') openProject(p)
-                  }}
-                  title={p.rootPath}
-                >
-                  <FolderGit2 className="size-[15px] shrink-0 text-[var(--ax-text-secondary)]" />
-                  <span className="ax-conv-title">{p.name}</span>
-                  <span
-                    className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={stop}
-                  >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                {/* 悬浮项目行 → 右侧信息卡（Codex 式）；点击行 = 展开/收起目录；
+                    操作菜单打开时信息卡强制隐藏 */}
+                <Tooltip {...(projMenuOpenId === p.id ? { open: false } : {})}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="ax-conv-item group font-medium"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleProject(p.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') toggleProject(p.id)
+                      }}
+                    >
+                      <FolderGit2 className="size-[15px] shrink-0 text-[var(--ax-text-secondary)]" />
+                      <span className="ax-conv-title">{p.name}</span>
+                      <span
+                        className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={stop}
+                      >
                         <button
                           type="button"
                           className="ax-icon-btn !h-6 !w-6"
                           aria-label="在项目中新建对话"
+                          title="在项目中新建对话"
                           onClick={() => openProject(p)}
                         >
                           <SquarePen className="size-3.5" />
                         </button>
-                      </TooltipTrigger>
-                      <TooltipContent>在项目中新建对话</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button type="button" className="ax-icon-btn !h-6 !w-6" aria-label="项目操作">
-                          <MoreHorizontal className="size-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="min-w-[13rem]">
-                        {/* 项目信息卡（Codex 式） */}
-                        <div className="px-2 py-1.5">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <FolderGit2 className="size-4 shrink-0" />
-                            <span className="truncate">{p.name}</span>
-                          </div>
-                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MessageSquare className="size-3" />
-                            {convs.length} 个对话
-                          </div>
-                          <div className="mt-0.5 max-w-[220px] truncate font-mono text-[11px] text-muted-foreground">
-                            {p.rootPath}
-                          </div>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => openProject(p)}>
-                          <SquarePen className="size-4" />
-                          在项目中新建对话
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditingProject(p)
-                            setProjectDialogOpen(true)
-                          }}
+                        <DropdownMenu
+                          onOpenChange={(open) => setProjMenuOpenId(open ? p.id : null)}
                         >
-                          <Pencil className="size-4" />
-                          编辑项目
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          data-variant="destructive"
-                          onClick={() => setDeleteProjectTarget(p)}
-                        >
-                          <Trash2 className="size-4" />
-                          删除项目
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </span>
-                </div>
-                <div className="ml-3 border-l border-[var(--ax-border-subtle)] pl-1">
-                  {convs.map(renderConv)}
-                </div>
+                          <DropdownMenuTrigger asChild>
+                            <button type="button" className="ax-icon-btn !h-6 !w-6" aria-label="项目操作">
+                              <MoreHorizontal className="size-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="min-w-[11rem]">
+                            <DropdownMenuItem onClick={() => openProject(p)}>
+                              <SquarePen className="size-4" />
+                              在项目中新建对话
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingProject(p)
+                                setProjectDialogOpen(true)
+                              }}
+                            >
+                              <Pencil className="size-4" />
+                              重命名 / 编辑项目
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              data-variant="destructive"
+                              onClick={() => setDeleteProjectTarget(p)}
+                            >
+                              <Trash2 className="size-4" />
+                              移除
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <ChevronDown
+                          className={`size-3.5 text-muted-foreground transition-transform ${collapsed ? '-rotate-90' : ''}`}
+                        />
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="right"
+                    sideOffset={10}
+                    className="min-w-[13rem] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-md"
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FolderGit2 className="size-4 shrink-0" />
+                      <span className="truncate">{p.name}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MessageSquare className="size-3" />
+                      {convs.length} 个对话串
+                    </div>
+                    <div className="mt-2 border-t border-border pt-2 font-mono text-[11px] text-muted-foreground">
+                      {p.rootPath}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                {!collapsed && (
+                  <div className="ml-3 border-l border-[var(--ax-border-subtle)] pl-1">
+                    {convs.length === 0 ? (
+                      <div className="px-2.5 py-1.5 text-xs text-[var(--ax-text-faint)]">无对话</div>
+                    ) : (
+                      convs.map(renderConv)
+                    )}
+                  </div>
+                )}
               </div>
             )
           })

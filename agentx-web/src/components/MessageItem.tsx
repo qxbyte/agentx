@@ -1,8 +1,8 @@
 import { memo } from 'react'
 import type { ChatMessage } from '../types'
 import ApprovalCard from './coding/ApprovalCard'
-import ToolResultCard from './coding/ToolResultCard'
 import Logo from './Logo'
+import ToolCallGroup from './ToolCallGroup'
 import MarkdownRenderer from './MarkdownRenderer'
 import ReasoningBlock from './ReasoningBlock'
 import { SourceList } from './SourceBadge'
@@ -59,13 +59,7 @@ function MessageItem({ message }: MessageItemProps) {
             streaming={streaming && message.content === ''}
           />
         ) : null}
-        {toolCalls.map((call) =>
-          call.kind ? (
-            <ToolResultCard key={call.id} call={call} />
-          ) : (
-            <ToolCallCard key={call.id} call={call} />
-          ),
-        )}
+        <ToolCallGroup calls={toolCalls} />
         {message.approvals?.map((item) => (
           <ApprovalCard key={item.approvalId} item={item} />
         ))}

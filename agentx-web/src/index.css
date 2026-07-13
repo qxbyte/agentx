@@ -304,12 +304,13 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 10px;
+  gap: 6px;
+  padding: 3px 10px;
   margin-bottom: 1px;
   border-radius: var(--ax-radius);
   color: var(--ax-sidebar-text);
   font-size: 13px;
+  min-height: 26px;
   cursor: pointer;
   transition: background 0.12s ease;
 }
