@@ -133,11 +133,19 @@ export function fetchTokenSummary(): Promise<TokenStatsSummary> {
 }
 
 export function fetchDailyTokenStats(days = 14): Promise<DailyTokenStat[]> {
-  return request<DailyTokenStat[]>({
+  // 后端按日聚合的字段名是 day/calls（SQL 列别名），此处归一化为页面消费的形态
+  return request<Array<Record<string, unknown>>>({
     url: '/v1/admin/stats/tokens/daily',
     method: 'GET',
     params: { days },
-  })
+  }).then((rows) =>
+    rows.map((r) => ({
+      date: String(r.day ?? r.date ?? ''),
+      total_calls: Number(r.calls ?? r.total_calls ?? 0),
+      prompt_tokens: Number(r.prompt_tokens ?? 0),
+      completion_tokens: Number(r.completion_tokens ?? 0),
+    })),
+  )
 }
 
 export function fetchModelTokenStats(): Promise<ModelTokenStat[]> {
