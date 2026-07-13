@@ -36,6 +36,7 @@ import * as api from '../../api/externalKb'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
 import PageHeader from '../../components/PageHeader'
+import ExternalKbGuide from './ExternalKbGuide'
 import type { ExternalKb, ExternalKbProbe } from '../../types'
 
 interface FormState {
@@ -213,10 +214,13 @@ export default function ExternalKbPage() {
         title="外部知识库"
         description="按固定 API 模板（心跳/库信息/向量查询）接入外部知识库，与项目内知识库共存检索；停用即完全忽略。注意：外部库 embedding 模型须与本平台默认向量模型一致"
         extra={
-          <Button onClick={openCreate}>
-            <Plus className="size-4" />
-            接入外部知识库
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExternalKbGuide />
+            <Button onClick={openCreate}>
+              <Plus className="size-4" />
+              接入外部知识库
+            </Button>
+          </div>
         }
       />
 

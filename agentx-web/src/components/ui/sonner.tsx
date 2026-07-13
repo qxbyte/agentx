@@ -9,9 +9,7 @@ function Toaster(props: ToasterProps) {
   return (
     <Sonner
       position="top-center"
-      // sonner 给每条 toast(li) 内联 width:var(--width)（默认 356px），
-      // 胶囊内容在定宽容器内靠左会导致整体偏离视口中心——收缩为内容宽即真居中
-      style={{ '--width': 'fit-content' } as React.CSSProperties}
+      // 宽度修正见 index.css [data-sonner-*]：容器自动宽、toast 随内容不换行，真居中
       toastOptions={{
         unstyled: true,
         classNames: {

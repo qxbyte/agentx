@@ -39,10 +39,11 @@
   --ax-sidebar-hover: #ececec;
   --ax-sidebar-active: #e8e8e8;
 
-  --ax-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
-  --ax-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
-    monospace;
+  --ax-font: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans SC', sans-serif;
+  --ax-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, 'SF Mono', Menlo,
+    Consolas, 'Liberation Mono', monospace;
 
   --ax-radius: 12px;
   --ax-radius-lg: 18px;
@@ -1438,6 +1439,19 @@ body {
   color: var(--ax-warning);
 }
 
+
+/* sonner toast：容器自动宽 + 内容随文不换行，保持视口水平居中
+   （sonner 给 ol/li 内联 width:var(--width)=356px，定宽会导致胶囊偏左或塌缩竖排） */
+[data-sonner-toaster] {
+  width: auto !important;
+}
+[data-sonner-toast] {
+  width: max-content !important;
+  max-width: min(88vw, 720px) !important;
+}
+[data-sonner-toast] [data-title] {
+  white-space: nowrap;
+}
 
 /* 标签统一胶囊形 */
 .ant-tag {
