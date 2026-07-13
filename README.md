@@ -155,4 +155,4 @@ Spring AI 内建 Micrometer 指标开箱即得：`gen_ai_client_operation_second
 
 ## License
 
-Apache-2.0
+MIT
