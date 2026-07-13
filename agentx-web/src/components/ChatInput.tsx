@@ -98,7 +98,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
         ref={textareaRef}
         rows={1}
         value={value}
-        placeholder={coding ? '描述要处理的代码任务…' : '给 AgentX 发送消息…'}
+        placeholder={coding ? '描述需要处理的任务…' : '给 AgentX 发送消息…'}
         aria-label="消息输入框"
         disabled={disabled}
         onChange={(e) => setValue(e.target.value)}
