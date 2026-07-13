@@ -44,8 +44,8 @@
   --ax-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
     monospace;
 
-  --ax-radius: 8px;
-  --ax-radius-lg: 12px;
+  --ax-radius: 10px;
+  --ax-radius-lg: 16px;
   --ax-sidebar-width: 260px;
 }
 
@@ -112,10 +112,14 @@ body {
 /* ============================================================
    应用骨架
    ============================================================ */
+/* 画布浅灰 + 卡片布局：侧栏与主区都是圆角悬浮卡片 */
 .ax-app {
   display: flex;
   height: 100%;
   overflow: hidden;
+  background: #ececee;
+  padding: 10px;
+  gap: 10px;
 }
 
 .ax-main {
@@ -124,6 +128,10 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--ax-bg);
+  border: 1px solid var(--ax-border-subtle);
+  border-radius: var(--ax-radius-lg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .ax-topbar {
@@ -147,7 +155,7 @@ body {
 }
 
 /* ============================================================
-   侧栏（浅灰面板 + hairline 分割）
+   侧栏：圆角悬浮卡片
    ============================================================ */
 .ax-sidebar {
   width: var(--ax-sidebar-width);
@@ -155,13 +163,17 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--ax-sidebar-bg);
-  border-right: 1px solid var(--ax-border);
+  border: 1px solid var(--ax-border-subtle);
+  border-radius: var(--ax-radius-lg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
   color: var(--ax-sidebar-text);
   transition: margin-left 0.2s ease;
 }
 
 .ax-sidebar--hidden {
-  margin-left: calc(-1 * var(--ax-sidebar-width));
+  /* 额外吞掉卡片布局的 10px gap */
+  margin-left: calc(-1 * var(--ax-sidebar-width) - 10px);
 }
 
 .ax-sidebar-header {
@@ -186,7 +198,7 @@ body {
   width: 30px;
   height: 30px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -249,7 +261,7 @@ body {
   gap: 10px;
   padding: 8px 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   background: transparent;
   color: var(--ax-sidebar-text);
   font-family: inherit;
@@ -295,7 +307,7 @@ body {
   gap: 8px;
   padding: 9px 10px;
   margin-bottom: 2px;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   color: var(--ax-sidebar-text);
   font-size: 13.5px;
   cursor: pointer;
@@ -513,7 +525,7 @@ body {
   margin-bottom: 10px;
   border: 1px solid var(--ax-border-subtle);
   border-left: 3px solid #d5d5d5;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   background: var(--ax-reasoning-bg);
   overflow: hidden;
 }
@@ -598,7 +610,7 @@ body {
 .ax-toolcall-pre {
   margin: 0;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   background: var(--ax-code-bg);
   font-family: var(--ax-mono);
   font-size: 12px;
@@ -656,7 +668,7 @@ body {
 .ax-source-pop-snippet {
   margin: 6px 0 0;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--ax-radius);
   background: var(--ax-code-bg);
   font-size: 12.5px;
   line-height: 1.6;
@@ -1342,7 +1354,25 @@ body {
 /* ============================================================
    响应式
    ============================================================ */
+/* Drawer 内的侧栏是全宽面板，去掉卡片形态 */
+.ant-drawer .ax-sidebar {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 @media (max-width: 768px) {
+  /* 窄屏取消卡片留缝，回归通排 */
+  .ax-app {
+    padding: 0;
+    gap: 0;
+    background: var(--ax-bg);
+  }
+  .ax-main {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
   .ax-message-list {
     padding: 16px 14px 4px;
   }

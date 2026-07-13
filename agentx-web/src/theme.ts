@@ -52,23 +52,23 @@ export const lightTheme: ThemeConfig = {
     colorTextQuaternary: '#b4b4b4',
     colorBorder: '#d5d5d5',
     colorBorderSecondary: '#e5e5e5',
-    borderRadius: 8,
+    borderRadius: 10,
     fontFamily,
     fontSize: 14,
   },
   components: {
     Button: {
-      borderRadius: 8,
+      borderRadius: 10,
       fontWeight: 500,
       primaryShadow: 'none',
       defaultShadow: 'none',
       dangerShadow: 'none',
     },
     Input: {
-      borderRadius: 8,
+      borderRadius: 10,
     },
     Modal: {
-      borderRadiusLG: 12,
+      borderRadiusLG: 16,
     },
     Menu: {
       // 选中态用浅灰而非跟随黑色主色（OpenAI 式：灰阶层级，不用色块强调）
@@ -76,15 +76,15 @@ export const lightTheme: ThemeConfig = {
       itemSelectedColor: '#0d0d0d',
       itemHoverBg: '#f4f4f4',
       itemActiveBg: '#ececec',
-      itemBorderRadius: 8,
+      itemBorderRadius: 10,
       itemMarginInline: 8,
       activeBarBorderWidth: 0,
     },
     Dropdown: {
-      borderRadiusLG: 12,
+      borderRadiusLG: 14,
     },
     Popover: {
-      borderRadiusLG: 12,
+      borderRadiusLG: 14,
     },
   },
 }
