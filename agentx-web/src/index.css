@@ -44,8 +44,8 @@
   --ax-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
     monospace;
 
-  --ax-radius: 10px;
-  --ax-radius-lg: 16px;
+  --ax-radius: 12px;
+  --ax-radius-lg: 18px;
   --ax-sidebar-width: 260px;
 }
 
@@ -421,7 +421,7 @@ body {
 .ax-user-bubble {
   max-width: 78%;
   padding: 10px 16px;
-  border-radius: 18px;
+  border-radius: 20px;
   background: var(--ax-user-bubble);
   color: var(--ax-text);
   font-size: 14.5px;
@@ -1433,4 +1433,11 @@ body {
 }
 .ant-message .ant-message-warning .anticon {
   color: var(--ax-warning);
+}
+
+
+/* 标签统一胶囊形 */
+.ant-tag {
+  border-radius: 999px;
+  padding-inline: 10px;
 }

@@ -52,20 +52,43 @@ export const lightTheme: ThemeConfig = {
     colorTextQuaternary: '#b4b4b4',
     colorBorder: '#d5d5d5',
     colorBorderSecondary: '#e5e5e5',
-    borderRadius: 10,
+    borderRadius: 12,
     fontFamily,
     fontSize: 14,
   },
   components: {
     Button: {
-      borderRadius: 10,
+      borderRadius: 12,
       fontWeight: 500,
       primaryShadow: 'none',
       defaultShadow: 'none',
       dangerShadow: 'none',
     },
     Input: {
-      borderRadius: 10,
+      borderRadius: 12,
+      hoverBorderColor: '#b8b8b8',
+      activeBorderColor: '#8f8f8f',
+      activeShadow: '0 0 0 3px rgba(0, 0, 0, 0.04)',
+    },
+    Select: {
+      borderRadius: 12,
+      // 选中项浅灰而非跟随黑色主色；聚焦边框柔化
+      optionSelectedBg: '#f0f0f0',
+      optionSelectedColor: '#0d0d0d',
+      optionSelectedFontWeight: 600,
+      optionActiveBg: '#f6f6f6',
+      hoverBorderColor: '#b8b8b8',
+      activeBorderColor: '#8f8f8f',
+      activeOutlineColor: 'rgba(0, 0, 0, 0.04)',
+    },
+    InputNumber: {
+      borderRadius: 12,
+      hoverBorderColor: '#b8b8b8',
+      activeBorderColor: '#8f8f8f',
+      activeShadow: '0 0 0 3px rgba(0, 0, 0, 0.04)',
+    },
+    Tag: {
+      borderRadiusSM: 999,
     },
     Modal: {
       borderRadiusLG: 16,
@@ -76,12 +99,13 @@ export const lightTheme: ThemeConfig = {
       itemSelectedColor: '#0d0d0d',
       itemHoverBg: '#f4f4f4',
       itemActiveBg: '#ececec',
-      itemBorderRadius: 10,
+      itemBorderRadius: 12,
       itemMarginInline: 8,
       activeBarBorderWidth: 0,
     },
     Dropdown: {
       borderRadiusLG: 14,
+      borderRadiusSM: 10,
     },
     Popover: {
       borderRadiusLG: 14,
