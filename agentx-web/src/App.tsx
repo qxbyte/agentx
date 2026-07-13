@@ -49,7 +49,7 @@ function RequireAdmin() {
 export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={lightTheme}>
-      <AntdApp>
+      <AntdApp message={{ top: 14, duration: 2.5, maxCount: 3 }}>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />

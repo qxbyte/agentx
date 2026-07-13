@@ -1401,3 +1401,36 @@ body {
     max-width: 88%;
   }
 }
+
+/* ============================================================
+   全局提示（顶部胶囊 toast）：紧凑、白底细边、轻浮影
+   ============================================================ */
+.ant-message .ant-message-notice-wrapper .ant-message-notice-content {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--ax-border-subtle);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ax-text);
+}
+.ant-message .ant-message-custom-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.ant-message .ant-message-custom-content .anticon {
+  font-size: 14px;
+  margin-inline-end: 0;
+}
+.ant-message .ant-message-success .anticon {
+  color: var(--ax-success);
+}
+.ant-message .ant-message-error .anticon {
+  color: var(--ax-danger);
+}
+.ant-message .ant-message-warning .anticon {
+  color: var(--ax-warning);
+}
