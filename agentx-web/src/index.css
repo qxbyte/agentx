@@ -59,6 +59,11 @@ body,
   height: 100%;
 }
 
+/* antd v5 <App> 包装组件会在 #root 与布局之间插入一个 div，必须接续高度链 */
+.ant-app {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--ax-font);
