@@ -68,14 +68,24 @@ public class ExternalKbRetriever {
                 double score = hit.get("score") instanceof Number n ? n.doubleValue() : 0.0;
                 String title = hit.get("title") == null ? "片段" : String.valueOf(hit.get("title"));
                 String path = hit.get("path") == null ? "" : String.valueOf(hit.get("path"));
-                docs.add(Document.builder()
-                        .text(text)
-                        .score(score)
-                        .metadata(Map.of(
-                                VectorMetadata.DOC_NAME, kb.getName() + " · " + title,
-                                VectorMetadata.DOC_ID, "external:" + kb.getId(),
-                                VectorMetadata.SEGMENT_ID, path))
-                        .build());
+                Map<String, Object> meta = new java.util.LinkedHashMap<>();
+                meta.put(VectorMetadata.DOC_NAME, kb.getName() + " · " + title);
+                meta.put(VectorMetadata.DOC_ID, "external:" + kb.getId());
+                meta.put(VectorMetadata.SEGMENT_ID, path);
+                // 定位字段（模板可选约定）：有则透传，前端引用来源卡片据此展示出处
+                if (!path.isEmpty()) {
+                    meta.put(VectorMetadata.DOC_PATH, path);
+                }
+                if (hit.get("headings") instanceof List<?> hs && !hs.isEmpty()) {
+                    meta.put(VectorMetadata.HEADINGS, hs.stream().map(String::valueOf).toList());
+                }
+                if (hit.get("startLine") instanceof Number sl) {
+                    meta.put(VectorMetadata.START_LINE, sl.intValue());
+                }
+                if (hit.get("endLine") instanceof Number el) {
+                    meta.put(VectorMetadata.END_LINE, el.intValue());
+                }
+                docs.add(Document.builder().text(text).score(score).metadata(meta).build());
             }
             return docs;
         } catch (Exception e) {

@@ -121,7 +121,10 @@ Content-Type: application/json
       "text": "片段原文……",      // 必填，注入模型上下文的文本
       "score": 0.79,             // 必填，相似度（0~1，余弦）
       "title": "笔记标题",        // 建议提供，引用来源展示用
-      "path": "dir/note.md"      // 建议提供，来源定位
+      "path": "dir/note.md",     // 建议提供，来源定位（引用卡片展示文件路径）
+      "headings": ["架构", "检索层"], // 可选，片段所属章节链（引用卡片展示为 架构 › 检索层）
+      "startLine": 120,          // 可选，片段在原文中的起始行（1-based）
+      "endLine": 168             // 可选，结束行；与 startLine 一起展示为「第 120–168 行」
     }
   ],
   "indexed": true,

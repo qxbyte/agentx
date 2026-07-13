@@ -37,6 +37,11 @@ export interface RagSource {
   segmentId: string
   score: number
   snippet: string
+  /** 来源定位（可选，外部知识库命中携带）：文件路径 / 章节链 / 原文行号区间 */
+  path?: string | null
+  headings?: string[] | null
+  startLine?: number | null
+  endLine?: number | null
 }
 
 export interface ToolCallInfo {

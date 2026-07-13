@@ -185,7 +185,13 @@ public class ChatStreamService {
             if (text == null) {
                 return "";
             }
-            return text.length() > 120 ? text.substring(0, 120) + "…" : text;
+            return text.length() > 400 ? text.substring(0, 400) + "…" : text;
+        }
+
+        private static void putIfPresent(Map<String, Object> map, String key, Object value) {
+            if (value != null) {
+                map.put(key, value);
+            }
         }
 
         StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId) {
@@ -218,12 +224,18 @@ public class ChatStreamService {
             if (docs instanceof List<?> documents && !documents.isEmpty() && ragSources.isEmpty()) {
                 for (Object o : documents) {
                     if (o instanceof org.springframework.ai.document.Document d) {
-                        ragSources.add(new java.util.LinkedHashMap<>(Map.of(
+                        var source = new java.util.LinkedHashMap<String, Object>(Map.of(
                                 "docId", String.valueOf(d.getMetadata().get("doc_id")),
                                 "docName", String.valueOf(d.getMetadata().get("doc_name")),
                                 "segmentId", String.valueOf(d.getMetadata().get("segment_id")),
                                 "score", d.getScore() == null ? 0.0 : d.getScore(),
-                                "snippet", snippet(d.getText()))));
+                                "snippet", snippet(d.getText())));
+                        // 来源定位（可选）：外部知识库命中带文件路径/章节链/行号区间
+                        putIfPresent(source, "path", d.getMetadata().get("doc_path"));
+                        putIfPresent(source, "headings", d.getMetadata().get("headings"));
+                        putIfPresent(source, "startLine", d.getMetadata().get("start_line"));
+                        putIfPresent(source, "endLine", d.getMetadata().get("end_line"));
+                        ragSources.add(source);
                     }
                 }
                 if (!ragSources.isEmpty()) {
