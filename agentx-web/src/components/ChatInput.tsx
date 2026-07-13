@@ -1,7 +1,11 @@
-import { ArrowUpOutlined, BorderOutlined } from '@ant-design/icons'
-import { Tooltip } from 'antd'
+import { ArrowUp, FolderGit2, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useChatStore } from '../stores/chat'
+import InputToolbar from './coding/InputToolbar'
+import KbPicker from './coding/KbPicker'
+import ProjectPicker from './coding/ProjectPicker'
 
 interface ChatInputProps {
   streaming: boolean
@@ -11,12 +15,20 @@ interface ChatInputProps {
 }
 
 const MAX_HEIGHT = 200
+const MODE_LABELS: Record<string, string> = { PLAN: 'Plan', ASK: 'Ask', AUTO: 'Auto' }
 
-/** 底部输入区：自适应高度，Enter 发送 / Shift+Enter 换行，流式期间切换为停止按钮 */
+/** 底部输入区：加高多行 + 模型/模式/工作区工具条；Enter 发送 / Shift+Enter 换行 */
 export default function ChatInput({ streaming, disabled = false, onSend, onStop }: ChatInputProps) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const composingRef = useRef(false)
+
+  const workspaceId = useChatStore((s) => s.workspaceId)
+  const codingMode = useChatStore((s) => s.codingMode)
+  const activeConversationId = useChatStore((s) => s.activeConversationId)
+  const coding = workspaceId !== null
+  /** 新对话阶段：项目/知识库属于开场选择，会话开始后芯片隐藏 */
+  const isNewConversation = activeConversationId === null
 
   useEffect(() => {
     const el = textareaRef.current
@@ -35,7 +47,6 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || event.shiftKey) return
-    // 中文输入法组词回车不发送
     if (composingRef.current || event.nativeEvent.isComposing) return
     event.preventDefault()
     submit()
@@ -44,12 +55,31 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
   const canSend = value.trim().length > 0 && !streaming && !disabled
 
   return (
-    <div className="ax-composer">
+    <div className="mx-auto max-w-[780px]">
+      {/* 开场芯片托层（Codex 式）：灰色底板垫在输入框底下，仅新对话阶段显示 */}
+      {isNewConversation && (
+        <div className="-mb-4 mx-4 flex items-center gap-1 rounded-t-[18px] bg-[#f0f0f2] px-3 pb-6 pt-1.5">
+          <ProjectPicker />
+          <KbPicker />
+        </div>
+      )}
+
+      <div className="relative flex flex-col rounded-[26px] border border-[var(--ax-border)] bg-[var(--ax-surface)] transition-colors focus-within:border-[#c4c4c4]">
+      {coding && (
+        <div className="flex items-center gap-2 px-4 pt-2.5 text-xs text-muted-foreground">
+          <FolderGit2 className="size-3.5" />
+          <span>编码模式</span>
+          <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-foreground">
+            {MODE_LABELS[codingMode] ?? codingMode}
+          </span>
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         rows={1}
         value={value}
-        placeholder="给 AgentX 发送消息…"
+        placeholder={coding ? '描述要处理的代码任务…' : '给 AgentX 发送消息…'}
         aria-label="消息输入框"
         disabled={disabled}
         onChange={(e) => setValue(e.target.value)}
@@ -60,31 +90,45 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
         onCompositionEnd={() => {
           composingRef.current = false
         }}
+        className="max-h-[200px] min-h-[52px] w-full resize-none bg-transparent px-4 pt-3 text-[14.5px] leading-relaxed text-foreground !outline-none focus:!outline-none focus-visible:!outline-none placeholder:text-[var(--ax-text-faint)]"
       />
-      {streaming ? (
-        <Tooltip title="停止生成">
-          <button
-            type="button"
-            className="ax-send-btn ax-send-btn--stop"
-            aria-label="停止生成"
-            onClick={onStop}
-          >
-            <BorderOutlined style={{ fontSize: 12 }} />
-          </button>
-        </Tooltip>
-      ) : (
-        <Tooltip title="发送">
-          <button
-            type="button"
-            className="ax-send-btn"
-            aria-label="发送"
-            disabled={!canSend}
-            onClick={submit}
-          >
-            <ArrowUpOutlined />
-          </button>
-        </Tooltip>
-      )}
+
+      <div className="flex items-center gap-2 px-2.5 pb-2.5 pt-1">
+        <InputToolbar />
+        <div className="ml-auto">
+          {streaming ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="ax-send-btn ax-send-btn--stop"
+                  aria-label="停止生成"
+                  onClick={onStop}
+                >
+                  <Square className="size-3 fill-current" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>停止生成</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="ax-send-btn"
+                  aria-label="发送"
+                  disabled={!canSend}
+                  onClick={submit}
+                >
+                  <ArrowUp className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>发送</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+      </div>
     </div>
   )
 }

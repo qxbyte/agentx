@@ -1,14 +1,23 @@
-import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { Alert, Drawer, Spin } from 'antd'
+import { AlertCircle, Loader2, PanelLeftOpen } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { UIEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import ChatInput from '../components/ChatInput'
 import Logo from '../components/Logo'
 import MessageItem from '../components/MessageItem'
 import Sidebar from '../components/Sidebar'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useChatStore } from '../stores/chat'
+
+/** Drawer 内的侧栏是全宽面板，去掉卡片形态 */
+const DRAWER_SIDEBAR_STYLE = {
+  width: '100%',
+  height: '100%',
+  border: 'none',
+  borderRadius: 0,
+  boxShadow: 'none',
+} as const
 
 export default function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>()
@@ -63,8 +72,7 @@ export default function ChatPage() {
     [sendMessage, navigate],
   )
 
-  const activeTitle =
-    conversations.find((c) => c.id === activeConversationId)?.title ?? '新对话'
+  const activeTitle = conversations.find((c) => c.id === activeConversationId)?.title ?? '新对话'
   const isEmpty = !messagesLoading && !messagesError && messages.length === 0
 
   const sidebarVisible = !isMobile && sidebarOpen
@@ -72,20 +80,15 @@ export default function ChatPage() {
   return (
     <div className="ax-app">
       {isMobile ? (
-        <Drawer
-          placement="left"
-          width={280}
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          closeIcon={null}
-          styles={{ body: { padding: 0, display: 'flex' } }}
-        >
-          <Sidebar
-            style={{ width: '100%' }}
-            onCollapse={() => setDrawerOpen(false)}
-            onNavigate={() => setDrawerOpen(false)}
-          />
-        </Drawer>
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetContent side="left" className="w-[280px] max-w-[280px] p-0 [&>button]:hidden">
+            <Sidebar
+              style={DRAWER_SIDEBAR_STYLE}
+              onCollapse={() => setDrawerOpen(false)}
+              onNavigate={() => setDrawerOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
       ) : (
         <Sidebar hidden={!sidebarOpen} onCollapse={() => setSidebarOpen(false)} />
       )}
@@ -99,7 +102,7 @@ export default function ChatPage() {
               aria-label="展开侧栏"
               onClick={() => (isMobile ? setDrawerOpen(true) : setSidebarOpen(true))}
             >
-              <MenuUnfoldOutlined />
+              <PanelLeftOpen className="size-4" />
             </button>
           )}
           <span className="ax-topbar-title">{activeTitle}</span>
@@ -107,8 +110,8 @@ export default function ChatPage() {
 
         <div className="ax-chat-scroll ax-scroll" ref={scrollRef} onScroll={handleScroll}>
           {messagesLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-              <Spin />
+            <div className="flex justify-center p-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : isEmpty ? (
             <div className="ax-welcome">
@@ -123,12 +126,10 @@ export default function ChatPage() {
           ) : (
             <div className="ax-message-list">
               {messagesError && (
-                <Alert
-                  type="error"
-                  showIcon
-                  message={messagesError}
-                  style={{ marginBottom: 16 }}
-                />
+                <div className="ax-msg-error mb-4 flex items-center gap-2" role="alert">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{messagesError}</span>
+                </div>
               )}
               {messages.map((message) => (
                 <MessageItem key={message.id} message={message} />

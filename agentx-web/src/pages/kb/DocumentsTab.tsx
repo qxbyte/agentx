@@ -1,18 +1,33 @@
-import { DeleteOutlined, InboxOutlined, RedoOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, Empty, Progress, Table, Tag, Tooltip, Upload } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Inbox, RotateCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent, DragEvent } from 'react'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '../../api/http'
 import * as kbApi from '../../api/kb'
 import type { DocStatus, DocView, IngestTask } from '../../types'
 import SegmentsDrawer from './SegmentsDrawer'
 
-const STATUS_META: Record<DocStatus, { color: string; label: string }> = {
-  UPLOADED: { color: 'default', label: '已上传' },
-  PARSING: { color: 'processing', label: '解析中' },
-  INGESTING: { color: 'processing', label: '入库中' },
-  READY: { color: 'success', label: '就绪' },
-  FAILED: { color: 'error', label: '失败' },
+const STATUS_META: Record<DocStatus, { variant: BadgeProps['variant']; label: string }> = {
+  UPLOADED: { variant: 'default', label: '已上传' },
+  PARSING: { variant: 'info', label: '解析中' },
+  INGESTING: { variant: 'info', label: '入库中' },
+  READY: { variant: 'success', label: '就绪' },
+  FAILED: { variant: 'destructive', label: '失败' },
 }
 
 function formatBytes(bytes: number): string {
@@ -21,26 +36,38 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+/** 细进度条 */
+function Bar({ percent }: { percent: number }) {
+  return (
+    <span className="inline-block h-1.5 w-[110px] overflow-hidden rounded-full bg-muted align-middle">
+      <span
+        className="block h-full rounded-full bg-primary transition-all"
+        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+      />
+    </span>
+  )
+}
+
 const POLLING_STATUSES: DocStatus[] = ['PARSING', 'INGESTING']
 
 export default function DocumentsTab({ kbId }: { kbId: string }) {
-  const { message, modal } = AntdApp.useApp()
-
   const [docs, setDocs] = useState<DocView[]>([])
   const [loading, setLoading] = useState(true)
   /** docId -> 最近一次任务状态（进度 / errorMsg） */
   const [tasks, setTasks] = useState<Record<string, IngestTask>>({})
   const [activeDoc, setActiveDoc] = useState<DocView | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DocView | null>(null)
+  const [dragging, setDragging] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
       setDocs(await kbApi.listDocuments(kbId))
     } catch (error) {
-      message.error(extractErrorMessage(error, '加载文档列表失败'))
+      toast.error(extractErrorMessage(error, '加载文档列表失败'))
     } finally {
       setLoading(false)
     }
-  }, [kbId, message])
+  }, [kbId])
 
   useEffect(() => {
     void refresh()
@@ -70,14 +97,12 @@ export default function DocumentsTab({ kbId }: { kbId: string }) {
         if (valid.length > 0) {
           setTasks((prev) => ({ ...prev, ...Object.fromEntries(valid) }))
         }
-        // 有任务终结时刷新列表，让状态列与分段数落到最终值
         if (valid.some(([, t]) => t.status === 'SUCCEEDED' || t.status === 'FAILED')) {
           void refresh()
         }
       })()
     }, 2000)
     return () => clearInterval(timer)
-    // pollingKey 代表 pollingIds 内容，避免数组引用变化导致重建定时器
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollingKey, refresh])
 
@@ -91,17 +116,42 @@ export default function DocumentsTab({ kbId }: { kbId: string }) {
           const task = await kbApi.fetchDocTask(d.id)
           setTasks((prev) => ({ ...prev, [d.id]: task }))
         } catch {
-          /* 任务详情拉取失败时静默，表格仍显示 FAILED 状态 */
+          /* 静默 */
         }
       }),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs])
 
+  const uploadFiles = (files: File[]) => {
+    files.forEach((file) => {
+      kbApi
+        .uploadDocument(kbId, file)
+        .then(() => {
+          toast.success(`「${file.name}」上传成功，开始解析`)
+          void refresh()
+        })
+        .catch((error: unknown) => {
+          toast.error(extractErrorMessage(error, '上传失败'))
+        })
+    })
+  }
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) uploadFiles(Array.from(e.target.files))
+    e.target.value = ''
+  }
+
+  const handleDrop = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault()
+    setDragging(false)
+    if (e.dataTransfer.files) uploadFiles(Array.from(e.dataTransfer.files))
+  }
+
   const handleReingest = async (doc: DocView) => {
     try {
       await kbApi.reingestDocument(doc.id)
-      message.success('已重新发起入库')
+      toast.success('已重新发起入库')
       setTasks((prev) => {
         const next = { ...prev }
         delete next[doc.id]
@@ -109,161 +159,159 @@ export default function DocumentsTab({ kbId }: { kbId: string }) {
       })
       await refresh()
     } catch (error) {
-      message.error(extractErrorMessage(error, '重试失败'))
+      toast.error(extractErrorMessage(error, '重试失败'))
     }
   }
 
-  const confirmDelete = (doc: DocView) => {
-    modal.confirm({
-      title: '删除文档',
-      content: `确定删除「${doc.filename}」及其全部分段吗？`,
-      okText: '删除',
-      okButtonProps: { danger: true },
-      cancelText: '取消',
-      async onOk() {
-        try {
-          await kbApi.deleteDocument(doc.id)
-          message.success('已删除')
-          await refresh()
-        } catch (error) {
-          message.error(extractErrorMessage(error, '删除失败'))
-        }
-      },
-    })
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await kbApi.deleteDocument(deleteTarget.id)
+      toast.success('已删除')
+      setDeleteTarget(null)
+      await refresh()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '删除失败'))
+    }
   }
 
-  const columns: ColumnsType<DocView> = [
-    {
-      title: '文件名',
-      dataIndex: 'filename',
-      ellipsis: true,
-    },
-    {
-      title: '大小',
-      dataIndex: 'sizeBytes',
-      width: 100,
-      render: (v: number) => formatBytes(v),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 220,
-      render: (status: DocStatus, doc) => {
-        const meta = STATUS_META[status]
-        const task = tasks[doc.id]
-        if (POLLING_STATUSES.includes(status)) {
-          return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <Tag color={meta.color} style={{ marginRight: 0 }}>
-                {meta.label}
-              </Tag>
-              <Progress
-                percent={task?.progress ?? 0}
-                size="small"
-                style={{ width: 110, marginBottom: 0 }}
-              />
-            </span>
-          )
-        }
-        if (status === 'FAILED') {
-          return (
-            <Tooltip title={task?.errorMsg || '入库失败'}>
-              <Tag color={meta.color}>{meta.label}</Tag>
-            </Tooltip>
-          )
-        }
-        return <Tag color={meta.color}>{meta.label}</Tag>
-      },
-    },
-    {
-      title: '分段数',
-      dataIndex: 'segmentCount',
-      width: 90,
-      align: 'right',
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 110,
-      render: (_, doc) => (
-        <span onClick={(e) => e.stopPropagation()}>
-          {doc.status === 'FAILED' && (
-            <Tooltip title="重新入库">
-              <Button
-                type="text"
-                size="small"
-                icon={<RedoOutlined />}
-                onClick={() => void handleReingest(doc)}
-              />
-            </Tooltip>
-          )}
-          <Tooltip title="删除">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => confirmDelete(doc)}
-            />
-          </Tooltip>
+  const renderStatus = (doc: DocView) => {
+    const meta = STATUS_META[doc.status]
+    const task = tasks[doc.id]
+    if (POLLING_STATUSES.includes(doc.status)) {
+      return (
+        <span className="inline-flex items-center gap-2">
+          <Badge variant={meta.variant}>{meta.label}</Badge>
+          <Bar percent={task?.progress ?? 0} />
         </span>
-      ),
-    },
-  ]
+      )
+    }
+    if (doc.status === 'FAILED') {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Badge variant={meta.variant}>{meta.label}</Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{task?.errorMsg || '入库失败'}</TooltipContent>
+        </Tooltip>
+      )
+    }
+    return <Badge variant={meta.variant}>{meta.label}</Badge>
+  }
 
   return (
     <div>
-      <Upload.Dragger
-        multiple
-        showUploadList={false}
-        customRequest={({ file, onSuccess, onError }) => {
-          kbApi
-            .uploadDocument(kbId, file as File)
-            .then(() => {
-              onSuccess?.(undefined)
-              message.success(`「${(file as File).name}」上传成功，开始解析`)
-              void refresh()
-            })
-            .catch((error: unknown) => {
-              onError?.(error as Error)
-              message.error(extractErrorMessage(error, '上传失败'))
-            })
+      <label
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragging(true)
         }}
-        style={{ marginBottom: 16 }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        className={cn(
+          'mb-4 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-input bg-muted/30 px-6 py-8 text-center transition-colors hover:border-muted-foreground',
+          dragging && 'border-muted-foreground bg-black/[0.02]',
+        )}
       >
-        <p className="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p className="ant-upload-text">点击或拖拽文件到此处上传</p>
-        <p className="ant-upload-hint">上传后自动解析并向量化入库，支持批量上传</p>
-      </Upload.Dragger>
+        <input type="file" multiple hidden onChange={handleInputChange} />
+        <Inbox className="size-7 text-muted-foreground" />
+        <p className="text-sm text-foreground">点击或拖拽文件到此处上传</p>
+        <p className="text-xs text-muted-foreground">上传后自动解析并向量化入库，支持批量上传</p>
+      </label>
 
-      <Table<DocView>
-        rowKey="id"
-        columns={columns}
-        dataSource={docs}
-        loading={loading}
-        pagination={false}
-        size="middle"
-        scroll={{ x: 640 }}
-        onRow={(doc) => ({
-          onClick: () => setActiveDoc(doc),
-          style: { cursor: 'pointer' },
-        })}
-        locale={{
-          emptyText: loading ? (
-            ' '
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              style={{ padding: '24px 0' }}
-              description="还没有文档，拖拽文件到上方区域即可入库"
-            />
-          ),
-        }}
-      />
+      {loading ? (
+        <div className="flex animate-pulse flex-col gap-3 py-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-8 w-full rounded bg-muted" />
+          ))}
+        </div>
+      ) : docs.length === 0 ? (
+        <div className="py-10 text-center text-sm text-muted-foreground">
+          还没有文档，拖拽文件到上方区域即可入库
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>文件名</TableHead>
+              <TableHead className="w-[100px]">大小</TableHead>
+              <TableHead className="w-[220px]">状态</TableHead>
+              <TableHead className="w-[90px] text-right">分段数</TableHead>
+              <TableHead className="w-[110px]">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {docs.map((doc) => (
+              <TableRow
+                key={doc.id}
+                className="cursor-pointer"
+                onClick={() => setActiveDoc(doc)}
+              >
+                <TableCell className="max-w-0 truncate">{doc.filename}</TableCell>
+                <TableCell>{formatBytes(doc.sizeBytes)}</TableCell>
+                <TableCell>{renderStatus(doc)}</TableCell>
+                <TableCell className="text-right tabular-nums">{doc.segmentCount}</TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center">
+                    {doc.status === 'FAILED' && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            onClick={() => void handleReingest(doc)}
+                          >
+                            <RotateCw className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>重新入库</TooltipContent>
+                      </Tooltip>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(doc)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>删除</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       <SegmentsDrawer doc={activeDoc} onClose={() => setActiveDoc(null)} />
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除文档</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定删除「{deleteTarget?.filename}」及其全部分段吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void handleDelete()}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,0 +1,95 @@
+/* ============================================================
+   Tailwind v4 + shadcn/ui 主题层。
+   语义变量镜像自 index.css 的 --ax-* 设计 token（OpenAI 式简洁线条风），
+   两者数值保持一致；组件用 shadcn 语义类（bg-background/text-foreground…），
+   特殊表面（画布/侧栏/代码/终端/diff）仍读 --ax-* 或本文件的扩展变量。
+   ============================================================ */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem; /* 12px，对齐 --ax-radius */
+
+  --background: #ffffff;
+  --foreground: #0d0d0d;
+  --card: #ffffff;
+  --card-foreground: #0d0d0d;
+  --popover: #ffffff;
+  --popover-foreground: #0d0d0d;
+  --primary: #0d0d0d;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f4;
+  --secondary-foreground: #0d0d0d;
+  --muted: #f9f9f9;
+  --muted-foreground: #6e6e80;
+  --accent: #ececec;
+  --accent-foreground: #0d0d0d;
+  --destructive: #c14444;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #d5d5d5;
+  --ring: #8f8f8f;
+
+  /* 扩展表面（非 shadcn 标准，供卡片布局/侧栏/代码块复用） */
+  --canvas: #ececee;
+  --sidebar: #f9f9f9;
+  --sidebar-foreground: #0d0d0d;
+  --sidebar-border: #ececec;
+  --sidebar-accent: #ececec;
+  --sidebar-accent-foreground: #0d0d0d;
+
+  /* 状态色 */
+  --success: #10a37f;
+  --warning: #b45309;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}

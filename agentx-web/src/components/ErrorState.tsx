@@ -1,5 +1,5 @@
-import { ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import { AlertCircle, RotateCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface ErrorStateProps {
   /** 友好错误说明（通常来自 extractErrorMessage） */
@@ -11,9 +11,10 @@ interface ErrorStateProps {
 export default function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
     <div className="ax-error-state" role="alert">
-      <ExclamationCircleOutlined className="ax-error-state-icon" />
+      <AlertCircle className="ax-error-state-icon size-7" />
       <p className="ax-error-state-text">{message || '加载失败，请稍后重试'}</p>
-      <Button icon={<ReloadOutlined />} onClick={onRetry}>
+      <Button variant="outline" onClick={onRetry}>
+        <RotateCw className="size-4" />
         重试
       </Button>
     </div>

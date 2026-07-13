@@ -1,13 +1,45 @@
-import {
-  ApiOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PlusOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons'
-import { App as AntdApp, Button, Empty, Form, Input, List, Modal, Select, Switch, Table, Tag, Tooltip } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Loader2, Pencil, Plug, Plus, Trash2, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import * as adminApi from '../../api/admin'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
@@ -19,14 +51,25 @@ interface McpFormValues {
   name: string
   transport: McpTransport
   enabled: boolean
-  command?: string
+  command: string
   /** 每行一个参数 */
-  args?: string
+  args: string
   /** 每行一条 KEY=VALUE */
-  env?: string
-  url?: string
+  env: string
+  url: string
   /** 每行一条 Key: Value */
-  headers?: string
+  headers: string
+}
+
+const EMPTY_FORM: McpFormValues = {
+  name: '',
+  transport: 'STDIO',
+  enabled: true,
+  command: '',
+  args: '',
+  env: '',
+  url: '',
+  headers: '',
 }
 
 function parseLines(text: string | undefined): string[] {
@@ -89,20 +132,21 @@ function connectParamsToFields(server: McpServer): Partial<McpFormValues> {
 }
 
 export default function McpPage() {
-  const { message, modal } = AntdApp.useApp()
-  const [form] = Form.useForm<McpFormValues>()
-  const transport = Form.useWatch('transport', form)
-
   const [servers, setServers] = useState<McpServer[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<McpServer | null>(null)
   const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<McpFormValues>(EMPTY_FORM)
+  const [errors, setErrors] = useState<Partial<Record<keyof McpFormValues, string>>>({})
   const [testingId, setTestingId] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ name: string; tools: McpToolPreview[] } | null>(
     null,
   )
+  const [deleteTarget, setDeleteTarget] = useState<McpServer | null>(null)
+
+  const patch = (p: Partial<McpFormValues>) => setForm((prev) => ({ ...prev, ...p }))
 
   const refresh = async () => {
     try {
@@ -122,44 +166,49 @@ export default function McpPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.resetFields()
-    form.setFieldsValue({ transport: 'STDIO', enabled: true })
+    setForm(EMPTY_FORM)
+    setErrors({})
     setModalOpen(true)
   }
 
   const openEdit = (server: McpServer) => {
     setEditing(server)
-    form.resetFields()
-    form.setFieldsValue({
-      name: server.name,
-      transport: server.transport,
-      enabled: server.enabled,
-      ...connectParamsToFields(server),
-    })
+    setForm({ ...EMPTY_FORM, name: server.name, transport: server.transport, enabled: server.enabled, ...connectParamsToFields(server) })
+    setErrors({})
     setModalOpen(true)
   }
 
   const handleSave = async () => {
-    const values = await form.validateFields()
+    const next: Partial<Record<keyof McpFormValues, string>> = {}
+    if (!form.name.trim()) next.name = '请输入名称'
+    if (form.transport === 'STREAMABLE_HTTP') {
+      if (!form.url.trim()) next.url = '请输入服务 URL'
+    } else if (!form.command.trim()) {
+      next.command = '请输入启动命令'
+    }
+    if (Object.keys(next).length > 0) {
+      setErrors(next)
+      return
+    }
     const payload: adminApi.McpServerPayload = {
-      name: values.name,
-      transport: values.transport,
-      connectParams: buildConnectParams(values),
-      enabled: values.enabled,
+      name: form.name.trim(),
+      transport: form.transport,
+      connectParams: buildConnectParams(form),
+      enabled: form.enabled,
     }
     setSaving(true)
     try {
       if (editing) {
         await adminApi.updateMcpServer(editing.id, payload)
-        message.success('MCP 服务已更新')
+        toast.success('MCP 服务已更新')
       } else {
         await adminApi.createMcpServer(payload)
-        message.success('MCP 服务已创建')
+        toast.success('MCP 服务已创建')
       }
       setModalOpen(false)
       await refresh()
     } catch (error) {
-      message.error(extractErrorMessage(error, '保存失败'))
+      toast.error(extractErrorMessage(error, '保存失败'))
     } finally {
       setSaving(false)
     }
@@ -177,7 +226,7 @@ export default function McpPage() {
       })
     } catch (error) {
       setServers((prev) => prev.map((s) => (s.id === server.id ? { ...s, enabled: !enabled } : s)))
-      message.error(extractErrorMessage(error, '操作失败'))
+      toast.error(extractErrorMessage(error, '操作失败'))
     }
   }
 
@@ -187,88 +236,23 @@ export default function McpPage() {
       const tools = await adminApi.testMcpConnection(server.id)
       setTestResult({ name: server.name, tools })
     } catch (error) {
-      message.error(extractErrorMessage(error, '连接测试失败'))
+      toast.error(extractErrorMessage(error, '连接测试失败'))
     } finally {
       setTestingId(null)
     }
   }
 
-  const confirmDelete = (server: McpServer) => {
-    modal.confirm({
-      title: '删除 MCP 服务',
-      content: `确定删除「${server.name}」吗？其提供的远程工具将不可用。`,
-      okText: '删除',
-      okButtonProps: { danger: true },
-      cancelText: '取消',
-      async onOk() {
-        try {
-          await adminApi.deleteMcpServer(server.id)
-          message.success('已删除')
-          await refresh()
-        } catch (error) {
-          message.error(extractErrorMessage(error, '删除失败'))
-        }
-      },
-    })
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await adminApi.deleteMcpServer(deleteTarget.id)
+      toast.success('已删除')
+      setDeleteTarget(null)
+      await refresh()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '删除失败'))
+    }
   }
-
-  const columns: ColumnsType<McpServer> = [
-    { title: '名称', dataIndex: 'name', ellipsis: true },
-    {
-      title: '传输方式',
-      dataIndex: 'transport',
-      width: 170,
-      render: (v: McpTransport) => (
-        <Tag color={v === 'STDIO' ? 'geekblue' : 'purple'}>{v}</Tag>
-      ),
-    },
-    {
-      title: '连接参数',
-      dataIndex: 'connectParams',
-      ellipsis: true,
-      render: (v: string | null) => (
-        <span style={{ fontFamily: 'var(--ax-mono)', fontSize: 12 }}>{v || '—'}</span>
-      ),
-    },
-    {
-      title: '启用',
-      dataIndex: 'enabled',
-      width: 80,
-      render: (enabled: boolean, record) => (
-        <Switch
-          size="small"
-          checked={enabled}
-          onChange={(checked) => void handleToggle(record, checked)}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => (
-        <>
-          <Tooltip title="测试连接">
-            <Button
-              type="text"
-              size="small"
-              icon={<ThunderboltOutlined />}
-              loading={testingId === record.id}
-              onClick={() => void handleTest(record)}
-            />
-          </Tooltip>
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => confirmDelete(record)}
-          />
-        </>
-      ),
-    },
-  ]
 
   return (
     <div>
@@ -276,7 +260,8 @@ export default function McpPage() {
         title="MCP 服务"
         description="接入 Model Context Protocol 服务，为 Agent 扩展远程工具能力"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
             新建 MCP 服务
           </Button>
         }
@@ -290,125 +275,259 @@ export default function McpPage() {
             void refresh()
           }}
         />
+      ) : loading ? (
+        <div className="flex animate-pulse flex-col gap-3 py-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-8 w-full rounded bg-muted" />
+          ))}
+        </div>
+      ) : servers.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <p className="text-sm text-muted-foreground">还没有 MCP 服务，接入一个为 Agent 扩展工具</p>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
+            新建 MCP 服务
+          </Button>
+        </div>
       ) : (
-        <Table<McpServer>
-          rowKey="id"
-          columns={columns}
-          dataSource={servers}
-          loading={loading}
-          pagination={false}
-          size="middle"
-          scroll={{ x: 760 }}
-          locale={{
-            emptyText: loading ? (
-              ' '
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: '24px 0' }}
-                description="还没有 MCP 服务，接入一个为 Agent 扩展工具"
-              >
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                  新建 MCP 服务
-                </Button>
-              </Empty>
-            ),
-          }}
-        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>名称</TableHead>
+              <TableHead className="w-[170px]">传输方式</TableHead>
+              <TableHead>连接参数</TableHead>
+              <TableHead className="w-[80px]">启用</TableHead>
+              <TableHead className="w-[150px]">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {servers.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell className="max-w-0 truncate">{record.name}</TableCell>
+                <TableCell>
+                  <Badge variant={record.transport === 'STDIO' ? 'info' : 'default'}>
+                    {record.transport}
+                  </Badge>
+                </TableCell>
+                <TableCell className="max-w-0 truncate font-mono text-xs">
+                  {record.connectParams || '—'}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={record.enabled}
+                    onCheckedChange={(checked) => void handleToggle(record, checked)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          disabled={testingId === record.id}
+                          onClick={() => void handleTest(record)}
+                        >
+                          {testingId === record.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Zap className="size-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>测试连接</TooltipContent>
+                    </Tooltip>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => openEdit(record)}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(record)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      <Modal
-        title={editing ? '编辑 MCP 服务' : '新建 MCP 服务'}
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => void handleSave()}
-        okText="保存"
-        cancelText="取消"
-        confirmLoading={saving}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="例如：filesystem" maxLength={60} />
-          </Form.Item>
-          <Form.Item
-            name="transport"
-            label="传输方式"
-            rules={[{ required: true, message: '请选择传输方式' }]}
-          >
-            <Select
-              options={[
-                { value: 'STDIO', label: 'STDIO（本地进程）' },
-                { value: 'STREAMABLE_HTTP', label: 'Streamable HTTP（远程服务）' },
-              ]}
-            />
-          </Form.Item>
-
-          {transport === 'STREAMABLE_HTTP' ? (
-            <>
-              <Form.Item
-                name="url"
-                label="URL"
-                rules={[{ required: true, message: '请输入服务 URL' }]}
-              >
-                <Input placeholder="https://mcp.example.com/mcp" />
-              </Form.Item>
-              <Form.Item
-                name="headers"
-                label="请求头（每行一条，格式 Key: Value）"
-              >
-                <Input.TextArea rows={3} placeholder={'Authorization: Bearer xxx'} />
-              </Form.Item>
-            </>
-          ) : (
-            <>
-              <Form.Item
-                name="command"
-                label="启动命令"
-                rules={[{ required: true, message: '请输入启动命令' }]}
-              >
-                <Input placeholder="npx" />
-              </Form.Item>
-              <Form.Item name="args" label="参数（每行一个）">
-                <Input.TextArea rows={3} placeholder={'-y\n@modelcontextprotocol/server-filesystem\n/data'} />
-              </Form.Item>
-              <Form.Item name="env" label="环境变量（每行一条，格式 KEY=VALUE）">
-                <Input.TextArea rows={2} placeholder={'API_TOKEN=xxx'} />
-              </Form.Item>
-            </>
-          )}
-
-          <Form.Item name="enabled" label="启用" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title={testResult ? `连接成功 · ${testResult.name}` : '连接结果'}
-        open={testResult !== null}
-        onCancel={() => setTestResult(null)}
-        footer={
-          <Button type="primary" onClick={() => setTestResult(null)}>
-            关闭
-          </Button>
-        }
-        destroyOnHidden
-      >
-        <List
-          dataSource={testResult?.tools ?? []}
-          locale={{ emptyText: '连接成功，但该服务未暴露任何工具' }}
-          renderItem={(tool) => (
-            <List.Item>
-              <List.Item.Meta
-                avatar={<ApiOutlined style={{ fontSize: 16, color: 'var(--ax-primary)' }} />}
-                title={<span style={{ fontFamily: 'var(--ax-mono)', fontSize: 13 }}>{tool.name}</span>}
-                description={tool.description || '无描述'}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? '编辑 MCP 服务' : '新建 MCP 服务'}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-1 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mcp-name">名称</Label>
+              <Input
+                id="mcp-name"
+                placeholder="例如：filesystem"
+                maxLength={60}
+                value={form.name}
+                onChange={(e) => patch({ name: e.target.value })}
               />
-            </List.Item>
-          )}
-        />
-      </Modal>
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>传输方式</Label>
+              <Select
+                value={form.transport}
+                onValueChange={(v) => patch({ transport: v as McpTransport })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STDIO">STDIO（本地进程）</SelectItem>
+                  <SelectItem value="STREAMABLE_HTTP">Streamable HTTP（远程服务）</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {form.transport === 'STREAMABLE_HTTP' ? (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mcp-url">URL</Label>
+                  <Input
+                    id="mcp-url"
+                    placeholder="https://mcp.example.com/mcp"
+                    value={form.url}
+                    onChange={(e) => patch({ url: e.target.value })}
+                  />
+                  {errors.url && <p className="text-xs text-destructive">{errors.url}</p>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mcp-headers">请求头（每行一条，格式 Key: Value）</Label>
+                  <Textarea
+                    id="mcp-headers"
+                    rows={3}
+                    className="rounded-lg font-mono text-xs"
+                    placeholder="Authorization: Bearer xxx"
+                    value={form.headers}
+                    onChange={(e) => patch({ headers: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mcp-command">启动命令</Label>
+                  <Input
+                    id="mcp-command"
+                    placeholder="npx"
+                    value={form.command}
+                    onChange={(e) => patch({ command: e.target.value })}
+                  />
+                  {errors.command && <p className="text-xs text-destructive">{errors.command}</p>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mcp-args">参数（每行一个）</Label>
+                  <Textarea
+                    id="mcp-args"
+                    rows={3}
+                    className="rounded-lg font-mono text-xs"
+                    placeholder={'-y\n@modelcontextprotocol/server-filesystem\n/data'}
+                    value={form.args}
+                    onChange={(e) => patch({ args: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="mcp-env">环境变量（每行一条，格式 KEY=VALUE）</Label>
+                  <Textarea
+                    id="mcp-env"
+                    rows={2}
+                    className="rounded-lg font-mono text-xs"
+                    placeholder="API_TOKEN=xxx"
+                    value={form.env}
+                    onChange={(e) => patch({ env: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="mcp-enabled"
+                checked={form.enabled}
+                onCheckedChange={(checked) => patch({ enabled: checked })}
+              />
+              <Label htmlFor="mcp-enabled">启用</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={saving}>
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={testResult !== null} onOpenChange={(o) => !o && setTestResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{testResult ? `连接成功 · ${testResult.name}` : '连接结果'}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto">
+            {(testResult?.tools ?? []).length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                连接成功，但该服务未暴露任何工具
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {testResult?.tools.map((tool) => (
+                  <li key={tool.name} className="flex gap-3 rounded-lg px-2 py-2.5 hover:bg-accent/50">
+                    <Plug className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <div className="font-mono text-[13px]">{tool.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {tool.description || '无描述'}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTestResult(null)}>关闭</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除 MCP 服务</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定删除「{deleteTarget?.name}」吗？其提供的远程工具将不可用。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void handleDelete()}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

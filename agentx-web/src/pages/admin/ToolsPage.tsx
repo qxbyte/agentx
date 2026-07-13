@@ -1,13 +1,30 @@
-import { FileTextOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, Drawer, Empty, Switch, Table, Tag, Tooltip } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { FileText } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import * as adminApi from '../../api/admin'
 import * as agentsApi from '../../api/agents'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
 import PageHeader from '../../components/PageHeader'
-import type { ToolSource, ToolView } from '../../types'
+import type { ToolView } from '../../types'
 
 /** paramsSchema 可能是 JSON 字符串或对象，统一美化输出 */
 function formatSchema(schema: ToolView['paramsSchema']): string {
@@ -23,8 +40,6 @@ function formatSchema(schema: ToolView['paramsSchema']): string {
 }
 
 export default function ToolsPage() {
-  const { message } = AntdApp.useApp()
-
   const [tools, setTools] = useState<ToolView[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -51,54 +66,9 @@ export default function ToolsPage() {
       await adminApi.toggleToolEnabled(tool.name, enabled)
     } catch (error) {
       setTools((prev) => prev.map((t) => (t.name === tool.name ? { ...t, enabled: !enabled } : t)))
-      message.error(extractErrorMessage(error, '操作失败'))
+      toast.error(extractErrorMessage(error, '操作失败'))
     }
   }
-
-  const columns: ColumnsType<ToolView> = [
-    {
-      title: '工具名',
-      dataIndex: 'name',
-      width: 220,
-      render: (v: string) => (
-        <span style={{ fontFamily: 'var(--ax-mono)', fontSize: 12.5, fontWeight: 600 }}>{v}</span>
-      ),
-    },
-    {
-      title: '来源',
-      dataIndex: 'source',
-      width: 90,
-      render: (v: ToolSource) => <Tag color={v === 'CODE' ? 'geekblue' : 'purple'}>{v}</Tag>,
-    },
-    { title: '描述', dataIndex: 'description', ellipsis: true },
-    {
-      title: '参数',
-      key: 'schema',
-      width: 80,
-      render: (_, tool) => (
-        <Tooltip title="查看参数 Schema">
-          <Button
-            type="text"
-            size="small"
-            icon={<FileTextOutlined />}
-            onClick={() => setSchemaTool(tool)}
-          />
-        </Tooltip>
-      ),
-    },
-    {
-      title: '启用',
-      dataIndex: 'enabled',
-      width: 80,
-      render: (enabled: boolean, tool) => (
-        <Switch
-          size="small"
-          checked={enabled}
-          onChange={(checked) => void handleToggle(tool, checked)}
-        />
-      ),
-    },
-  ]
 
   return (
     <div>
@@ -115,47 +85,85 @@ export default function ToolsPage() {
             refresh()
           }}
         />
+      ) : loading ? (
+        <div className="flex animate-pulse flex-col gap-3 py-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-8 w-full rounded bg-muted" />
+          ))}
+        </div>
+      ) : tools.length === 0 ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          暂无可用工具，接入 MCP 服务后这里会自动出现其提供的工具
+        </div>
       ) : (
-        <Table<ToolView>
-          rowKey="name"
-          columns={columns}
-          dataSource={tools}
-          loading={loading}
-          pagination={false}
-          size="middle"
-          scroll={{ x: 700 }}
-          locale={{
-            emptyText: loading ? (
-              ' '
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: '24px 0' }}
-                description="暂无可用工具，接入 MCP 服务后这里会自动出现其提供的工具"
-              />
-            ),
-          }}
-        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[220px]">工具名</TableHead>
+              <TableHead className="w-[90px]">来源</TableHead>
+              <TableHead>描述</TableHead>
+              <TableHead className="w-[80px]">参数</TableHead>
+              <TableHead className="w-[80px]">启用</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tools.map((tool) => (
+              <TableRow key={tool.name}>
+                <TableCell className="font-mono text-xs font-semibold">{tool.name}</TableCell>
+                <TableCell>
+                  <Badge variant={tool.source === 'CODE' ? 'info' : 'default'}>{tool.source}</Badge>
+                </TableCell>
+                <TableCell className="max-w-0 truncate text-muted-foreground">
+                  {tool.description}
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        onClick={() => setSchemaTool(tool)}
+                      >
+                        <FileText className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>查看参数 Schema</TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={tool.enabled}
+                    onCheckedChange={(checked) => void handleToggle(tool, checked)}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      <Drawer
-        title={schemaTool ? `参数 Schema · ${schemaTool.name}` : '参数 Schema'}
-        width={520}
-        open={schemaTool !== null}
-        onClose={() => setSchemaTool(null)}
-        destroyOnHidden
-      >
-        {schemaTool && (
-          <>
-            <p style={{ marginTop: 0, color: 'var(--ax-text-secondary)' }}>
-              {schemaTool.description || '无描述'}
-            </p>
-            <pre className="ax-toolcall-pre" style={{ maxHeight: 'none' }}>
-              {formatSchema(schemaTool.paramsSchema)}
-            </pre>
-          </>
-        )}
-      </Drawer>
+      <Sheet open={schemaTool !== null} onOpenChange={(o) => !o && setSchemaTool(null)}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[520px]">
+          <SheetHeader className="border-b border-border">
+            <SheetTitle>
+              {schemaTool ? `参数 Schema · ${schemaTool.name}` : '参数 Schema'}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="ax-scroll flex-1 overflow-y-auto p-4">
+            {schemaTool && (
+              <>
+                <p className="mt-0 text-sm text-muted-foreground">
+                  {schemaTool.description || '无描述'}
+                </p>
+                <pre className="ax-toolcall-pre mt-3" style={{ maxHeight: 'none' }}>
+                  {formatSchema(schemaTool.paramsSchema)}
+                </pre>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

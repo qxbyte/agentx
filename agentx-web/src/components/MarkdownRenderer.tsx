@@ -1,4 +1,4 @@
-import { CheckOutlined, CopyOutlined } from '@ant-design/icons'
+import { Check, Copy } from 'lucide-react'
 import { isValidElement, memo, useRef, useState } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
 import ReactMarkdown, { type ExtraProps } from 'react-markdown'
@@ -41,7 +41,7 @@ function CodeBlock(props: PreProps) {
       <div className="ax-codeblock-header">
         <span className="ax-codeblock-lang">{language || 'code'}</span>
         <button type="button" className="ax-codeblock-copy" onClick={() => void handleCopy()}>
-          {copied ? <CheckOutlined /> : <CopyOutlined />}
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copied ? '已复制' : '复制'}
         </button>
       </div>

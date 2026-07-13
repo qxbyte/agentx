@@ -1,10 +1,4 @@
-import {
-  CheckCircleOutlined,
-  DownOutlined,
-  LoadingOutlined,
-  RightOutlined,
-  ToolOutlined,
-} from '@ant-design/icons'
+import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import type { ToolCallInfo } from '../types'
 
@@ -43,20 +37,20 @@ export default function ToolCallCard({ call }: ToolCallCardProps) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <ToolOutlined />
+        <Wrench className="size-4" />
         <span>工具调用</span>
         <span className="ax-toolcall-name">{call.name}</span>
         <span className="ax-toolcall-status">
           {finished ? (
             <>
-              <CheckCircleOutlined style={{ color: 'var(--ax-success)' }} /> 已完成
+              <CheckCircle2 className="size-3.5 text-[var(--ax-success)]" /> 已完成
             </>
           ) : (
             <>
-              <LoadingOutlined spin /> 运行中
+              <Loader2 className="size-3.5 animate-spin" /> 运行中
             </>
           )}
-          {open ? <DownOutlined /> : <RightOutlined />}
+          {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
         </span>
       </button>
       {open && (

@@ -1,4 +1,4 @@
-import { BulbOutlined, DownOutlined, LoadingOutlined, RightOutlined } from '@ant-design/icons'
+import { ChevronDown, ChevronRight, Lightbulb, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 interface ReasoningBlockProps {
@@ -32,10 +32,10 @@ export default function ReasoningBlock({ content, streaming = false }: Reasoning
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <BulbOutlined />
+        <Lightbulb className="size-4" />
         <span>{streaming ? '正在思考…' : '思考过程'}</span>
-        {streaming && <LoadingOutlined spin />}
-        <span style={{ marginLeft: 'auto' }}>{open ? <DownOutlined /> : <RightOutlined />}</span>
+        {streaming && <Loader2 className="size-3.5 animate-spin" />}
+        <span className="ml-auto">{open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}</span>
       </button>
       {open && <div className="ax-reasoning-content">{content}</div>}
     </div>

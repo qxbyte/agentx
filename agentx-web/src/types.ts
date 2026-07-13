@@ -25,6 +25,8 @@ export interface Conversation {
   title: string
   agentId: string | null
   modelConfigId: string | null
+  /** CodeAgent：会话归属的项目（工作区）；null 为普通对话。侧栏据此分组。 */
+  workspaceId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +46,10 @@ export interface ToolCallInfo {
   /** tool-result 事件到达后填充；undefined 表示仍在执行 */
   result?: unknown
   done?: boolean
+  /** CodeAgent：结构化预览类型（patch/shell/write/commit/read/grep…），前端按此分发富渲染 */
+  kind?: string
+  /** CodeAgent：tool-call 携带的结构化预览（diff/command 等） */
+  preview?: ApprovalPreview
 }
 
 export interface TokenUsage {
@@ -267,4 +273,59 @@ export interface ChatMessage {
   streaming?: boolean
   /** 客户端状态：流式过程中收到 error 事件 */
   error?: MessageError | null
+  /** CodeAgent Ask 模式：待审批 / 已处理的操作卡 */
+  approvals?: ApprovalItem[] | null
+}
+
+/* ============================================================
+   CodeAgent（编码智能体）
+   ============================================================ */
+export type CodingMode = 'PLAN' | 'ASK' | 'AUTO'
+
+export interface Workspace {
+  id: string
+  name: string
+  rootPath: string
+  kbId?: string | null
+  createdAt?: string
+}
+
+export interface WorkspaceValidation {
+  exists: boolean
+  writable: boolean
+  gitRepo: boolean
+  message: string
+}
+
+/** 输入框模型选择器用（无密钥） */
+export interface ModelOption {
+  id: string
+  name: string
+  modelName: string
+  defaultModel: boolean
+}
+
+export type ApprovalKind = 'patch' | 'shell' | 'write' | 'commit' | 'generic'
+
+/** 审批 / 工具预览的结构化载荷，按 kind 取对应字段 */
+export interface ApprovalPreview {
+  diff?: string
+  command?: string
+  cwd?: string
+  message?: string
+  path?: string
+  content?: string
+  dangerous?: boolean
+  args?: string
+  [key: string]: unknown
+}
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+
+export interface ApprovalItem {
+  approvalId: string
+  toolName: string
+  kind: ApprovalKind | string
+  preview: ApprovalPreview
+  status: ApprovalStatus
 }

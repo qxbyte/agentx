@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import * as chatApi from '../api/chat'
+import * as codingApi from '../api/coding'
 import { extractErrorMessage } from '../api/http'
 import type { SseEvent } from '../sse/events'
 import { streamChat } from '../sse/streamChat'
-import type { ChatMessage, Conversation } from '../types'
+import type { ApprovalItem, ChatMessage, CodingMode, Conversation } from '../types'
 
 let localIdSeq = 0
 function nextLocalId(): string {
@@ -25,12 +26,25 @@ interface ChatState {
   streaming: boolean
   abortController: AbortController | null
 
+  /** CodeAgent 会话设置（输入框工具条驱动）。workspaceId 非空即进入 coding 模式。 */
+  modelConfigId: string | null
+  workspaceId: string | null
+  codingMode: CodingMode
+  /** 本次检索追加的知识库（输入框多选，独立于项目） */
+  kbIds: string[]
+  setModelConfigId: (id: string | null) => void
+  setWorkspaceId: (id: string | null) => void
+  setCodingMode: (mode: CodingMode) => void
+  setKbIds: (ids: string[]) => void
+
   loadConversations: () => Promise<void>
   /** 切换当前会话；null 表示「新对话」空态 */
   openConversation: (id: string | null) => Promise<void>
   /** 发送消息并消费 SSE 流；新会话创建成功时通过回调通知（用于路由跳转） */
   sendMessage: (content: string, onConversationCreated?: (id: string) => void) => Promise<void>
   stopStreaming: () => void
+  /** Ask 审批回传：批准/拒绝一个待审批操作，乐观更新对应卡片状态 */
+  resolveApproval: (approvalId: string, approved: boolean) => Promise<void>
   renameConversation: (id: string, title: string) => Promise<void>
   /** 返回被删除的是否为当前会话（调用方据此决定是否跳回首页） */
   removeConversation: (id: string) => Promise<boolean>
@@ -48,11 +62,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streaming: false,
   abortController: null,
 
+  modelConfigId: null,
+  workspaceId: null,
+  codingMode: 'ASK',
+  kbIds: [],
+  setModelConfigId: (id) => set({ modelConfigId: id }),
+  setWorkspaceId: (id) => set({ workspaceId: id }),
+  setCodingMode: (mode) => set({ codingMode: mode }),
+  setKbIds: (ids) => set({ kbIds: ids }),
+
   async loadConversations() {
     set({ conversationsLoading: true })
     try {
       const conversations = await chatApi.listConversations()
       set({ conversations: [...conversations].sort(byUpdatedAtDesc), conversationsLoading: false })
+      // 深链打开 /c/:id 时列表晚到：就位后补同步当前会话的项目归属
+      const active = get().activeConversationId
+      if (active) {
+        const conv = conversations.find((c) => c.id === active)
+        if (conv) set({ workspaceId: conv.workspaceId ?? null })
+      }
     } catch {
       set({ conversationsLoading: false })
     }
@@ -83,6 +112,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messagesError: null,
       streaming: false,
       abortController: null,
+      // 同步会话的项目归属：编码会话续聊仍走 coding 模式
+      workspaceId: get().conversations.find((c) => c.id === id)?.workspaceId ?? null,
     })
     try {
       const messages = await chatApi.listMessages(id)
@@ -184,6 +215,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ragSources: [...(m.ragSources ?? []), ...event.sources],
           }))
           break
+        case 'approval-request': {
+          const item: ApprovalItem = {
+            approvalId: event.approvalId,
+            toolName: event.toolName,
+            kind: event.kind,
+            preview: event.preview,
+            status: 'pending',
+          }
+          patchAssistant((m) => ({ ...m, approvals: [...(m.approvals ?? []), item] }))
+          break
+        }
         case 'done':
           patchAssistant((m) => ({ ...m, tokenUsage: event.usage ?? null, streaming: false }))
           break
@@ -197,10 +239,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
 
+    const { modelConfigId, workspaceId, codingMode, kbIds } = get()
     try {
       await streamChat({
         conversationId,
         content: trimmed,
+        ...(modelConfigId ? { modelConfigId } : {}),
+        // workspaceId 非空才进入 coding 模式；mode 仅在 coding 时有意义
+        ...(workspaceId ? { workspaceId, mode: codingMode } : {}),
+        ...(kbIds.length > 0 ? { kbIds } : {}),
         signal: controller.signal,
         onEvent: handleEvent,
       })
@@ -224,6 +271,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   stopStreaming() {
     get().abortController?.abort()
+  },
+
+  async resolveApproval(approvalId, approved) {
+    const nextStatus = approved ? 'approved' : 'rejected'
+    const patchStatus = (status: ApprovalItem['status']) =>
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m.approvals?.some((a) => a.approvalId === approvalId)
+            ? {
+                ...m,
+                approvals: m.approvals.map((a) =>
+                  a.approvalId === approvalId ? { ...a, status } : a,
+                ),
+              }
+            : m,
+        ),
+      }))
+    // 乐观置终态，失败回滚为 pending
+    patchStatus(nextStatus)
+    try {
+      await codingApi.resolveApproval(approvalId, approved)
+    } catch (error) {
+      patchStatus('pending')
+      throw error
+    }
   },
 
   async renameConversation(id, title) {
@@ -256,6 +328,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messagesError: null,
       streaming: false,
       abortController: null,
+      modelConfigId: null,
+      workspaceId: null,
+      codingMode: 'ASK',
+      kbIds: [],
     })
   },
 }))

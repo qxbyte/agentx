@@ -1,5 +1,7 @@
 import { memo } from 'react'
 import type { ChatMessage } from '../types'
+import ApprovalCard from './coding/ApprovalCard'
+import ToolResultCard from './coding/ToolResultCard'
 import Logo from './Logo'
 import MarkdownRenderer from './MarkdownRenderer'
 import ReasoningBlock from './ReasoningBlock'
@@ -57,8 +59,15 @@ function MessageItem({ message }: MessageItemProps) {
             streaming={streaming && message.content === ''}
           />
         ) : null}
-        {toolCalls.map((call) => (
-          <ToolCallCard key={call.id} call={call} />
+        {toolCalls.map((call) =>
+          call.kind ? (
+            <ToolResultCard key={call.id} call={call} />
+          ) : (
+            <ToolCallCard key={call.id} call={call} />
+          ),
+        )}
+        {message.approvals?.map((item) => (
+          <ApprovalCard key={item.approvalId} item={item} />
         ))}
         {message.content ? <MarkdownRenderer content={message.content} /> : null}
         {showCursor && <span className="ax-cursor" aria-hidden="true" />}

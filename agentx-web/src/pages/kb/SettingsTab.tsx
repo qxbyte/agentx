@@ -1,9 +1,16 @@
-import { App as AntdApp, Button, Form } from 'antd'
+import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '../../api/http'
 import * as kbApi from '../../api/kb'
-import type { KbPayload, KnowledgeBase } from '../../types'
-import KbConfigFormItems from './KbConfigFormItems'
+import type { KnowledgeBase } from '../../types'
+import KbConfigFormItems, {
+  kbToFormState,
+  validateKbForm,
+  type KbFormErrors,
+  type KbFormState,
+} from './KbConfigFormItems'
 
 interface SettingsTabProps {
   kb: KnowledgeBase
@@ -11,44 +18,39 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab({ kb, onUpdated }: SettingsTabProps) {
-  const { message } = AntdApp.useApp()
-  const [form] = Form.useForm<KbPayload>()
+  const [values, setValues] = useState<KbFormState>(() => kbToFormState(kb))
+  const [errors, setErrors] = useState<KbFormErrors>({})
   const [saving, setSaving] = useState(false)
 
-  const handleFinish = async (values: KbPayload) => {
+  const patch = (p: Partial<KbFormState>) => setValues((prev) => ({ ...prev, ...p }))
+
+  const handleSubmit = async () => {
+    const result = validateKbForm(values)
+    if (!result.ok) {
+      setErrors(result.errors)
+      return
+    }
     setSaving(true)
     try {
-      const updated = await kbApi.updateKb(kb.id, values)
+      const updated = await kbApi.updateKb(kb.id, result.payload)
       onUpdated(updated)
-      message.success('设置已保存')
+      toast.success('设置已保存')
     } catch (error) {
-      message.error(extractErrorMessage(error, '保存失败'))
+      toast.error(extractErrorMessage(error, '保存失败'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      style={{ maxWidth: 520 }}
-      initialValues={{
-        name: kb.name,
-        description: kb.description ?? undefined,
-        chunkSize: kb.chunkSize,
-        chunkOverlap: kb.chunkOverlap,
-        topK: kb.topK,
-        similarityThreshold: kb.similarityThreshold,
-      }}
-      onFinish={(values) => void handleFinish(values)}
-    >
-      <KbConfigFormItems />
-      <Form.Item style={{ marginBottom: 0 }}>
-        <Button type="primary" htmlType="submit" loading={saving}>
+    <div className="max-w-[520px]">
+      <KbConfigFormItems values={values} errors={errors} onChange={patch} />
+      <div className="mt-5">
+        <Button onClick={() => void handleSubmit()} disabled={saving}>
+          {saving && <Loader2 className="size-4 animate-spin" />}
           保存设置
         </Button>
-      </Form.Item>
-    </Form>
+      </div>
+    </div>
   )
 }

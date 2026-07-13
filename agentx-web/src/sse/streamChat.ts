@@ -6,6 +6,14 @@ export interface StreamChatParams {
   /** 省略时后端自动创建会话，并在 meta 帧返回新 conversationId */
   conversationId?: string
   content: string
+  /** 本次消息使用的模型（覆盖会话默认） */
+  modelConfigId?: string
+  /** CodeAgent：绑定的工作区；非空即进入 coding 模式 */
+  workspaceId?: string
+  /** CodeAgent：Plan / Ask / Auto */
+  mode?: string
+  /** 本次检索追加的知识库（输入框多选） */
+  kbIds?: string[]
   signal: AbortSignal
   onEvent: (event: SseEvent) => void
 }
@@ -35,7 +43,8 @@ export class StreamFatalError extends Error {
  * 中断（AbortController）时抛出 AbortError；HTTP/网络错误抛出 StreamFatalError。
  */
 export async function streamChat(params: StreamChatParams): Promise<void> {
-  const { conversationId, content, signal, onEvent } = params
+  const { conversationId, content, modelConfigId, workspaceId, mode, kbIds, signal, onEvent } =
+    params
   const token = getAccessToken()
 
   const headers: Record<string, string> = {
@@ -48,7 +57,14 @@ export async function streamChat(params: StreamChatParams): Promise<void> {
     await fetchEventSource('/api/v1/chat/stream', {
     method: 'POST',
     headers,
-    body: JSON.stringify(conversationId ? { conversationId, content } : { content }),
+    body: JSON.stringify({
+      ...(conversationId ? { conversationId } : {}),
+      content,
+      ...(modelConfigId ? { modelConfigId } : {}),
+      ...(workspaceId ? { workspaceId } : {}),
+      ...(mode ? { mode } : {}),
+      ...(kbIds && kbIds.length > 0 ? { kbIds } : {}),
+    }),
     signal,
     // 切到后台标签页时不中断流
     openWhenHidden: true,

@@ -1,7 +1,33 @@
-import { PlusOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, Empty, Form, Input, Modal, Select, Switch, Table, Tag } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Loader2, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import * as adminApi from '../../api/admin'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
@@ -9,9 +35,16 @@ import PageHeader from '../../components/PageHeader'
 import { useAuthStore } from '../../stores/auth'
 import type { AdminUser, AdminUserPayload } from '../../types'
 
+interface UserForm {
+  username: string
+  password: string
+  nickname: string
+  role: 'USER' | 'ADMIN'
+}
+
+const EMPTY_FORM: UserForm = { username: '', password: '', nickname: '', role: 'USER' }
+
 export default function UsersPage() {
-  const { message } = AntdApp.useApp()
-  const [form] = Form.useForm<AdminUserPayload>()
   const currentUser = useAuthStore((s) => s.user)
 
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -19,6 +52,10 @@ export default function UsersPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<UserForm>(EMPTY_FORM)
+  const [errors, setErrors] = useState<Partial<Record<keyof UserForm, string>>>({})
+
+  const patch = (p: Partial<UserForm>) => setForm((prev) => ({ ...prev, ...p }))
 
   const refresh = async () => {
     try {
@@ -37,21 +74,29 @@ export default function UsersPage() {
   }, [])
 
   const openCreate = () => {
-    form.resetFields()
-    form.setFieldsValue({ role: 'USER' })
+    setForm(EMPTY_FORM)
+    setErrors({})
     setModalOpen(true)
   }
 
   const handleSave = async () => {
-    const values = await form.validateFields()
+    const next: Partial<Record<keyof UserForm, string>> = {}
+    if (!form.username.trim()) next.username = '请输入用户名'
+    if (!form.password) next.password = '请输入初始密码'
+    else if (form.password.length < 6) next.password = '至少 6 位'
+    if (!form.nickname.trim()) next.nickname = '请输入昵称'
+    if (Object.keys(next).length > 0) {
+      setErrors(next)
+      return
+    }
     setSaving(true)
     try {
-      await adminApi.createUser(values)
-      message.success('用户已创建')
+      await adminApi.createUser(form as AdminUserPayload)
+      toast.success('用户已创建')
       setModalOpen(false)
       await refresh()
     } catch (error) {
-      message.error(extractErrorMessage(error, '创建失败'))
+      toast.error(extractErrorMessage(error, '创建失败'))
     } finally {
       setSaving(false)
     }
@@ -64,43 +109,9 @@ export default function UsersPage() {
       await adminApi.updateUserStatus(user.id, next)
     } catch (error) {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: user.status } : u)))
-      message.error(extractErrorMessage(error, '操作失败'))
+      toast.error(extractErrorMessage(error, '操作失败'))
     }
   }
-
-  const columns: ColumnsType<AdminUser> = [
-    { title: '用户名', dataIndex: 'username', ellipsis: true },
-    { title: '昵称', dataIndex: 'nickname', ellipsis: true },
-    {
-      title: '角色',
-      dataIndex: 'role',
-      width: 110,
-      render: (v: string) => (
-        <Tag color={v === 'ADMIN' ? 'purple' : 'default'}>{v === 'ADMIN' ? '管理员' : '成员'}</Tag>
-      ),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      width: 130,
-      render: (v: string | undefined) => (v ? v.slice(0, 10) : '—'),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 110,
-      render: (status: AdminUser['status'], user) => (
-        <Switch
-          size="small"
-          checked={status === 'ACTIVE'}
-          checkedChildren="启用"
-          unCheckedChildren="停用"
-          disabled={user.id === currentUser?.id}
-          onChange={(checked) => void handleToggleStatus(user, checked)}
-        />
-      ),
-    },
-  ]
 
   return (
     <div>
@@ -108,7 +119,8 @@ export default function UsersPage() {
         title="用户"
         description="管理平台成员账号、角色与启用状态"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
             新建用户
           </Button>
         }
@@ -122,78 +134,123 @@ export default function UsersPage() {
             void refresh()
           }}
         />
+      ) : loading ? (
+        <div className="flex animate-pulse flex-col gap-3 py-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-8 w-full rounded bg-muted" />
+          ))}
+        </div>
+      ) : users.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <p className="text-sm text-muted-foreground">还没有其他成员，创建账号邀请团队使用</p>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
+            新建用户
+          </Button>
+        </div>
       ) : (
-        <Table<AdminUser>
-          rowKey="id"
-          columns={columns}
-          dataSource={users}
-          loading={loading}
-          pagination={false}
-          size="middle"
-          scroll={{ x: 560 }}
-          locale={{
-            emptyText: loading ? (
-              ' '
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: '24px 0' }}
-                description="还没有其他成员，创建账号邀请团队使用"
-              >
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                  新建用户
-                </Button>
-              </Empty>
-            ),
-          }}
-        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>用户名</TableHead>
+              <TableHead>昵称</TableHead>
+              <TableHead className="w-[110px]">角色</TableHead>
+              <TableHead className="w-[130px]">创建时间</TableHead>
+              <TableHead className="w-[110px]">状态</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="max-w-0 truncate">{user.username}</TableCell>
+                <TableCell className="max-w-0 truncate">{user.nickname}</TableCell>
+                <TableCell>
+                  <Badge variant={user.role === 'ADMIN' ? 'info' : 'default'}>
+                    {user.role === 'ADMIN' ? '管理员' : '成员'}
+                  </Badge>
+                </TableCell>
+                <TableCell>{user.createdAt ? user.createdAt.slice(0, 10) : '—'}</TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Switch
+                      checked={user.status === 'ACTIVE'}
+                      disabled={user.id === currentUser?.id}
+                      onCheckedChange={(checked) => void handleToggleStatus(user, checked)}
+                    />
+                    {user.status === 'ACTIVE' ? '启用' : '停用'}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      <Modal
-        title="新建用户"
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => void handleSave()}
-        okText="创建"
-        cancelText="取消"
-        confirmLoading={saving}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-          <Form.Item
-            name="username"
-            label="用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          >
-            <Input placeholder="登录账号" maxLength={40} autoComplete="off" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label="初始密码"
-            rules={[
-              { required: true, message: '请输入初始密码' },
-              { min: 6, message: '至少 6 位' },
-            ]}
-          >
-            <Input.Password placeholder="至少 6 位" autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item
-            name="nickname"
-            label="昵称"
-            rules={[{ required: true, message: '请输入昵称' }]}
-          >
-            <Input placeholder="显示名称" maxLength={40} />
-          </Form.Item>
-          <Form.Item name="role" label="角色" rules={[{ required: true, message: '请选择角色' }]}>
-            <Select
-              options={[
-                { value: 'USER', label: '成员' },
-                { value: 'ADMIN', label: '管理员' },
-              ]}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新建用户</DialogTitle>
+          </DialogHeader>
+          <div className="mt-1 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="u-username">用户名</Label>
+              <Input
+                id="u-username"
+                placeholder="登录账号"
+                maxLength={40}
+                autoComplete="off"
+                value={form.username}
+                onChange={(e) => patch({ username: e.target.value })}
+              />
+              {errors.username && <p className="text-xs text-destructive">{errors.username}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="u-password">初始密码</Label>
+              <Input
+                id="u-password"
+                type="password"
+                placeholder="至少 6 位"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(e) => patch({ password: e.target.value })}
+              />
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="u-nickname">昵称</Label>
+              <Input
+                id="u-nickname"
+                placeholder="显示名称"
+                maxLength={40}
+                value={form.nickname}
+                onChange={(e) => patch({ nickname: e.target.value })}
+              />
+              {errors.nickname && <p className="text-xs text-destructive">{errors.nickname}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>角色</Label>
+              <Select value={form.role} onValueChange={(v) => patch({ role: v as UserForm['role'] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USER">成员</SelectItem>
+                  <SelectItem value="ADMIN">管理员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={saving}>
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              创建
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

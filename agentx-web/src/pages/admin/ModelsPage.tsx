@@ -1,7 +1,44 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, Empty, Form, Input, Modal, Select, Switch, Table, Tag, Tooltip } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Loader2, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import * as adminApi from '../../api/admin'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
@@ -19,6 +56,26 @@ const TYPE_OPTIONS: { value: ModelType; label: string }[] = [
   { value: 'EMBEDDING', label: '向量（EMBEDDING）' },
 ]
 
+interface ModelForm {
+  name: string
+  providerType: ProviderType
+  type: ModelType
+  baseUrl: string
+  modelName: string
+  apiKey: string
+  enabled: boolean
+}
+
+const EMPTY_FORM: ModelForm = {
+  name: '',
+  providerType: 'OPENAI_COMPATIBLE',
+  type: 'CHAT',
+  baseUrl: '',
+  modelName: '',
+  apiKey: '',
+  enabled: true,
+}
+
 /** 从已有记录构造 PUT 全量 payload（不带 apiKey 表示不修改密钥） */
 function toPayload(record: ModelConfig, overrides?: Partial<ModelConfigPayload>): ModelConfigPayload {
   return {
@@ -33,15 +90,17 @@ function toPayload(record: ModelConfig, overrides?: Partial<ModelConfigPayload>)
 }
 
 export default function ModelsPage() {
-  const { message, modal } = AntdApp.useApp()
-  const [form] = Form.useForm<ModelConfigPayload>()
-
   const [configs, setConfigs] = useState<ModelConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ModelConfig | null>(null)
   const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<ModelForm>(EMPTY_FORM)
+  const [errors, setErrors] = useState<Partial<Record<keyof ModelForm, string>>>({})
+  const [deleteTarget, setDeleteTarget] = useState<ModelConfig | null>(null)
+
+  const patch = (p: Partial<ModelForm>) => setForm((prev) => ({ ...prev, ...p }))
 
   const refresh = async () => {
     try {
@@ -61,35 +120,58 @@ export default function ModelsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    form.resetFields()
-    form.setFieldsValue({ providerType: 'OPENAI_COMPATIBLE', type: 'CHAT', enabled: true })
+    setForm(EMPTY_FORM)
+    setErrors({})
     setModalOpen(true)
   }
 
   const openEdit = (record: ModelConfig) => {
     setEditing(record)
-    form.resetFields()
-    form.setFieldsValue(toPayload(record))
+    setForm({
+      name: record.name,
+      providerType: record.providerType,
+      type: record.type,
+      baseUrl: record.baseUrl,
+      modelName: record.modelName,
+      apiKey: '',
+      enabled: record.enabled,
+    })
+    setErrors({})
     setModalOpen(true)
   }
 
   const handleSave = async () => {
-    const values = await form.validateFields()
-    // 编辑时 apiKey 留空 = 不修改，不上送该字段
-    if (!values.apiKey) delete values.apiKey
+    const next: Partial<Record<keyof ModelForm, string>> = {}
+    if (!form.name.trim()) next.name = '请输入名称'
+    if (!form.baseUrl.trim()) next.baseUrl = '请输入 Base URL'
+    if (!form.modelName.trim()) next.modelName = '请输入模型名'
+    if (!editing && !form.apiKey) next.apiKey = '请输入 API Key'
+    if (Object.keys(next).length > 0) {
+      setErrors(next)
+      return
+    }
+    const payload: ModelConfigPayload = {
+      name: form.name.trim(),
+      providerType: form.providerType,
+      baseUrl: form.baseUrl.trim(),
+      modelName: form.modelName.trim(),
+      type: form.type,
+      enabled: form.enabled,
+      ...(form.apiKey ? { apiKey: form.apiKey } : {}),
+    }
     setSaving(true)
     try {
       if (editing) {
-        await adminApi.updateModelConfig(editing.id, values)
-        message.success('模型配置已更新')
+        await adminApi.updateModelConfig(editing.id, payload)
+        toast.success('模型配置已更新')
       } else {
-        await adminApi.createModelConfig(values)
-        message.success('模型配置已创建')
+        await adminApi.createModelConfig(payload)
+        toast.success('模型配置已创建')
       }
       setModalOpen(false)
       await refresh()
     } catch (error) {
-      message.error(extractErrorMessage(error, '保存失败'))
+      toast.error(extractErrorMessage(error, '保存失败'))
     } finally {
       setSaving(false)
     }
@@ -98,10 +180,10 @@ export default function ModelsPage() {
   const handleSetDefault = async (record: ModelConfig) => {
     try {
       await adminApi.setDefaultModelConfig(record.id)
-      message.success(`已将「${record.name}」设为默认模型`)
+      toast.success(`已将「${record.name}」设为默认模型`)
       await refresh()
     } catch (error) {
-      message.error(extractErrorMessage(error, '设置默认失败'))
+      toast.error(extractErrorMessage(error, '设置默认失败'))
     }
   }
 
@@ -111,106 +193,21 @@ export default function ModelsPage() {
       await adminApi.updateModelConfig(record.id, toPayload(record, { enabled }))
     } catch (error) {
       setConfigs((prev) => prev.map((c) => (c.id === record.id ? { ...c, enabled: !enabled } : c)))
-      message.error(extractErrorMessage(error, '操作失败'))
+      toast.error(extractErrorMessage(error, '操作失败'))
     }
   }
 
-  const confirmDelete = (record: ModelConfig) => {
-    modal.confirm({
-      title: '删除模型配置',
-      content: `确定删除「${record.name}」吗？`,
-      okText: '删除',
-      okButtonProps: { danger: true },
-      cancelText: '取消',
-      async onOk() {
-        try {
-          await adminApi.deleteModelConfig(record.id)
-          message.success('已删除')
-          await refresh()
-        } catch (error) {
-          message.error(extractErrorMessage(error, '删除失败'))
-        }
-      },
-    })
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await adminApi.deleteModelConfig(deleteTarget.id)
+      toast.success('已删除')
+      setDeleteTarget(null)
+      await refresh()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '删除失败'))
+    }
   }
-
-  const columns: ColumnsType<ModelConfig> = [
-    {
-      title: '',
-      key: 'default',
-      width: 44,
-      render: (_, record) =>
-        record.isDefault ? (
-          <Tooltip title="默认模型">
-            <StarFilled style={{ color: 'var(--ax-star)', fontSize: 15 }} />
-          </Tooltip>
-        ) : (
-          <Tooltip title="设为默认">
-            <Button
-              type="text"
-              size="small"
-              icon={<StarOutlined />}
-              onClick={() => void handleSetDefault(record)}
-            />
-          </Tooltip>
-        ),
-    },
-    { title: '名称', dataIndex: 'name', ellipsis: true },
-    {
-      title: '提供商',
-      dataIndex: 'providerType',
-      width: 130,
-      render: (v: ProviderType) => (
-        <Tag>{PROVIDER_OPTIONS.find((o) => o.value === v)?.label ?? v}</Tag>
-      ),
-    },
-    {
-      title: '类型',
-      dataIndex: 'type',
-      width: 110,
-      render: (v: ModelType) => (
-        <Tag color={v === 'CHAT' ? 'geekblue' : 'purple'}>{v}</Tag>
-      ),
-    },
-    { title: '模型名', dataIndex: 'modelName', ellipsis: true },
-    {
-      title: 'API Key',
-      dataIndex: 'maskedApiKey',
-      width: 140,
-      render: (v: string | null | undefined) => (
-        <span style={{ fontFamily: 'var(--ax-mono)', fontSize: 12 }}>{v || '—'}</span>
-      ),
-    },
-    {
-      title: '启用',
-      dataIndex: 'enabled',
-      width: 80,
-      render: (enabled: boolean, record) => (
-        <Switch
-          size="small"
-          checked={enabled}
-          onChange={(checked) => void handleToggle(record, checked)}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 100,
-      render: (_, record) => (
-        <>
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Button
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => confirmDelete(record)}
-          />
-        </>
-      ),
-    },
-  ]
 
   return (
     <div>
@@ -218,7 +215,8 @@ export default function ModelsPage() {
         title="模型配置"
         description="接入对话与向量模型，标星的配置将作为平台默认模型"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
             新建模型配置
           </Button>
         }
@@ -232,87 +230,237 @@ export default function ModelsPage() {
             void refresh()
           }}
         />
+      ) : loading ? (
+        <div className="flex animate-pulse flex-col gap-3 py-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-8 w-full rounded bg-muted" />
+          ))}
+        </div>
+      ) : configs.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            还没有模型配置，接入第一个模型后即可开始对话
+          </p>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
+            新建模型配置
+          </Button>
+        </div>
       ) : (
-        <Table<ModelConfig>
-          rowKey="id"
-          columns={columns}
-          dataSource={configs}
-          loading={loading}
-          pagination={false}
-          size="middle"
-          scroll={{ x: 900 }}
-          locale={{
-            emptyText: loading ? (
-              ' '
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: '24px 0' }}
-                description="还没有模型配置，接入第一个模型后即可开始对话"
-              >
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                  新建模型配置
-                </Button>
-              </Empty>
-            ),
-          }}
-        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[44px]"> </TableHead>
+              <TableHead>名称</TableHead>
+              <TableHead className="w-[130px]">提供商</TableHead>
+              <TableHead className="w-[110px]">类型</TableHead>
+              <TableHead>模型名</TableHead>
+              <TableHead className="w-[140px]">API Key</TableHead>
+              <TableHead className="w-[80px]">启用</TableHead>
+              <TableHead className="w-[100px]">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {configs.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell>
+                  {record.isDefault ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Star className="size-4 fill-[var(--ax-star)] text-[var(--ax-star)]" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>默认模型</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-muted-foreground"
+                          onClick={() => void handleSetDefault(record)}
+                        >
+                          <Star className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>设为默认</TooltipContent>
+                    </Tooltip>
+                  )}
+                </TableCell>
+                <TableCell className="max-w-0 truncate">{record.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {PROVIDER_OPTIONS.find((o) => o.value === record.providerType)?.label ??
+                      record.providerType}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={record.type === 'CHAT' ? 'info' : 'default'}>{record.type}</Badge>
+                </TableCell>
+                <TableCell className="max-w-0 truncate">{record.modelName}</TableCell>
+                <TableCell className="font-mono text-xs">{record.maskedApiKey || '—'}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={record.enabled}
+                    onCheckedChange={(checked) => void handleToggle(record, checked)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => openEdit(record)}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(record)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      <Modal
-        title={editing ? '编辑模型配置' : '新建模型配置'}
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => void handleSave()}
-        okText="保存"
-        cancelText="取消"
-        confirmLoading={saving}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-          <Form.Item name="name" label="名称" rules={[{ required: true, message: '请输入名称' }]}>
-            <Input placeholder="例如：DeepSeek V3" maxLength={60} />
-          </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 16 }}>
-            <Form.Item
-              name="providerType"
-              label="提供商"
-              rules={[{ required: true, message: '请选择提供商' }]}
-            >
-              <Select options={PROVIDER_OPTIONS} />
-            </Form.Item>
-            <Form.Item name="type" label="模型类型" rules={[{ required: true, message: '请选择类型' }]}>
-              <Select options={TYPE_OPTIONS} />
-            </Form.Item>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? '编辑模型配置' : '新建模型配置'}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-1 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="m-name">名称</Label>
+              <Input
+                id="m-name"
+                placeholder="例如：DeepSeek V3"
+                maxLength={60}
+                value={form.name}
+                onChange={(e) => patch({ name: e.target.value })}
+              />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label>提供商</Label>
+                <Select
+                  value={form.providerType}
+                  onValueChange={(v) => patch({ providerType: v as ProviderType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>模型类型</Label>
+                <Select value={form.type} onValueChange={(v) => patch({ type: v as ModelType })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="m-baseurl">Base URL</Label>
+              <Input
+                id="m-baseurl"
+                placeholder="https://api.deepseek.com"
+                value={form.baseUrl}
+                onChange={(e) => patch({ baseUrl: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">服务接口地址，不含具体路径</p>
+              {errors.baseUrl && <p className="text-xs text-destructive">{errors.baseUrl}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="m-modelname">模型名</Label>
+              <Input
+                id="m-modelname"
+                placeholder="deepseek-chat"
+                value={form.modelName}
+                onChange={(e) => patch({ modelName: e.target.value })}
+              />
+              {errors.modelName && <p className="text-xs text-destructive">{errors.modelName}</p>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="m-apikey">API Key</Label>
+              <Input
+                id="m-apikey"
+                type="password"
+                placeholder={editing ? '留空保持不变' : 'sk-...'}
+                autoComplete="new-password"
+                value={form.apiKey}
+                onChange={(e) => patch({ apiKey: e.target.value })}
+              />
+              {editing && (
+                <p className="text-xs text-muted-foreground">
+                  当前：{editing.maskedApiKey || '未设置'}，留空表示不修改
+                </p>
+              )}
+              {errors.apiKey && <p className="text-xs text-destructive">{errors.apiKey}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="m-enabled"
+                checked={form.enabled}
+                onCheckedChange={(checked) => patch({ enabled: checked })}
+              />
+              <Label htmlFor="m-enabled">启用</Label>
+            </div>
           </div>
-          <Form.Item
-            name="baseUrl"
-            label="Base URL"
-            extra="服务接口地址，不含具体路径"
-            rules={[{ required: true, message: '请输入 Base URL' }]}
-          >
-            <Input placeholder="https://api.deepseek.com" />
-          </Form.Item>
-          <Form.Item
-            name="modelName"
-            label="模型名"
-            rules={[{ required: true, message: '请输入模型名' }]}
-          >
-            <Input placeholder="deepseek-chat" />
-          </Form.Item>
-          <Form.Item
-            name="apiKey"
-            label="API Key"
-            rules={editing ? [] : [{ required: true, message: '请输入 API Key' }]}
-            extra={editing ? `当前：${editing.maskedApiKey || '未设置'}，留空表示不修改` : undefined}
-          >
-            <Input.Password placeholder={editing ? '留空保持不变' : 'sk-...'} autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item name="enabled" label="启用" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
-      </Modal>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={saving}>
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除模型配置</AlertDialogTitle>
+            <AlertDialogDescription>确定删除「{deleteTarget?.name}」吗？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void handleDelete()}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

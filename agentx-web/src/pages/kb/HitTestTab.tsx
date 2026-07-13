@@ -1,6 +1,18 @@
-import { AimOutlined, SearchOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, Empty, Input, InputNumber, Modal, Progress, Tag, Tooltip } from 'antd'
+import { Crosshair, Loader2, Search } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { extractErrorMessage } from '../../api/http'
 import * as kbApi from '../../api/kb'
 import type { HitTestResult, KnowledgeBase } from '../../types'
@@ -13,8 +25,6 @@ function scoreColor(score: number): string {
 }
 
 export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
-  const { message } = AntdApp.useApp()
-
   const [query, setQuery] = useState('')
   const [topK, setTopK] = useState(kb.topK)
   const [threshold, setThreshold] = useState(kb.similarityThreshold)
@@ -28,14 +38,14 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
   const runTest = async () => {
     const q = query.trim()
     if (!q) {
-      message.warning('请输入测试查询')
+      toast.warning('请输入测试查询')
       return
     }
     setTesting(true)
     try {
       setHits(await kbApi.hitTest(kb.id, { query: q, topK, similarityThreshold: threshold }))
     } catch (error) {
-      message.error(extractErrorMessage(error, '命中测试失败'))
+      toast.error(extractErrorMessage(error, '命中测试失败'))
     } finally {
       setTesting(false)
     }
@@ -49,7 +59,7 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
   const saveSegment = async () => {
     if (!editingHit) return
     if (!editContent.trim()) {
-      message.warning('分段内容不能为空')
+      toast.warning('分段内容不能为空')
       return
     }
     setSavingSegment(true)
@@ -62,9 +72,9 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
           ) ?? null,
       )
       setEditingHit(null)
-      message.success('分段已保存')
+      toast.success('分段已保存')
     } catch (error) {
-      message.error(extractErrorMessage(error, '保存失败'))
+      toast.error(extractErrorMessage(error, '保存失败'))
     } finally {
       setSavingSegment(false)
     }
@@ -72,61 +82,61 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-        <div style={{ flex: 1, minWidth: 260 }}>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[260px] flex-1">
           <div className="ax-field-label">测试查询</div>
           <Input
             value={query}
             placeholder="输入一个问题，看知识库能召回哪些分段"
             onChange={(e) => setQuery(e.target.value)}
-            onPressEnter={() => void runTest()}
-            allowClear
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void runTest()
+            }}
           />
         </div>
         <div>
           <div className="ax-field-label">topK</div>
-          <InputNumber
+          <Input
+            type="number"
+            className="w-[90px] rounded-lg"
             min={1}
             max={20}
             value={topK}
-            onChange={(v) => setTopK(v ?? kb.topK)}
-            style={{ width: 90 }}
+            onChange={(e) => setTopK(e.target.value === '' ? kb.topK : Number(e.target.value))}
           />
         </div>
         <div>
           <div className="ax-field-label">相似度阈值</div>
-          <InputNumber
+          <Input
+            type="number"
+            className="w-[110px] rounded-lg"
             min={0}
             max={1}
             step={0.05}
             value={threshold}
-            onChange={(v) => setThreshold(v ?? kb.similarityThreshold)}
-            style={{ width: 110 }}
+            onChange={(e) =>
+              setThreshold(e.target.value === '' ? kb.similarityThreshold : Number(e.target.value))
+            }
           />
         </div>
-        <Button
-          type="primary"
-          icon={<SearchOutlined />}
-          loading={testing}
-          onClick={() => void runTest()}
-        >
+        <Button disabled={testing} onClick={() => void runTest()}>
+          {testing ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           测试
         </Button>
       </div>
 
       {hits === null && (
         <div className="ax-hit-placeholder">
-          <AimOutlined />
+          <Crosshair className="size-[26px] opacity-60" />
           <p>输入一个问题并点击「测试」，检验知识库的召回效果与相似度分布</p>
         </div>
       )}
 
       {hits !== null &&
         (hits.length === 0 ? (
-          <Empty
-            style={{ marginTop: 40 }}
-            description="没有命中任何分段，试试降低阈值或换个问法"
-          />
+          <div className="mt-10 text-center text-sm text-muted-foreground">
+            没有命中任何分段，试试降低阈值或换个问法
+          </div>
         ) : (
           <div className="ax-hit-list">
             {hits.map((hit, index) => (
@@ -142,24 +152,26 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
                 }}
               >
                 <div className="ax-hit-card-head">
-                  <Tag color="geekblue">#{index + 1}</Tag>
-                  <Progress
-                    className="ax-hit-card-score"
-                    percent={Math.round(hit.score * 100)}
-                    size="small"
-                    strokeColor={scoreColor(hit.score)}
-                    format={(p) => `score ${((p ?? 0) / 100).toFixed(2)}`}
-                  />
-                  <Tooltip title={hit.docName}>
-                    <span
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {hit.docName}
+                  <Badge variant="info">#{index + 1}</Badge>
+                  <span className="ax-hit-card-score flex items-center gap-2">
+                    <span className="inline-block h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <span
+                        className="block h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.round(hit.score * 100)}%`,
+                          background: scoreColor(hit.score),
+                        }}
+                      />
                     </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      score {hit.score.toFixed(2)}
+                    </span>
+                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate">{hit.docName}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>{hit.docName}</TooltipContent>
                   </Tooltip>
                 </div>
                 <p className="ax-hit-card-content">{hit.content}</p>
@@ -168,23 +180,27 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
           </div>
         ))}
 
-      <Modal
-        title="编辑分段"
-        open={editingHit !== null}
-        onCancel={() => setEditingHit(null)}
-        onOk={() => void saveSegment()}
-        okText="保存"
-        cancelText="取消"
-        confirmLoading={savingSegment}
-        width={640}
-        destroyOnHidden
-      >
-        <Input.TextArea
-          value={editContent}
-          autoSize={{ minRows: 6, maxRows: 16 }}
-          onChange={(e) => setEditContent(e.target.value)}
-        />
-      </Modal>
+      <Dialog open={editingHit !== null} onOpenChange={(o) => !o && setEditingHit(null)}>
+        <DialogContent className="max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>编辑分段</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editContent}
+            className="min-h-40 max-h-[60vh]"
+            onChange={(e) => setEditContent(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingHit(null)}>
+              取消
+            </Button>
+            <Button onClick={() => void saveSegment()} disabled={savingSegment}>
+              {savingSegment && <Loader2 className="size-4 animate-spin" />}
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
