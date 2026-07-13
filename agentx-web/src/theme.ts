@@ -70,6 +70,16 @@ export const lightTheme: ThemeConfig = {
     Modal: {
       borderRadiusLG: 12,
     },
+    Menu: {
+      // 选中态用浅灰而非跟随黑色主色（OpenAI 式：灰阶层级，不用色块强调）
+      itemSelectedBg: '#ececec',
+      itemSelectedColor: '#0d0d0d',
+      itemHoverBg: '#f4f4f4',
+      itemActiveBg: '#ececec',
+      itemBorderRadius: 8,
+      itemMarginInline: 8,
+      activeBarBorderWidth: 0,
+    },
     Dropdown: {
       borderRadiusLG: 12,
     },

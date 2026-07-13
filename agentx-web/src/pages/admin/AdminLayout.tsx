@@ -27,7 +27,7 @@ export default function AdminLayout() {
   const current = location.pathname.split('/')[2] ?? 'models'
 
   return (
-    <AppShell title="管理后台">
+    <AppShell title="管理后台" flush>
       <div className="ax-admin">
         <Menu
           className="ax-admin-menu"

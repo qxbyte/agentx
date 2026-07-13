@@ -960,6 +960,9 @@ body {
   font-weight: 500;
   color: var(--ax-text-secondary);
 }
+.ax-page--flush {
+  padding: 0;
+}
 .ax-page-empty {
   padding: 64px 24px;
 }
@@ -1198,23 +1201,24 @@ body {
 /* ============================================================
    管理后台布局
    ============================================================ */
+/* 管理后台：通高左轨 + hairline 分割（不是浮动卡片），选中态浅灰见 theme.ts Menu */
 .ax-admin {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  min-height: 100%;
+  align-items: stretch;
+  height: 100%;
 }
 .ax-admin-menu {
-  width: 180px;
+  width: 188px;
   flex-shrink: 0;
-  border-radius: var(--ax-radius-lg);
-  border: 1px solid var(--ax-border) !important;
-  background: var(--ax-surface);
-  overflow: hidden;
+  padding-top: 8px;
+  background: transparent;
+  border-inline-end: 1px solid var(--ax-hairline, #e5e5e5) !important;
 }
 .ax-admin-content {
   flex: 1;
   min-width: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
 }
 
 /* ============================================================
@@ -1357,6 +1361,8 @@ body {
   }
   .ax-admin-menu {
     width: 100% !important;
+    border-inline-end: none !important;
+    border-bottom: 1px solid var(--ax-hairline, #e5e5e5) !important;
   }
   .ax-composer-wrap {
     padding: 6px 12px 12px;
