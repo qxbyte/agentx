@@ -28,4 +28,11 @@ public final class ExternalKbDtos {
     public record ProbeResult(boolean alive, String service, String vaultName,
                               String embeddingModel, int dims, int chunkCount,
                               String error, String warning) {}
+
+    /** 仓库发现请求：只需服务地址（infoPath 缺省用模板默认值）。 */
+    public record DiscoverRequest(@NotBlank String baseUrl, String infoPath) {}
+
+    /** 外部服务上的一个可接入仓库。 */
+    public record VaultInfo(String vaultId, String name, int docCount, int chunkCount,
+                            String embeddingModel, int dims) {}
 }

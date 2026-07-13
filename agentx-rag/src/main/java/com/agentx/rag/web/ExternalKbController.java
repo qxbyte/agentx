@@ -56,6 +56,15 @@ public class ExternalKbController {
                 kb.getInfoPath(), kb.getVaultId()));
     }
 
+    /** 仓库发现：只填服务地址即可列出全部可接入仓库（表单点选 vaultId 用）。 */
+    @PostMapping("/discover")
+    public ApiResponse<List<com.agentx.rag.web.dto.ExternalKbDtos.VaultInfo>> discover(
+            @Valid @RequestBody com.agentx.rag.web.dto.ExternalKbDtos.DiscoverRequest req) {
+        String info = req.infoPath() == null || req.infoPath().isBlank()
+                ? "/api/external-kb/info" : req.infoPath();
+        return ApiResponse.ok(service.discover(req.baseUrl().replaceAll("/+$", ""), info));
+    }
+
     /** 保存前探测（新建表单用）：直接以请求参数探测，不落库。 */
     @PostMapping("/probe")
     public ApiResponse<ProbeResult> probe(@Valid @RequestBody UpsertRequest req) {

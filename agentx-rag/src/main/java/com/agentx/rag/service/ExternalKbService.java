@@ -96,6 +96,36 @@ public class ExternalKbService {
         }
     }
 
+    /** 仓库发现：调外部 info（不带 vault）列出全部可接入仓库，供表单点选 vaultId。 */
+    @SuppressWarnings("unchecked")
+    public List<com.agentx.rag.web.dto.ExternalKbDtos.VaultInfo> discover(String baseUrl, String infoPath) {
+        try {
+            Map<String, Object> resp = ExternalKbHttp.client(baseUrl)
+                    .get().uri(infoPath).retrieve().body(Map.class);
+            Object vaults = resp == null ? null : resp.get("vaults");
+            if (!(vaults instanceof List<?> list)) {
+                return List.of();
+            }
+            return list.stream()
+                    .filter(o -> o instanceof Map)
+                    .map(o -> (Map<String, Object>) o)
+                    .map(v -> {
+                        Map<String, Object> emb = v.get("embedding") instanceof Map<?, ?> m
+                                ? (Map<String, Object>) m : Map.of();
+                        return new com.agentx.rag.web.dto.ExternalKbDtos.VaultInfo(
+                                String.valueOf(v.get("vaultId")),
+                                String.valueOf(v.get("name")),
+                                v.get("docCount") instanceof Number n ? n.intValue() : 0,
+                                v.get("chunkCount") instanceof Number n ? n.intValue() : 0,
+                                emb.get("model") == null ? null : String.valueOf(emb.get("model")),
+                                emb.get("dims") instanceof Number n ? n.intValue() : 0);
+                    })
+                    .toList();
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "获取仓库列表失败: " + e.getMessage());
+        }
+    }
+
     /** 外部库 embedding 模型与本地默认 EMBEDDING 配置不一致时的提醒文案。 */
     private String embeddingWarning(String remoteModel) {
         if (remoteModel == null || remoteModel.isBlank()) {

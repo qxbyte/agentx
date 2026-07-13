@@ -67,6 +67,8 @@ export default function ExternalKbPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [probe, setProbe] = useState<ExternalKbProbe | null>(null)
   const [probing, setProbing] = useState(false)
+  const [vaults, setVaults] = useState<api.VaultInfo[] | null>(null)
+  const [discovering, setDiscovering] = useState(false)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ExternalKb | null>(null)
 
@@ -117,6 +119,23 @@ export default function ExternalKbPage() {
     if (!form.vaultId.trim()) next.vaultId = '请输入仓库标识（vault，防多仓库内容互相污染）'
     setErrors(next)
     return Object.keys(next).length === 0
+  }
+
+  /** 仓库发现：填了服务地址后一键列出可接入仓库，点选即填 vaultId */
+  const doDiscover = async () => {
+    if (!form.baseUrl.trim()) {
+      setErrors((e) => ({ ...e, baseUrl: '请先填服务地址' }))
+      return
+    }
+    setDiscovering(true)
+    setVaults(null)
+    try {
+      setVaults(await api.discoverVaults(form.baseUrl.trim()))
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '获取仓库列表失败'))
+    } finally {
+      setDiscovering(false)
+    }
   }
 
   const doProbe = async () => {
@@ -291,12 +310,49 @@ export default function ExternalKbPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ek-vault">仓库标识（vault）</Label>
-              <Input id="ek-vault" className="font-mono" placeholder="外部系统 info API 返回的 vaultId"
-                value={form.vaultId} onChange={(e) => patch({ vaultId: e.target.value })} />
+              <div className="flex gap-2">
+                <Input id="ek-vault" className="font-mono" placeholder="点右侧按钮从服务获取并选择"
+                  value={form.vaultId} onChange={(e) => patch({ vaultId: e.target.value })} />
+                <Button variant="outline" disabled={discovering} onClick={() => void doDiscover()}>
+                  {discovering && <Loader2 className="size-3.5 animate-spin" />}
+                  获取仓库列表
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 必填：不同仓库内容非同类，混检互相污染
               </p>
               {errors.vaultId && <p className="text-xs text-destructive">{errors.vaultId}</p>}
+              {vaults && (
+                <div className="mt-1 overflow-hidden rounded-lg border border-border">
+                  {vaults.length === 0 ? (
+                    <div className="px-3 py-3 text-center text-xs text-muted-foreground">
+                      该服务未配置任何仓库
+                    </div>
+                  ) : (
+                    vaults.map((v) => (
+                      <button
+                        key={v.vaultId}
+                        type="button"
+                        onClick={() => {
+                          patch({ vaultId: v.vaultId, name: form.name || v.name })
+                          setErrors((e) => ({ ...e, vaultId: undefined }))
+                        }}
+                        className={`flex w-full items-center gap-2 border-b border-border/60 px-3 py-2 text-left text-sm transition-colors last:border-0 hover:bg-accent ${
+                          form.vaultId === v.vaultId ? 'bg-accent/60' : ''
+                        }`}
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{v.name}</span>
+                          <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                            {v.vaultId} · {v.chunkCount} 片段 · {v.embeddingModel ?? '未建索引'}
+                          </span>
+                        </span>
+                        {form.vaultId === v.vaultId && <CheckCircle2 className="size-4 shrink-0 text-[#0e8a6e]" />}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">

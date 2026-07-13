@@ -29,6 +29,24 @@ export function deleteExternalKb(id: string): Promise<void> {
   return request<void>({ url: `/v1/admin/external-kbs/${id}`, method: 'DELETE' })
 }
 
+export interface VaultInfo {
+  vaultId: string
+  name: string
+  docCount: number
+  chunkCount: number
+  embeddingModel?: string | null
+  dims: number
+}
+
+/** 仓库发现：只填服务地址即可列出外部服务的全部可接入仓库 */
+export function discoverVaults(baseUrl: string): Promise<VaultInfo[]> {
+  return request<VaultInfo[]>({
+    url: '/v1/admin/external-kbs/discover',
+    method: 'POST',
+    data: { baseUrl },
+  })
+}
+
 /** 已存配置的连接测试 */
 export function testExternalKb(id: string): Promise<ExternalKbProbe> {
   return request<ExternalKbProbe>({ url: `/v1/admin/external-kbs/${id}/test`, method: 'POST' })
