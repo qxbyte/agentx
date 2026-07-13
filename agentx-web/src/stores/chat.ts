@@ -4,7 +4,7 @@ import * as codingApi from '../api/coding'
 import { extractErrorMessage } from '../api/http'
 import type { SseEvent } from '../sse/events'
 import { streamChat } from '../sse/streamChat'
-import type { ApprovalItem, ChatMessage, CodingMode, Conversation } from '../types'
+import type { ApprovalItem, ChatMessage, CodingMode, Conversation, Workspace } from '../types'
 
 let localIdSeq = 0
 function nextLocalId(): string {
@@ -36,6 +36,10 @@ interface ChatState {
   setWorkspaceId: (id: string | null) => void
   setCodingMode: (mode: CodingMode) => void
   setKbIds: (ids: string[]) => void
+
+  /** 项目列表单一数据源：Sidebar/ProjectPicker/管理页共享，创建/编辑/删除后 refresh */
+  projects: Workspace[]
+  loadProjects: () => Promise<void>
 
   loadConversations: () => Promise<void>
   /** 切换当前会话；null 表示「新对话」空态 */
@@ -70,6 +74,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setWorkspaceId: (id) => set({ workspaceId: id }),
   setCodingMode: (mode) => set({ codingMode: mode }),
   setKbIds: (ids) => set({ kbIds: ids }),
+
+  projects: [],
+  async loadProjects() {
+    try {
+      set({ projects: await codingApi.listWorkspaces() })
+    } catch {
+      /* 未登录/后端不可用时保持现状 */
+    }
+  },
 
   async loadConversations() {
     set({ conversationsLoading: true })
@@ -228,6 +241,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
         case 'done':
           patchAssistant((m) => ({ ...m, tokenUsage: event.usage ?? null, streaming: false }))
+          // done 帧即协议层终止信号：立即复原发送按钮并主动断开，
+          // 不依赖服务端关流姿势（chunked 未终结时浏览器可能挂住 reader）
+          set((state) =>
+            state.abortController === controller
+              ? { streaming: false, abortController: null }
+              : {},
+          )
+          controller.abort()
           break
         case 'error':
           patchAssistant((m) => ({
@@ -235,6 +256,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
             error: { code: event.code, message: event.message },
             streaming: false,
           }))
+          // error 帧同为终止信号（业务错误不断流的设计），立即复原并断开
+          set((state) =>
+            state.abortController === controller
+              ? { streaming: false, abortController: null }
+              : {},
+          )
+          controller.abort()
           break
       }
     }

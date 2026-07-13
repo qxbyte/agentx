@@ -83,11 +83,10 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
   const setWorkspaceId = useChatStore((s) => s.setWorkspaceId)
   const setKbIds = useChatStore((s) => s.setKbIds)
 
-  const [projects, setProjects] = useState<Workspace[]>([])
-  const refreshProjects = () => {
-    void codingApi.listWorkspaces().then(setProjects).catch(() => setProjects([]))
-  }
-  useEffect(refreshProjects, [])
+  const projects = useChatStore((s) => s.projects)
+  const loadProjects = useChatStore((s) => s.loadProjects)
+  const refreshProjects = () => void loadProjects()
+  useEffect(refreshProjects, [loadProjects])
 
   const [renameTarget, setRenameTarget] = useState<Conversation | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -133,17 +132,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
       label: '项目',
       active: location.pathname.startsWith('/workspaces'),
     },
-    ...(isAdmin
-      ? [
-          {
-            key: 'admin',
-            to: '/admin',
-            icon: <Settings2 />,
-            label: '管理后台',
-            active: location.pathname.startsWith('/admin'),
-          },
-        ]
-      : []),
+    // 「设置」入口收进底部用户菜单（点头像弹出）
   ]
 
   const handleRenameOk = async () => {
@@ -438,23 +427,51 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
         {ungrouped.map(renderConv)}
       </div>
 
-      <div className="ax-sidebar-footer">
-        <div className="ax-user-avatar">
-          {(user?.nickname || user?.username || '?').slice(0, 1).toUpperCase()}
-        </div>
-        <div className="ax-user-meta">
-          <div className="ax-user-name">{user?.nickname || user?.username || '未登录'}</div>
-          <div className="ax-user-role">{user ? (ROLE_LABELS[user.role] ?? user.role) : ''}</div>
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="ax-icon-btn" onClick={handleLogout} aria-label="退出登录">
-              <LogOut className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">退出登录</TooltipContent>
-        </Tooltip>
-      </div>
+      {/* 用户菜单：点击用户弹出（用户信息 / 设置 / 退出登录），ChatGPT 式 */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="ax-sidebar-footer w-full cursor-pointer text-left transition-colors hover:bg-[var(--ax-sidebar-hover)]">
+            <div className="ax-user-avatar">
+              {(user?.nickname || user?.username || '?').slice(0, 1).toUpperCase()}
+            </div>
+            <div className="ax-user-meta">
+              <div className="ax-user-name">{user?.nickname || user?.username || '未登录'}</div>
+              <div className="ax-user-role">{user ? (ROLE_LABELS[user.role] ?? user.role) : ''}</div>
+            </div>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="top" className="min-w-[13rem]">
+          <div className="flex items-center gap-2.5 px-2 py-2">
+            <div className="ax-user-avatar">
+              {(user?.nickname || user?.username || '?').slice(0, 1).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">
+                {user?.nickname || user?.username || '未登录'}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {user ? (ROLE_LABELS[user.role] ?? user.role) : ''}
+              </div>
+            </div>
+          </div>
+          <DropdownMenuSeparator />
+          {isAdmin && (
+            <DropdownMenuItem
+              onClick={() => {
+                navigate('/admin')
+                onNavigate?.()
+              }}
+            >
+              <Settings2 className="size-4" />
+              设置
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="size-4" />
+            退出登录
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Dialog open={renameTarget !== null} onOpenChange={(o) => !o && setRenameTarget(null)}>
         <DialogContent className="max-w-md">

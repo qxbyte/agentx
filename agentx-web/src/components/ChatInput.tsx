@@ -1,4 +1,4 @@
-import { ArrowUp, FolderGit2, Square } from 'lucide-react'
+import { ArrowUp, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -15,7 +15,6 @@ interface ChatInputProps {
 }
 
 const MAX_HEIGHT = 200
-const MODE_LABELS: Record<string, string> = { PLAN: 'Plan', ASK: 'Ask', AUTO: 'Auto' }
 
 /** 底部输入区：加高多行 + 模型/模式/工作区工具条；Enter 发送 / Shift+Enter 换行 */
 export default function ChatInput({ streaming, disabled = false, onSend, onStop }: ChatInputProps) {
@@ -24,7 +23,6 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
   const composingRef = useRef(false)
 
   const workspaceId = useChatStore((s) => s.workspaceId)
-  const codingMode = useChatStore((s) => s.codingMode)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const coding = workspaceId !== null
   /** 新对话阶段：项目/知识库属于开场选择，会话开始后芯片隐藏 */
@@ -65,15 +63,6 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
       )}
 
       <div className="relative flex flex-col rounded-[26px] border border-[var(--ax-border)] bg-[var(--ax-surface)] transition-colors focus-within:border-[#c4c4c4]">
-      {coding && (
-        <div className="flex items-center gap-2 px-4 pt-2.5 text-xs text-muted-foreground">
-          <FolderGit2 className="size-3.5" />
-          <span>编码模式</span>
-          <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-foreground">
-            {MODE_LABELS[codingMode] ?? codingMode}
-          </span>
-        </div>
-      )}
 
       <textarea
         ref={textareaRef}

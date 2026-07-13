@@ -20,6 +20,7 @@ import * as kbApi from '../../api/kb'
 import AppShell from '../../components/AppShell'
 import WorkspaceFormDialog from '../../components/coding/WorkspaceFormDialog'
 import ErrorState from '../../components/ErrorState'
+import { useChatStore } from '../../stores/chat'
 import type { KnowledgeBase, Workspace } from '../../types'
 
 export default function WorkspacesPage() {
@@ -35,6 +36,8 @@ export default function WorkspacesPage() {
     try {
       setWorkspaces(await codingApi.listWorkspaces())
       setLoadError(null)
+      // 同步共享 store：侧栏项目区/输入框项目选择器即时可见
+      void useChatStore.getState().loadProjects()
     } catch (error) {
       setLoadError(extractErrorMessage(error, '加载项目失败'))
     } finally {

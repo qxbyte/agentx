@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import * as codingApi from '../../api/coding'
 import { useChatStore } from '../../stores/chat'
 import type { Workspace } from '../../types'
 import BlankProjectDialog from './BlankProjectDialog'
@@ -19,15 +18,14 @@ export default function ProjectPicker() {
   const workspaceId = useChatStore((s) => s.workspaceId)
   const setWorkspaceId = useChatStore((s) => s.setWorkspaceId)
   const setKbIds = useChatStore((s) => s.setKbIds)
+  const workspaces = useChatStore((s) => s.projects)
+  const loadProjects = useChatStore((s) => s.loadProjects)
 
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [blankOpen, setBlankOpen] = useState(false)
 
-  const load = () => {
-    void codingApi.listWorkspaces().then(setWorkspaces).catch(() => setWorkspaces([]))
-  }
-  useEffect(load, [])
+  const load = () => void loadProjects()
+  useEffect(load, [loadProjects])
 
   const current = workspaces.find((w) => w.id === workspaceId) ?? null
   const coding = workspaceId !== null
