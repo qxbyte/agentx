@@ -4,44 +4,48 @@
    组件样式一律引用变量，不写死色值。
    ============================================================ */
 :root {
-  --ax-primary: #4f46e5;
-  --ax-primary-strong: #4338ca;
-  --ax-violet: #7c3aed;
-  --ax-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  /* 主操作色：纯黑（OpenAI 式），hover 提亮一档 */
+  --ax-primary: #0d0d0d;
+  --ax-primary-strong: #2d2d2d;
+  /* 点缀色：仅用于链接 / 选中态细节，低饱和蓝 */
+  --ax-accent: #3b82f6;
 
-  --ax-bg: #f7f7f8;
+  --ax-bg: #ffffff;
   --ax-surface: #ffffff;
-  --ax-border: #e4e4e9;
-  --ax-border-subtle: #ececf1;
+  --ax-panel: #f9f9f9;
+  --ax-border: #e5e5e5;
+  --ax-border-subtle: #ececec;
+  --ax-hairline: rgba(0, 0, 0, 0.08);
 
-  --ax-text: #26262e;
-  --ax-text-secondary: #6f6f7a;
-  --ax-text-faint: #9c9ca6;
+  --ax-text: #0d0d0d;
+  --ax-text-secondary: #6e6e80;
+  --ax-text-faint: #b4b4b4;
 
-  --ax-success: #16a34a;
-  --ax-warning: #d97706;
-  --ax-danger: #dc2626;
-  --ax-danger-bg: #fff5f5;
-  --ax-danger-border: #ffd6d6;
-  --ax-star: #faad14;
+  --ax-success: #10a37f;
+  --ax-warning: #b45309;
+  --ax-danger: #c14444;
+  --ax-danger-bg: #fbf3f2;
+  --ax-danger-border: #efd7d5;
+  --ax-star: #d9a410;
 
-  --ax-user-bubble: #eef0fe;
-  --ax-reasoning-bg: #f6f5fd;
-  --ax-code-bg: #f6f6f8;
-  --ax-code-header: #ededf2;
+  --ax-user-bubble: #f4f4f4;
+  --ax-reasoning-bg: #f9f9f9;
+  --ax-code-bg: #f7f7f7;
+  --ax-code-header: #efefef;
 
-  --ax-sidebar-bg: #16152b;
-  --ax-sidebar-text: rgba(255, 255, 255, 0.88);
-  --ax-sidebar-text-dim: rgba(255, 255, 255, 0.55);
-  --ax-sidebar-hover: rgba(255, 255, 255, 0.07);
-  --ax-sidebar-active: rgba(124, 108, 255, 0.28);
+  --ax-sidebar-bg: var(--ax-panel);
+  --ax-sidebar-text: #0d0d0d;
+  --ax-sidebar-text-dim: #8e8e93;
+  --ax-sidebar-hover: #ececec;
+  --ax-sidebar-active: #e8e8e8;
 
   --ax-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --ax-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
     monospace;
 
-  --ax-radius: 10px;
+  --ax-radius: 8px;
+  --ax-radius-lg: 12px;
   --ax-sidebar-width: 260px;
 }
 
@@ -67,7 +71,7 @@ body {
 }
 
 ::selection {
-  background: rgba(79, 70, 229, 0.18);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* 细滚动条 */
@@ -83,7 +87,7 @@ body {
   background: transparent;
 }
 .ax-sidebar .ax-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.14);
 }
 
 :focus-visible {
@@ -123,8 +127,8 @@ body {
   gap: 10px;
   padding: 10px 16px;
   min-height: 52px;
-  border-bottom: 1px solid var(--ax-border-subtle);
-  background: rgba(247, 247, 248, 0.92);
+  border-bottom: 1px solid var(--ax-border);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(8px);
 }
 
@@ -138,7 +142,7 @@ body {
 }
 
 /* ============================================================
-   侧栏（深靛蓝品牌面板）
+   侧栏（浅灰面板 + hairline 分割）
    ============================================================ */
 .ax-sidebar {
   width: var(--ax-sidebar-width);
@@ -146,11 +150,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--ax-sidebar-bg);
-  background-image: radial-gradient(
-    120% 140px at 20% 0%,
-    rgba(124, 58, 237, 0.28),
-    transparent 70%
-  );
+  border-right: 1px solid var(--ax-border);
   color: var(--ax-sidebar-text);
   transition: margin-left 0.2s ease;
 }
@@ -171,7 +171,7 @@ body {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: #fff;
+  color: var(--ax-text);
 }
 
 .ax-icon-btn {
@@ -189,11 +189,11 @@ body {
   transition: background 0.15s ease;
 }
 .ax-sidebar .ax-icon-btn {
-  color: var(--ax-sidebar-text-dim);
+  color: var(--ax-text-secondary);
 }
 .ax-sidebar .ax-icon-btn:hover {
   background: var(--ax-sidebar-hover);
-  color: #fff;
+  color: var(--ax-text);
 }
 .ax-main .ax-icon-btn {
   color: var(--ax-text-secondary);
@@ -218,15 +218,15 @@ body {
 }
 .ax-new-chat .ant-btn {
   height: 38px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #fff;
+  background: var(--ax-surface);
+  border: 1px solid var(--ax-border);
+  color: var(--ax-text);
   font-weight: 500;
 }
 .ax-new-chat .ant-btn:hover {
-  background: rgba(255, 255, 255, 0.14) !important;
-  border-color: rgba(255, 255, 255, 0.28) !important;
-  color: #fff !important;
+  background: var(--ax-surface) !important;
+  border-color: #cfcfcf !important;
+  color: var(--ax-text) !important;
 }
 
 /* 侧栏主导航（对话 / 知识库 / 管理后台） */
@@ -236,7 +236,7 @@ body {
   gap: 2px;
   padding: 0 12px 10px;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--ax-border);
 }
 .ax-nav-item {
   display: flex;
@@ -261,11 +261,11 @@ body {
 }
 .ax-nav-item .anticon {
   font-size: 15px;
-  color: var(--ax-sidebar-text-dim);
+  color: var(--ax-text-secondary);
 }
 .ax-nav-item--active .anticon,
 .ax-nav-item:hover .anticon {
-  color: #fff;
+  color: var(--ax-text);
 }
 
 .ax-conv-list {
@@ -326,10 +326,10 @@ body {
 .ax-conv-more .ax-icon-btn {
   width: 24px;
   height: 24px;
-  color: var(--ax-sidebar-text-dim);
+  color: var(--ax-text-secondary);
 }
 .ax-conv-more .ax-icon-btn:hover {
-  color: #fff;
+  color: var(--ax-text);
 }
 
 .ax-conv-empty {
@@ -344,7 +344,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--ax-border);
 }
 
 .ax-user-avatar {
@@ -355,7 +355,7 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--ax-gradient);
+  background: var(--ax-text);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -368,7 +368,7 @@ body {
 .ax-user-name {
   font-size: 13.5px;
   font-weight: 600;
-  color: #fff;
+  color: var(--ax-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -404,7 +404,7 @@ body {
 .ax-user-bubble {
   max-width: 78%;
   padding: 10px 16px;
-  border-radius: 16px 16px 4px 16px;
+  border-radius: 18px;
   background: var(--ax-user-bubble);
   color: var(--ax-text);
   font-size: 14.5px;
@@ -451,7 +451,7 @@ body {
   margin-left: 2px;
   vertical-align: -2px;
   border-radius: 2px;
-  background: var(--ax-primary);
+  background: var(--ax-text);
   animation: ax-blink 1s steps(1) infinite;
 }
 @keyframes ax-blink {
@@ -493,10 +493,7 @@ body {
   font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.3px;
-  background: var(--ax-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ax-text);
 }
 .ax-welcome-sub {
   margin: 0;
@@ -510,7 +507,7 @@ body {
 .ax-reasoning {
   margin-bottom: 10px;
   border: 1px solid var(--ax-border-subtle);
-  border-left: 3px solid rgba(124, 58, 237, 0.45);
+  border-left: 3px solid #d5d5d5;
   border-radius: 8px;
   background: var(--ax-reasoning-bg);
   overflow: hidden;
@@ -636,12 +633,12 @@ body {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .ax-source-badge:hover {
-  border-color: var(--ax-primary);
-  color: var(--ax-primary);
+  border-color: #c4c4c4;
+  color: var(--ax-text);
 }
 .ax-source-index {
   font-weight: 600;
-  color: var(--ax-primary);
+  color: var(--ax-text);
 }
 .ax-source-name {
   overflow: hidden;
@@ -710,7 +707,7 @@ body {
   color: var(--ax-text-secondary);
 }
 .ax-markdown a {
-  color: var(--ax-primary);
+  color: var(--ax-accent);
   text-decoration: none;
 }
 .ax-markdown a:hover {
@@ -819,14 +816,12 @@ body {
   gap: 8px;
   padding: 10px 10px 10px 16px;
   border: 1px solid var(--ax-border);
-  border-radius: 16px;
+  border-radius: 24px;
   background: var(--ax-surface);
-  box-shadow: 0 2px 12px rgba(22, 21, 43, 0.05);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 .ax-composer:focus-within {
-  border-color: rgba(79, 70, 229, 0.55);
-  box-shadow: 0 2px 16px rgba(79, 70, 229, 0.12);
+  border-color: #c4c4c4;
 }
 .ax-composer textarea {
   flex: 1;
@@ -853,21 +848,20 @@ body {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 10px;
-  background: var(--ax-gradient);
+  border-radius: 999px;
+  background: var(--ax-primary);
   color: #fff;
   font-size: 15px;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease;
 }
 .ax-send-btn:hover {
-  transform: translateY(-1px);
+  background: var(--ax-primary-strong);
 }
 .ax-send-btn:disabled {
   background: var(--ax-border);
   color: #fff;
   cursor: not-allowed;
-  transform: none;
 }
 .ax-send-btn--stop {
   background: var(--ax-text);
@@ -890,17 +884,14 @@ body {
   justify-content: center;
   padding: 24px;
   background: var(--ax-bg);
-  background-image: radial-gradient(60% 50% at 50% -10%, rgba(124, 58, 237, 0.12), transparent 70%),
-    radial-gradient(50% 40% at 90% 110%, rgba(79, 70, 229, 0.1), transparent 70%);
 }
 .ax-login-card {
   width: 100%;
   max-width: 384px;
   padding: 36px 32px 28px;
-  border: 1px solid var(--ax-border-subtle);
-  border-radius: 18px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius-lg);
   background: var(--ax-surface);
-  box-shadow: 0 12px 40px rgba(22, 21, 43, 0.08);
 }
 .ax-login-brand {
   display: flex;
@@ -918,36 +909,22 @@ body {
   color: var(--ax-text);
 }
 .ax-login-title strong {
-  background: var(--ax-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--ax-text);
 }
 .ax-login-sub {
   margin: 0;
   font-size: 13px;
   color: var(--ax-text-secondary);
 }
-/* 登录按钮走品牌渐变，与对话区发送按钮呼应 */
-.ax-login .ant-btn-primary:not(:disabled) {
-  background: var(--ax-gradient);
-  border: none;
-  transition: opacity 0.15s ease;
-}
-.ax-login .ant-btn-primary:not(:disabled):hover {
-  background: var(--ax-gradient);
-  opacity: 0.9;
-}
-
 /* ============================================================
-   Logo
+   Logo（单色黑，OpenAI 式极简）
    ============================================================ */
 .ax-logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 26%;
-  background: var(--ax-gradient);
+  background: var(--ax-text);
   color: #fff;
   flex-shrink: 0;
 }
@@ -1044,14 +1021,14 @@ body {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .ax-page .ant-upload-wrapper .ant-upload-drag:hover {
-  border-color: var(--ax-primary);
+  border-color: #c4c4c4;
 }
 .ax-page .ant-upload-wrapper .ant-upload-drag.ant-upload-drag-hover {
-  border-color: var(--ax-primary);
-  background: rgba(79, 70, 229, 0.06);
+  border-color: var(--ax-text-secondary);
+  background: rgba(0, 0, 0, 0.02);
 }
 .ax-page .ant-upload-drag .ant-upload-drag-icon .anticon {
-  color: var(--ax-primary);
+  color: var(--ax-text-secondary);
 }
 
 /* ============================================================
@@ -1067,16 +1044,14 @@ body {
   flex-direction: column;
   gap: 8px;
   padding: 18px 20px;
-  border: 1px solid var(--ax-border-subtle);
-  border-radius: 14px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius-lg);
   background: var(--ax-surface);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 .ax-kb-card:hover {
-  border-color: rgba(79, 70, 229, 0.45);
-  box-shadow: 0 6px 20px rgba(22, 21, 43, 0.07);
-  transform: translateY(-1px);
+  border-color: #c4c4c4;
 }
 .ax-kb-card-head {
   display: flex;
@@ -1092,7 +1067,7 @@ body {
   flex-shrink: 0;
   border-radius: 10px;
   background: var(--ax-user-bubble);
-  color: var(--ax-primary);
+  color: var(--ax-text);
   font-size: 17px;
 }
 .ax-kb-card-name {
@@ -1138,14 +1113,14 @@ body {
 }
 .ax-hit-card {
   padding: 14px 16px;
-  border: 1px solid var(--ax-border-subtle);
-  border-radius: 12px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius-lg);
   background: var(--ax-surface);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 .ax-hit-card:hover {
-  border-color: rgba(79, 70, 229, 0.45);
+  border-color: #c4c4c4;
 }
 .ax-hit-card-head {
   display: flex;
@@ -1227,8 +1202,8 @@ body {
 .ax-admin-menu {
   width: 180px;
   flex-shrink: 0;
-  border-radius: 12px;
-  border: 1px solid var(--ax-border-subtle) !important;
+  border-radius: var(--ax-radius-lg);
+  border: 1px solid var(--ax-border) !important;
   background: var(--ax-surface);
   overflow: hidden;
 }
@@ -1248,8 +1223,8 @@ body {
 }
 .ax-stat-card {
   padding: 16px 20px;
-  border: 1px solid var(--ax-border-subtle);
-  border-radius: 14px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius-lg);
   background: var(--ax-surface);
 }
 .ax-stat-label {
@@ -1270,8 +1245,8 @@ body {
 
 .ax-chart-card {
   padding: 18px 20px;
-  border: 1px solid var(--ax-border-subtle);
-  border-radius: 14px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius-lg);
   background: var(--ax-surface);
   margin-bottom: 20px;
 }
@@ -1302,8 +1277,8 @@ body {
   max-width: 34px;
   min-height: 2px;
   border-radius: 6px 6px 2px 2px;
-  background: var(--ax-gradient);
-  opacity: 0.9;
+  background: var(--ax-text);
+  opacity: 0.82;
   transition: opacity 0.15s ease;
 }
 .ax-bar-col:hover .ax-bar {
@@ -1313,6 +1288,46 @@ body {
   font-size: 10.5px;
   color: var(--ax-text-faint);
   white-space: nowrap;
+}
+
+/* ============================================================
+   antd 预设 Tag 降饱和（组件层 color="purple"/"geekblue" 等
+   统一映射为灰阶 / 低饱和蓝绿，不改组件代码）
+   ============================================================ */
+.ant-tag {
+  border-radius: 6px;
+}
+.ant-tag-purple,
+.ant-tag-magenta {
+  color: var(--ax-text-secondary);
+  background: #f4f4f5;
+  border-color: var(--ax-border);
+}
+.ant-tag-geekblue,
+.ant-tag-blue,
+.ant-tag-processing {
+  color: #3a5ea8;
+  background: #f0f4fa;
+  border-color: #dbe4f2;
+}
+.ant-tag-success,
+.ant-tag-green {
+  color: #0e8a6e;
+  background: #e9f6f1;
+  border-color: #cde9de;
+}
+.ant-tag-error,
+.ant-tag-red {
+  color: var(--ax-danger);
+  background: var(--ax-danger-bg);
+  border-color: var(--ax-danger-border);
+}
+.ant-tag-warning,
+.ant-tag-orange,
+.ant-tag-gold {
+  color: var(--ax-warning);
+  background: #faf4ea;
+  border-color: #eee1c8;
 }
 
 /* ============================================================

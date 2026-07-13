@@ -6,10 +6,11 @@ import type { ThemeConfig } from 'antd'
  * 并在 index.css 的 [data-theme='dark'] 块补齐 CSS 变量。
  */
 export const brand = {
-  primary: '#4f46e5',
-  primaryStrong: '#4338ca',
-  violet: '#7c3aed',
-  gradient: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+  /** 主操作黑（OpenAI 式简洁线条风） */
+  primary: '#0d0d0d',
+  primaryStrong: '#2d2d2d',
+  /** 点缀色：仅链接 / 选中态细节使用 */
+  accent: '#3b82f6',
 } as const
 
 export const fontFamily = [
@@ -39,14 +40,19 @@ export const monoFontFamily = [
 export const lightTheme: ThemeConfig = {
   token: {
     colorPrimary: brand.primary,
-    colorInfo: brand.primary,
-    colorLink: brand.primary,
-    colorBgLayout: '#f7f7f8',
-    colorText: '#26262e',
-    colorTextSecondary: '#6f6f7a',
-    colorBorder: '#dededd',
-    colorBorderSecondary: '#ebebef',
-    borderRadius: 10,
+    colorInfo: brand.accent,
+    colorLink: brand.accent,
+    colorSuccess: '#10a37f',
+    colorWarning: '#b45309',
+    colorError: '#c14444',
+    colorBgLayout: '#ffffff',
+    colorText: '#0d0d0d',
+    colorTextSecondary: '#6e6e80',
+    colorTextTertiary: '#8e8e93',
+    colorTextQuaternary: '#b4b4b4',
+    colorBorder: '#d5d5d5',
+    colorBorderSecondary: '#e5e5e5',
+    borderRadius: 8,
     fontFamily,
     fontSize: 14,
   },
@@ -55,12 +61,14 @@ export const lightTheme: ThemeConfig = {
       borderRadius: 8,
       fontWeight: 500,
       primaryShadow: 'none',
+      defaultShadow: 'none',
+      dangerShadow: 'none',
     },
     Input: {
       borderRadius: 8,
     },
     Modal: {
-      borderRadiusLG: 14,
+      borderRadiusLG: 12,
     },
     Dropdown: {
       borderRadiusLG: 12,

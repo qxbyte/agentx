@@ -2,7 +2,7 @@ interface LogoProps {
   size?: number
 }
 
-/** AgentX 品牌标识：渐变圆角方块 + 四芒星火花 */
+/** AgentX 品牌标识：单色黑圆角方块 + 四芒星火花（极简线条风） */
 export default function Logo({ size = 32 }: LogoProps) {
   return (
     <span className="ax-logo" style={{ width: size, height: size }} aria-hidden="true">

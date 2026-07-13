@@ -5,7 +5,7 @@ import { extractErrorMessage } from '../../api/http'
 import * as kbApi from '../../api/kb'
 import type { HitTestResult, KnowledgeBase } from '../../types'
 
-/** score 色阶：高分绿 / 中分品牌蓝紫 / 低分橙 */
+/** score 色阶：高分绿 / 中分黑 / 低分暖棕（全部低饱和） */
 function scoreColor(score: number): string {
   if (score >= 0.7) return 'var(--ax-success)'
   if (score >= 0.4) return 'var(--ax-primary)'
