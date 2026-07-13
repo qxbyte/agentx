@@ -17,6 +17,11 @@ export function listExternalKbs(): Promise<ExternalKb[]> {
   return request<ExternalKb[]>({ url: '/v1/admin/external-kbs', method: 'GET' })
 }
 
+/** 面向用户：启用中的外部库（输入框知识库选择器用，非 admin 接口） */
+export function listEnabledExternalKbs(): Promise<ExternalKb[]> {
+  return request<ExternalKb[]>({ url: '/v1/kb/external', method: 'GET' })
+}
+
 export function createExternalKb(payload: ExternalKbPayload): Promise<ExternalKb> {
   return request<ExternalKb>({ url: '/v1/admin/external-kbs', method: 'POST', data: payload })
 }

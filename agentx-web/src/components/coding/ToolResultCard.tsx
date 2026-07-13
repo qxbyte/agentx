@@ -65,14 +65,15 @@ export default function ToolResultCard({ call }: { call: ToolCallInfo }) {
       </button>
       {open && (
         <div className="ax-toolcall-body">
-          <Body call={call} kind={kind} />
+          <ToolCallBody call={call} kind={kind} />
         </div>
       )}
     </div>
   )
 }
 
-function Body({ call, kind }: { call: ToolCallInfo; kind: string }) {
+/** 工具调用详情体（按 kind 分发 diff/终端/文本）——大卡与集合紧凑行共用。 */
+export function ToolCallBody({ call, kind }: { call: ToolCallInfo; kind: string }) {
   const preview = call.preview
   switch (kind) {
     case 'patch': {

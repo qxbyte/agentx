@@ -4,8 +4,8 @@ import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
 import com.agentx.rag.domain.ExternalKb;
 import com.agentx.rag.domain.KnowledgeBase;
+import com.agentx.rag.domain.KnowledgeBaseRepository;
 import com.agentx.rag.service.ExternalKbService;
-import com.agentx.rag.service.KnowledgeBaseService;
 import com.agentx.rag.vector.VectorMetadata;
 import com.agentx.rag.vector.VectorStoreFactory;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +28,10 @@ import java.util.UUID;
  * RetrievalAugmentationAdvisor。命中文档经 advisor context（DOCUMENT_CONTEXT）
  * 由 chat 层转 rag-source 帧。
  * <p>
- * 检索源融合：本地知识库（kbIds）与启用中的外部知识库（external_kb）共存——
- * 组合成单一 DocumentRetriever，结果按相似度降序合并；外部库停用即完全跳过（解耦）。
+ * 知识库是会话/项目的创建期属性：context.kbIds()（会话固化 + 项目默认合并）为空
+ * 即完全不检索——未选择知识库的对话绝不引入召回。kbIds 中的 id 分流：命中
+ * external_kb 的走外部检索（且须 enabled，停用即忽略，解耦开关）；其余走本地
+ * 向量库。两路结果按相似度降序合并为单一 DocumentRetriever。
  * <p>
  * @Order(20)：在 AgentStreamCustomizer(10) 之后执行，以消费其合并的 kbIds。
  * 多知识库约束：一次检索用第一个库的检索参数（topK/threshold）与 embedding
@@ -40,19 +42,26 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RagStreamCustomizer implements ChatStreamCustomizer {
 
-    private final KnowledgeBaseService knowledgeBaseService;
+    private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final VectorStoreFactory vectorStoreFactory;
     private final ExternalKbService externalKbService;
     private final ExternalKbRetriever externalKbRetriever;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
-        List<ExternalKb> externals = externalKbService.listEnabled();
-        if (context.kbIds().isEmpty() && externals.isEmpty()) {
+        if (context.kbIds().isEmpty()) {
+            return; // 未选择知识库的对话绝不引入召回
+        }
+        // 分流：会话选中的 id 命中外部库（且启用）→ 外部检索；其余按本地库处理
+        List<ExternalKb> externals = externalKbService.listEnabled().stream()
+                .filter(kb -> context.kbIds().contains(kb.getId()))
+                .toList();
+        List<KnowledgeBase> localKbs = knowledgeBaseRepository.findAllById(context.kbIds());
+        if (externals.isEmpty() && localKbs.isEmpty()) {
             return;
         }
 
-        DocumentRetriever local = context.kbIds().isEmpty() ? null : localRetriever(context);
+        DocumentRetriever local = localKbs.isEmpty() ? null : localRetriever(localKbs);
         DocumentRetriever composite = query -> {
             List<Document> merged = new ArrayList<>();
             if (local != null) {
@@ -72,10 +81,7 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
                 .build());
     }
 
-    private DocumentRetriever localRetriever(ChatStreamContext context) {
-        List<KnowledgeBase> kbs = context.kbIds().stream()
-                .map(knowledgeBaseService::getInternal)
-                .toList();
+    private DocumentRetriever localRetriever(List<KnowledgeBase> kbs) {
         KnowledgeBase primary = kbs.getFirst();
         List<String> kbIdValues = kbs.stream().map(kb -> kb.getId().toString())
                 .map(Object::toString).toList();

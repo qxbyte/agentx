@@ -32,6 +32,7 @@ public class ExternalKbController {
         return ApiResponse.ok(service.list().stream().map(View::of).toList());
     }
 
+
     @PostMapping
     public ApiResponse<View> create(@Valid @RequestBody UpsertRequest req) {
         return ApiResponse.ok(View.of(service.create(req)));

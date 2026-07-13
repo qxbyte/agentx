@@ -81,10 +81,8 @@ public class ChatStreamService {
         ChatStreamContext context = ChatStreamContext.of(
                 user.id(), conversation.getId(), conversation.getAgentId(),
                 parseKbIds(conversation.getKbIds()), req.workspaceId(), req.mode(), toolEventSink);
-        // 输入框本次选择的知识库并入检索（与会话/工作区默认知识库合并去重）
-        if (req.kbIds() != null) {
-            req.kbIds().forEach(context.kbIds()::add);
-        }
+        // 知识库是会话创建期属性：已固化在 conversation.kbIds（见 resolveConversation），
+        // 续聊忽略请求级 kbIds——后续消息一律沿用会话既定知识库
 
         ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())
@@ -120,7 +118,8 @@ public class ChatStreamService {
         if (req.conversationId() != null) {
             return conversationService.getOwned(req.conversationId(), user.id());
         }
-        return conversationService.create(user.id(), req.modelConfigId(), null, null, req.workspaceId());
+        // 新会话：首条消息所选知识库随会话固化落库，此后沿用不可变
+        return conversationService.create(user.id(), req.modelConfigId(), null, req.kbIds(), req.workspaceId());
     }
 
     private ChatClient resolveClient(ChatConversation conversation, StreamRequest req) {

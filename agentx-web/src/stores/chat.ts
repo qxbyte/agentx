@@ -295,10 +295,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         conversationId,
         content: trimmed,
         ...(modelConfigId ? { modelConfigId } : {}),
-        // workspaceId 非空才进入 coding 模式；知识库检索跟随项目，未选项目不发 kbIds
-        ...(workspaceId
-          ? { workspaceId, mode: codingMode, ...(kbIds.length > 0 ? { kbIds } : {}) }
-          : {}),
+        // workspaceId 非空才进入 coding 模式
+        ...(workspaceId ? { workspaceId, mode: codingMode } : {}),
+        // 知识库是会话创建期属性：仅新会话首条消息携带，随会话固化；续聊后端一律沿用
+        ...(!conversationId && kbIds.length > 0 ? { kbIds } : {}),
         signal: controller.signal,
         onEvent: handleEvent,
       })
