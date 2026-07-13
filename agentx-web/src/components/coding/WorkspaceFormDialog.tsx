@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/select'
 import { extractErrorMessage } from '../../api/http'
 import * as codingApi from '../../api/coding'
-import * as kbApi from '../../api/kb'
-import type { KnowledgeBase, Workspace, WorkspaceValidation } from '../../types'
+import type { Workspace, WorkspaceValidation } from '../../types'
+import { useKbOptions } from './useKbOptions'
 
 const NONE = '__none__'
 
@@ -41,7 +41,7 @@ export default function WorkspaceFormDialog({
   editing,
   onSaved,
 }: WorkspaceFormDialogProps) {
-  const [kbs, setKbs] = useState<KnowledgeBase[]>([])
+  const kbs = useKbOptions(open)
   const [name, setName] = useState('')
   const [rootPath, setRootPath] = useState('')
   const [kbId, setKbId] = useState(NONE)
@@ -52,7 +52,6 @@ export default function WorkspaceFormDialog({
 
   useEffect(() => {
     if (!open) return
-    void kbApi.listKbs().then(setKbs).catch(() => setKbs([]))
     setName(editing?.name ?? '')
     setRootPath(editing?.rootPath ?? '')
     setKbId(editing?.kbId ?? NONE)
@@ -160,6 +159,7 @@ export default function WorkspaceFormDialog({
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>
                     {kb.name}
+                    {kb.external ? '（外部）' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

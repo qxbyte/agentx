@@ -21,8 +21,8 @@ import {
 } from '@/components/ui/select'
 import { extractErrorMessage } from '../../api/http'
 import * as codingApi from '../../api/coding'
-import * as kbApi from '../../api/kb'
-import type { KnowledgeBase, Workspace } from '../../types'
+import type { Workspace } from '../../types'
+import { useKbOptions } from './useKbOptions'
 
 const NONE = '__none__'
 
@@ -34,7 +34,7 @@ interface BlankProjectDialogProps {
 
 /** 新建空白项目（Codex 式）：只填名字，目录由后端在受控根下创建并 git init。 */
 export default function BlankProjectDialog({ open, onOpenChange, onCreated }: BlankProjectDialogProps) {
-  const [kbs, setKbs] = useState<KnowledgeBase[]>([])
+  const kbs = useKbOptions(open)
   const [name, setName] = useState('')
   const [kbId, setKbId] = useState(NONE)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +42,6 @@ export default function BlankProjectDialog({ open, onOpenChange, onCreated }: Bl
 
   useEffect(() => {
     if (!open) return
-    void kbApi.listKbs().then(setKbs).catch(() => setKbs([]))
     setName('')
     setKbId(NONE)
     setError(null)
@@ -106,6 +105,7 @@ export default function BlankProjectDialog({ open, onOpenChange, onCreated }: Bl
                 {kbs.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>
                     {kb.name}
+                    {kb.external ? '（外部）' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

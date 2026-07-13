@@ -59,6 +59,10 @@ interface ChatState {
   setCodingMode: (mode: CodingMode) => void
   setKbIds: (ids: string[]) => void
 
+  /** 从项目入口新建的对话：项目归属与知识库锁定沿用项目，不允许再选 */
+  projectLocked: boolean
+  setProjectLocked: (locked: boolean) => void
+
   /** 项目列表单一数据源：Sidebar/ProjectPicker/管理页共享，创建/编辑/删除后 refresh */
   projects: Workspace[]
   loadProjects: () => Promise<void>
@@ -96,6 +100,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setWorkspaceId: (id) => set({ workspaceId: id }),
   setCodingMode: (mode) => set({ codingMode: mode }),
   setKbIds: (ids) => set({ kbIds: ids }),
+
+  projectLocked: false,
+  setProjectLocked: (locked) => set({ projectLocked: locked }),
 
   projects: [],
   async loadProjects() {
@@ -383,6 +390,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       workspaceId: null,
       codingMode: 'ASK',
       kbIds: [],
+      projectLocked: false,
     })
   },
 }))

@@ -83,6 +83,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
   const resetChat = useChatStore((s) => s.reset)
   const setWorkspaceId = useChatStore((s) => s.setWorkspaceId)
   const setKbIds = useChatStore((s) => s.setKbIds)
+  const setProjectLocked = useChatStore((s) => s.setProjectLocked)
 
   const projects = useChatStore((s) => s.projects)
   const loadProjects = useChatStore((s) => s.loadProjects)
@@ -116,7 +117,11 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
     onNavigate?.()
   }
 
+  /** 普通新建对话：独立对话，自由选择项目/知识库（重置并解锁） */
   const handleNewChat = () => {
+    setWorkspaceId(null)
+    setKbIds([])
+    setProjectLocked(false)
     navigate('/')
     onNavigate?.()
   }
@@ -184,10 +189,11 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
 
   const stop = (event: MouseEvent) => event.stopPropagation()
 
-  /** 在项目中新建对话：选中项目（预填其默认知识库）并回到新对话页 */
+  /** 在项目中新建对话：归属与知识库锁定沿用项目（不允许再选） */
   const openProject = (ws: Workspace) => {
     setWorkspaceId(ws.id)
     setKbIds(ws.kbId ? [ws.kbId] : [])
+    setProjectLocked(true)
     navigate('/')
     onNavigate?.()
   }
