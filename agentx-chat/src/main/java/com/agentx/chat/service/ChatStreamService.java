@@ -73,7 +73,7 @@ public class ChatStreamService {
         ToolEventSink toolEventSink = new SseToolEventSink(sender, aggregator);
         ChatStreamContext context = ChatStreamContext.of(
                 user.id(), conversation.getId(), conversation.getAgentId(),
-                parseKbIds(conversation.getKbIds()), toolEventSink);
+                parseKbIds(conversation.getKbIds()), req.workspaceId(), req.mode(), toolEventSink);
 
         ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())

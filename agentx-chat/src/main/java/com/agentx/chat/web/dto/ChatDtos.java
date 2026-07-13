@@ -31,6 +31,7 @@ public final class ChatDtos {
         }
     }
 
-    /** 流式对话请求：conversationId 为空则自动建会话。 */
-    public record StreamRequest(UUID conversationId, @NotBlank String content, UUID modelConfigId) {}
+    /** 流式对话请求：conversationId 为空则自动建会话；workspaceId 非空激活 CodeAgent。 */
+    public record StreamRequest(UUID conversationId, @NotBlank String content, UUID modelConfigId,
+                               UUID workspaceId, String mode) {}
 }
