@@ -24,6 +24,7 @@
     <module>agentx-chat</module>
     <module>agentx-agent</module>
     <module>agentx-rag</module>
+    <module>agentx-coding</module>
     <module>agentx-mcp</module>
     <module>agentx-mcp-server</module>
     <module>agentx-server</module>
@@ -82,6 +83,11 @@
       <dependency>
         <groupId>com.agentx</groupId>
         <artifactId>agentx-rag</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.agentx</groupId>
+        <artifactId>agentx-coding</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
