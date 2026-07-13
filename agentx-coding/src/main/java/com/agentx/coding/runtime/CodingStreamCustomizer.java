@@ -43,6 +43,7 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
     private final WorkspaceService workspaceService;
     private final ToolRegistry toolRegistry;
     private final CodingApprovalDecorator approvalDecorator;
+    private final CodingToolPreviewProvider previewProvider;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
@@ -66,7 +67,7 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
         AtomicInteger counter = new AtomicInteger();
         List<ToolCallback> tools = toolRegistry.resolve(toolNames).stream()
                 .<ToolCallback>map(t -> new SseNotifyingToolCallback(
-                        t, context.toolEventSink(), counter, MAX_TOOL_CALLS))
+                        t, context.toolEventSink(), counter, MAX_TOOL_CALLS, previewProvider))
                 .map(t -> mode == CodingMode.ASK
                         && DangerousTools.isDangerous(t.getToolDefinition().name())
                         ? approvalDecorator.decorate(t, context)

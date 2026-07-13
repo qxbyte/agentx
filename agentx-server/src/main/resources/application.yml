@@ -51,3 +51,6 @@ agentx:
     refresh-ttl: 7d
   crypto:
     master-key: ${AGENTX_MASTER_KEY:}
+  coding:
+    # 「新建空白项目」的落盘根目录：空白项目统一建在此目录下并 git init
+    projects-root: ${AGENTX_PROJECTS_ROOT:${user.home}/.agentx/projects}

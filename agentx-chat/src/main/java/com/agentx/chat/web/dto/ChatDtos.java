@@ -16,10 +16,10 @@ public final class ChatDtos {
     public record RenameRequest(@NotBlank String title) {}
 
     public record ConversationView(UUID id, String title, UUID agentId, UUID modelConfigId,
-                                   Instant createdAt, Instant updatedAt) {
+                                   UUID workspaceId, Instant createdAt, Instant updatedAt) {
         public static ConversationView of(ChatConversation c) {
             return new ConversationView(c.getId(), c.getTitle(), c.getAgentId(),
-                    c.getModelConfigId(), c.getCreatedAt(), c.getUpdatedAt());
+                    c.getModelConfigId(), c.getWorkspaceId(), c.getCreatedAt(), c.getUpdatedAt());
         }
     }
 
@@ -31,7 +31,8 @@ public final class ChatDtos {
         }
     }
 
-    /** 流式对话请求：conversationId 为空则自动建会话；workspaceId 非空激活 CodeAgent。 */
+    /** 流式对话请求：conversationId 为空则自动建会话；workspaceId 非空激活 CodeAgent；
+     *  kbIds 为本次检索追加的知识库（输入框多选，与会话/工作区默认知识库合并）。 */
     public record StreamRequest(UUID conversationId, @NotBlank String content, UUID modelConfigId,
-                               UUID workspaceId, String mode) {}
+                               UUID workspaceId, String mode, java.util.List<UUID> kbIds) {}
 }

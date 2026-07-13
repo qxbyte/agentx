@@ -3,6 +3,7 @@ package com.agentx.coding.web;
 import com.agentx.auth.security.AuthPrincipal;
 import com.agentx.auth.security.CurrentUser;
 import com.agentx.coding.service.WorkspaceService;
+import com.agentx.coding.web.dto.CodingDtos.BlankWorkspaceRequest;
 import com.agentx.coding.web.dto.CodingDtos.ValidateRequest;
 import com.agentx.coding.web.dto.CodingDtos.WorkspaceUpsertRequest;
 import com.agentx.coding.web.dto.CodingDtos.WorkspaceValidation;
@@ -54,5 +55,12 @@ public class WorkspaceController {
     @PostMapping("/validate")
     public ApiResponse<WorkspaceValidation> validate(@Valid @RequestBody ValidateRequest req) {
         return ApiResponse.ok(service.validate(req.rootPath()));
+    }
+
+    /** 新建空白项目：后端在受控根下建目录并 git init（Codex「新建空白项目」）。 */
+    @PostMapping("/blank")
+    public ApiResponse<WorkspaceView> createBlank(@CurrentUser AuthPrincipal user,
+                                                  @Valid @RequestBody BlankWorkspaceRequest req) {
+        return ApiResponse.ok(WorkspaceView.of(service.createBlank(user.id(), req.name(), req.kbId())));
     }
 }

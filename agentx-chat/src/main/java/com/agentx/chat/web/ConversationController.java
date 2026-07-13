@@ -40,7 +40,7 @@ public class ConversationController {
         UUID agentId = req == null ? null : req.agentId();
         java.util.List<UUID> kbIds = req == null ? null : req.kbIds();
         return ApiResponse.ok(ConversationView.of(
-                conversationService.create(user.id(), modelConfigId, agentId, kbIds)));
+                conversationService.create(user.id(), modelConfigId, agentId, kbIds, null)));
     }
 
     @PatchMapping("/{id}")

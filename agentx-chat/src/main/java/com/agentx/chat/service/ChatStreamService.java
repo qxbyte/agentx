@@ -81,6 +81,10 @@ public class ChatStreamService {
         ChatStreamContext context = ChatStreamContext.of(
                 user.id(), conversation.getId(), conversation.getAgentId(),
                 parseKbIds(conversation.getKbIds()), req.workspaceId(), req.mode(), toolEventSink);
+        // 输入框本次选择的知识库并入检索（与会话/工作区默认知识库合并去重）
+        if (req.kbIds() != null) {
+            req.kbIds().forEach(context.kbIds()::add);
+        }
 
         ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())
@@ -116,7 +120,7 @@ public class ChatStreamService {
         if (req.conversationId() != null) {
             return conversationService.getOwned(req.conversationId(), user.id());
         }
-        return conversationService.create(user.id(), req.modelConfigId(), null, null);
+        return conversationService.create(user.id(), req.modelConfigId(), null, null, req.workspaceId());
     }
 
     private ChatClient resolveClient(ChatConversation conversation, StreamRequest req) {
@@ -132,16 +136,27 @@ public class ChatStreamService {
             implements ToolEventSink {
         @Override
         public void onToolCall(String callId, String toolName, String argsJson) {
+            onToolCall(callId, toolName, argsJson, null, null);
+        }
+
+        @Override
+        public void onToolCall(String callId, String toolName, String argsJson, String kind,
+                               java.util.Map<String, Object> preview) {
             aggregator.recordToolCall(callId, toolName, argsJson);
-            sender.send(SseEvent.toolCall(callId, toolName, argsJson));
+            sender.send(SseEvent.toolCall(callId, toolName, argsJson, kind, preview));
         }
 
         @Override
         public void onToolResult(String callId, String toolName, String result) {
+            onToolResult(callId, toolName, result, null);
+        }
+
+        @Override
+        public void onToolResult(String callId, String toolName, String result, String kind) {
             String truncated = result != null && result.length() > 2000
                     ? result.substring(0, 2000) + "…" : result;
             aggregator.recordToolResult(callId, truncated);
-            sender.send(SseEvent.toolResult(callId, toolName, truncated));
+            sender.send(SseEvent.toolResult(callId, toolName, truncated, kind));
         }
 
         @Override

@@ -36,6 +36,10 @@ public class ChatConversation {
     @Column(name = "model_config_id")
     private UUID modelConfigId;
 
+    /** CodeAgent：会话归属的编码项目（工作区）；null 为普通对话。供侧栏按项目分组。 */
+    @Column(name = "workspace_id")
+    private UUID workspaceId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

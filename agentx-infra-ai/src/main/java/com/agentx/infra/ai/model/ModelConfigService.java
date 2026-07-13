@@ -25,6 +25,15 @@ public class ModelConfigService {
         return repository.findAll().stream().map(this::toView).toList();
     }
 
+    /** 面向用户的可选 CHAT 模型（仅启用项，默认模型排前），供输入框模型选择器使用。 */
+    public List<com.agentx.infra.ai.web.dto.ModelConfigDtos.ModelOption> listSelectableChat() {
+        return repository.findByTypeAndEnabledTrueOrderByDefaultModelDescNameAsc(ModelType.CHAT)
+                .stream()
+                .map(c -> new com.agentx.infra.ai.web.dto.ModelConfigDtos.ModelOption(
+                        c.getId(), c.getName(), c.getModelName(), c.isDefaultModel()))
+                .toList();
+    }
+
     @Transactional
     public View create(UpsertRequest req) {
         repository.findByName(req.name()).ifPresent(c -> {

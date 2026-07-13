@@ -18,4 +18,7 @@ public final class ModelConfigDtos {
     public record View(UUID id, String name, ProviderType providerType, String baseUrl,
                        String maskedApiKey, String modelName, ModelType type,
                        boolean defaultModel, boolean enabled, Instant createdAt) {}
+
+    /** 面向用户的可选模型（无密钥/无 baseUrl），供对话/编码输入框的模型选择器使用。 */
+    public record ModelOption(UUID id, String name, String modelName, boolean defaultModel) {}
 }

@@ -8,5 +8,6 @@ import java.util.UUID;
 public interface ModelConfigRepository extends JpaRepository<ModelConfig, UUID> {
     Optional<ModelConfig> findFirstByTypeAndDefaultModelTrueAndEnabledTrue(ModelType type);
     List<ModelConfig> findByTypeAndDefaultModelTrue(ModelType type);
+    List<ModelConfig> findByTypeAndEnabledTrueOrderByDefaultModelDescNameAsc(ModelType type);
     Optional<ModelConfig> findByName(String name);
 }

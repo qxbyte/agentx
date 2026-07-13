@@ -37,12 +37,13 @@ public class ConversationService {
 
     @Transactional
     public ChatConversation create(UUID userId, UUID modelConfigId, UUID agentId,
-                                   java.util.List<UUID> kbIds) {
+                                   java.util.List<UUID> kbIds, UUID workspaceId) {
         ChatConversation c = new ChatConversation();
         c.setId(UuidV7.next());
         c.setUserId(userId);
         c.setModelConfigId(modelConfigId);
         c.setAgentId(agentId);
+        c.setWorkspaceId(workspaceId);
         if (kbIds != null && !kbIds.isEmpty()) {
             c.setKbIds("[" + kbIds.stream().map(id -> "\"" + id + "\"")
                     .collect(java.util.stream.Collectors.joining(",")) + "]");

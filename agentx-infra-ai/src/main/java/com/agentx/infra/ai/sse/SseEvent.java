@@ -45,11 +45,33 @@ public record SseEvent(String type, Map<String, Object> data) {
     }
 
     public static SseEvent toolCall(String id, String name, String argsJson) {
-        return new SseEvent(TOOL_CALL, Map.of("id", id, "name", name, "args", argsJson));
+        return toolCall(id, name, argsJson, null, null);
+    }
+
+    /** 富化版：kind + 结构化预览（CodeAgent），null 字段自动省略。 */
+    public static SseEvent toolCall(String id, String name, String argsJson, String kind,
+                                    Map<String, Object> preview) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", id);
+        data.put("name", name);
+        data.put("args", argsJson);
+        if (kind != null) data.put("kind", kind);
+        if (preview != null) data.put("preview", preview);
+        return new SseEvent(TOOL_CALL, data);
     }
 
     public static SseEvent toolResult(String id, String name, String result) {
-        return new SseEvent(TOOL_RESULT, Map.of("id", id, "name", name, "result", result));
+        return toolResult(id, name, result, null);
+    }
+
+    /** 富化版：附带 kind 供前端选择渲染器（CodeAgent）。 */
+    public static SseEvent toolResult(String id, String name, String result, String kind) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", id);
+        data.put("name", name);
+        data.put("result", result);
+        if (kind != null) data.put("kind", kind);
+        return new SseEvent(TOOL_RESULT, data);
     }
 
     public static SseEvent ragSource(List<? extends Map<String, Object>> sources) {

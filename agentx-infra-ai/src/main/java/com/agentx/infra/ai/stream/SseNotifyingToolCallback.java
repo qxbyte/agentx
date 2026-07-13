@@ -3,6 +3,7 @@ package com.agentx.infra.ai.stream;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -18,13 +19,22 @@ public class SseNotifyingToolCallback implements ToolCallback {
     private final ToolEventSink sink;
     private final AtomicInteger sharedCallCounter;
     private final int maxToolCalls;
+    /** 帧富化策略；null 表示不富化（普通对话），帧退化为纯文本。 */
+    private final ToolPreviewProvider previewProvider;
 
     public SseNotifyingToolCallback(ToolCallback delegate, ToolEventSink sink,
                                     AtomicInteger sharedCallCounter, int maxToolCalls) {
+        this(delegate, sink, sharedCallCounter, maxToolCalls, null);
+    }
+
+    public SseNotifyingToolCallback(ToolCallback delegate, ToolEventSink sink,
+                                    AtomicInteger sharedCallCounter, int maxToolCalls,
+                                    ToolPreviewProvider previewProvider) {
         this.delegate = delegate;
         this.sink = sink;
         this.sharedCallCounter = sharedCallCounter;
         this.maxToolCalls = maxToolCalls;
+        this.previewProvider = previewProvider;
     }
 
     @Override
@@ -41,22 +51,25 @@ public class SseNotifyingToolCallback implements ToolCallback {
     public String call(String toolInput, ToolContext toolContext) {
         String name = delegate.getToolDefinition().name();
         String callId = UUID.randomUUID().toString().substring(0, 8);
+        String kind = previewProvider == null ? null : previewProvider.kindOf(name);
         if (sharedCallCounter.incrementAndGet() > maxToolCalls) {
             String halt = "已达到本次对话的工具调用上限（" + maxToolCalls + " 次），请基于已有信息直接回答。";
-            sink.onToolResult(callId, name, halt);
+            sink.onToolResult(callId, name, halt, kind);
             return halt;
         }
-        sink.onToolCall(callId, name, toolInput);
+        Map<String, Object> preview = previewProvider == null
+                ? null : previewProvider.previewOf(name, toolInput);
+        sink.onToolCall(callId, name, toolInput, kind, preview);
         try {
             String result = toolContext == null
                     ? delegate.call(toolInput)
                     : delegate.call(toolInput, toolContext);
-            sink.onToolResult(callId, name, result);
+            sink.onToolResult(callId, name, result, kind);
             return result;
         } catch (Exception e) {
             // 工具异常包装为结果返给模型，让其向用户解释——不断流（设计文档 §9）
             String error = "工具执行失败: " + e.getMessage();
-            sink.onToolResult(callId, name, error);
+            sink.onToolResult(callId, name, error, kind);
             return error;
         }
     }

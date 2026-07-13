@@ -13,6 +13,20 @@ public interface ToolEventSink {
     void onToolResult(String callId, String toolName, String result);
 
     /**
+     * 富化版 tool-call（CodeAgent）：附带展示类型与结构化预览。默认退化为纯文本版，
+     * 由 SSE 实现覆盖以把 kind/preview 带进帧。
+     */
+    default void onToolCall(String callId, String toolName, String argsJson, String kind,
+                            Map<String, Object> preview) {
+        onToolCall(callId, toolName, argsJson);
+    }
+
+    /** 富化版 tool-result（CodeAgent）：附带展示类型。默认退化为纯文本版。 */
+    default void onToolResult(String callId, String toolName, String result, String kind) {
+        onToolResult(callId, toolName, result);
+    }
+
+    /**
      * 审批请求（CodeAgent Ask 模式）：危险工具执行前发出，前端渲染审批卡。
      *
      * @param approvalId 审批标识，前端据此回传决定
