@@ -94,8 +94,7 @@ public class RagIngestService {
             updateDocStatus(doc, KbDocument.Status.PARSING);
 
             String text = parse(doc);
-            List<String> chunks = new OverlappingTextSplitter(
-                    kb.getChunkSize(), kb.getChunkOverlap()).split(text);
+            List<String> chunks = splitterFor(doc, kb).split(text);
 
             updateDocStatus(doc, KbDocument.Status.INGESTING);
             cleanupPrevious(kb, doc);
@@ -122,6 +121,14 @@ public class RagIngestService {
         RagIngestTask task = submit(docId);
         task.setRetries(previous == null ? 0 : previous.getRetries() + 1);
         return taskRepository.save(task);
+    }
+
+    /** Markdown 走结构感知切片（标题/围栏/表格边界），其余类型走通用句读窗口切分。 */
+    private static TextSplitter splitterFor(KbDocument doc, KnowledgeBase kb) {
+        String name = doc.getFilename() == null ? "" : doc.getFilename().toLowerCase();
+        return name.endsWith(".md") || name.endsWith(".markdown")
+                ? new MarkdownStructureSplitter(kb.getChunkSize(), kb.getChunkOverlap())
+                : new OverlappingTextSplitter(kb.getChunkSize(), kb.getChunkOverlap());
     }
 
     private String parse(KbDocument doc) {

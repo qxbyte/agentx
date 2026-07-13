@@ -11,7 +11,7 @@ import java.util.List;
  * 按分隔符优先级（段落 > 换行 > 中英句号/问叹号 > 空格）寻找最佳切点；
  * 相邻块保留 overlap 字符重叠，保证跨块语义连续。
  */
-public class OverlappingTextSplitter {
+public class OverlappingTextSplitter implements TextSplitter {
 
     private static final String[] SEPARATOR_PRIORITY = {"\n\n", "\n", "。", "．", ".", "！", "!", "？", "?", "；", ";", " "};
 
@@ -29,6 +29,7 @@ public class OverlappingTextSplitter {
         this.overlap = overlap;
     }
 
+    @Override
     public List<String> split(String text) {
         List<String> chunks = new ArrayList<>();
         if (text == null || text.isBlank()) {
