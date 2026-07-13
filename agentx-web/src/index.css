@@ -677,6 +677,8 @@ body {
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--ax-text-secondary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
   max-height: 180px;
   overflow: auto;
 }

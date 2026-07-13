@@ -18,9 +18,9 @@ export default function SourceBadge({ source, index }: SourceBadgeProps) {
         </span>
       </PopoverTrigger>
       <PopoverContent side="top" className="ax-source-pop w-auto max-w-[340px] p-3">
-        <div className="flex items-center gap-1.5 font-semibold">
-          <FileText className="size-3.5" />
-          {source.docName}
+        <div className="flex items-start gap-1.5 font-semibold">
+          <FileText className="mt-0.5 size-3.5 shrink-0" />
+          <span className="min-w-0 break-all">{source.docName}</span>
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
           相关度 {(source.score * 100).toFixed(0)}%
