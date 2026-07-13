@@ -99,7 +99,7 @@ export const lightTheme: ThemeConfig = {
       itemSelectedColor: '#0d0d0d',
       itemHoverBg: '#f4f4f4',
       itemActiveBg: '#ececec',
-      itemBorderRadius: 12,
+      itemBorderRadius: 999,
       itemMarginInline: 8,
       activeBarBorderWidth: 0,
     },
