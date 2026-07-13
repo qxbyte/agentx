@@ -425,7 +425,7 @@ body {
   border-radius: 20px;
   background: var(--ax-user-bubble);
   color: var(--ax-text);
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
@@ -443,7 +443,7 @@ body {
 .ax-assistant-body {
   flex: 1;
   min-width: 0;
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
