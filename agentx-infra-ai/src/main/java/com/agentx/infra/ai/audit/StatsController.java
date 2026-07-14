@@ -43,14 +43,15 @@ public class StatsController {
                 GROUP BY 1 ORDER BY 1""", Math.min(Math.max(days, 1), 90)));
     }
 
-    /** 按模型分布。 */
+    /** 按模型分布（CHAT 与 EMBEDDING 分开计：按 model_type + 模型名聚合）。 */
     @GetMapping("/tokens/by-model")
     public ApiResponse<List<Map<String, Object>>> byModel() {
         return ApiResponse.ok(jdbcTemplate.queryForList("""
-                SELECT COALESCE(NULLIF(model_name, ''), 'unknown') AS model,
+                SELECT model_type                                 AS model_type,
+                       COALESCE(NULLIF(model_name, ''), 'unknown') AS model,
                        COUNT(*)                                    AS calls,
                        COALESCE(SUM(prompt_tokens + completion_tokens), 0) AS total_tokens
                 FROM ai_call_log
-                GROUP BY 1 ORDER BY total_tokens DESC"""));
+                GROUP BY model_type, model ORDER BY total_tokens DESC"""));
     }
 }

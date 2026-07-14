@@ -23,6 +23,7 @@ function formatNumber(v: number | string | null | undefined): string {
 
 /** by-model 常见字段的中文列名，未命中的字段原样展示 */
 const MODEL_COLUMN_LABELS: Record<string, string> = {
+  model_type: '类型',
   model: '模型',
   calls: '调用次数',
   total_tokens: '总 Tokens',

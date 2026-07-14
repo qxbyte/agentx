@@ -2,6 +2,7 @@ package com.agentx.infra.ai.client;
 
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
+import com.agentx.infra.ai.audit.AiCallAuditor;
 import com.agentx.infra.ai.model.ModelConfig;
 import com.agentx.infra.ai.model.ModelConfigService;
 import com.agentx.infra.ai.model.ModelType;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class EmbeddingModelFactory {
 
     private final ModelConfigService modelConfigService;
+    private final AiCallAuditor auditor;
     private final Map<ProviderType, EmbeddingModelProvider> providers;
     private final Cache<UUID, EmbeddingModel> cache = Caffeine.newBuilder()
             .maximumSize(16)
@@ -29,8 +31,10 @@ public class EmbeddingModelFactory {
             .build();
 
     public EmbeddingModelFactory(ModelConfigService modelConfigService,
+                                 AiCallAuditor auditor,
                                  List<EmbeddingModelProvider> providerList) {
         this.modelConfigService = modelConfigService;
+        this.auditor = auditor;
         Map<ProviderType, EmbeddingModelProvider> map = new EnumMap<>(ProviderType.class);
         providerList.forEach(p -> map.put(p.type(), p));
         this.providers = map;
@@ -55,7 +59,9 @@ public class EmbeddingModelFactory {
             throw new BizException(ErrorCode.INTERNAL_ERROR,
                     "无可用的 embedding 供应商策略: " + config.getProviderType());
         }
-        return provider.build(config, modelConfigService.decryptedApiKey(config));
+        EmbeddingModel model = provider.build(config, modelConfigService.decryptedApiKey(config));
+        // 装饰审计：所有 embedding 调用（查询/入库/重嵌）统一记 EMBEDDING 计量
+        return new AuditingEmbeddingModel(model, config.getModelName(), auditor);
     }
 
     @EventListener

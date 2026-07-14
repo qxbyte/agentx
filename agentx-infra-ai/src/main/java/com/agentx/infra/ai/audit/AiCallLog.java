@@ -26,6 +26,10 @@ public class AiCallLog {
     @Column(name = "model_name")
     private String modelName;
 
+    /** 模型类型：CHAT | EMBEDDING，用于与语言模型分开计量。 */
+    @Column(name = "model_type", nullable = false)
+    private String modelType = "CHAT";
+
     @Column(name = "prompt_tokens", nullable = false)
     private long promptTokens;
 
