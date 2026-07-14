@@ -12,6 +12,7 @@ import com.agentx.rag.vector.VectorStoreFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
@@ -44,6 +45,24 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class RagStreamCustomizer implements ChatStreamCustomizer {
+
+    /**
+     * 中文查询改写模板（替换 Spring AI 默认英文模板，提升中文追问的改写质量）。
+     * 必含 {@code {target}} 与 {@code {query}} 两个占位符——RewriteQueryTransformer
+     * 构造时强校验，缺失即抛异常。
+     */
+    private static final PromptTemplate REWRITE_PROMPT = new PromptTemplate("""
+            你是查询改写助手。请把用户的提问改写成更适合在{target}中做语义检索的查询。
+            要求：
+            1. 补全指代与省略：把"它""这个""上面说的"等替换为上文明确的实体，使查询自足、脱离上下文也能理解。
+            2. 去掉寒暄、语气词和与检索无关的表述，保持简洁、聚焦要点。
+            3. 保留原始语言（中文提问改写为中文）；只输出改写后的查询本身，不要作答、不要解释。
+
+            原始查询：
+            {query}
+
+            改写后的查询：
+            """);
 
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final VectorStoreFactory vectorStoreFactory;
@@ -96,6 +115,8 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
         try {
             return RewriteQueryTransformer.builder()
                     .chatClientBuilder(chatClientFactory.getDefault().mutate())
+                    .promptTemplate(REWRITE_PROMPT)
+                    .targetSearchSystem("向量知识库")
                     .build();
         } catch (Exception e) {
             log.warn("查询改写不可用（默认 CHAT 模型缺失？），本次跳过改写：{}", e.getMessage());
