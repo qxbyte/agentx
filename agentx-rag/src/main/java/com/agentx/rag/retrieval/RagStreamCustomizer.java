@@ -1,5 +1,6 @@
 package com.agentx.rag.retrieval;
 
+import com.agentx.infra.ai.client.ChatClientFactory;
 import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
 import com.agentx.rag.domain.ExternalKb;
@@ -9,11 +10,13 @@ import com.agentx.rag.service.ExternalKbService;
 import com.agentx.rag.vector.VectorMetadata;
 import com.agentx.rag.vector.VectorStoreFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
+import org.springframework.ai.rag.preretrieval.query.transformation.QueryTransformer;
+import org.springframework.ai.rag.preretrieval.query.transformation.RewriteQueryTransformer;
 import org.springframework.ai.rag.retrieval.search.DocumentRetriever;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
@@ -21,7 +24,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * RAG 检索定制（设计文档 §4.7 检索侧）：会话/Agent 绑定知识库时注入
@@ -37,6 +39,7 @@ import java.util.UUID;
  * 多知识库约束：一次检索用第一个库的检索参数（topK/threshold）与 embedding
  * 模型（跨不同 embedding 模型的库混检无意义，属配置错误，此处取首库为准）。
  */
+@Slf4j
 @Order(20)
 @Component
 @RequiredArgsConstructor
@@ -46,6 +49,7 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
     private final VectorStoreFactory vectorStoreFactory;
     private final ExternalKbService externalKbService;
     private final ExternalKbRetriever externalKbRetriever;
+    private final ChatClientFactory chatClientFactory;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
@@ -72,13 +76,31 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
             return merged;
         };
 
-        spec.advisors(RetrievalAugmentationAdvisor.builder()
+        var advisorBuilder = RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(composite)
                 // 未命中不硬拒答：让模型基于通用知识回答并说明未在知识库命中
                 .queryAugmenter(ContextualQueryAugmenter.builder()
                         .allowEmptyContext(true)
-                        .build())
-                .build());
+                        .build());
+        // 多轮改写：把带指代/省略的追问（"它的性能如何"）改写成自足查询再检索，
+        // 提升多轮召回。用默认 CHAT 模型；默认模型缺失时降级为不改写，不阻断检索。
+        QueryTransformer rewrite = rewriteTransformer();
+        if (rewrite != null) {
+            advisorBuilder.queryTransformers(rewrite);
+        }
+        spec.advisors(advisorBuilder.build());
+    }
+
+    /** 构建多轮改写器（默认 CHAT 模型）；不可用时返回 null，检索照常进行。 */
+    private QueryTransformer rewriteTransformer() {
+        try {
+            return RewriteQueryTransformer.builder()
+                    .chatClientBuilder(chatClientFactory.getDefault().mutate())
+                    .build();
+        } catch (Exception e) {
+            log.warn("查询改写不可用（默认 CHAT 模型缺失？），本次跳过改写：{}", e.getMessage());
+            return null;
+        }
     }
 
     private DocumentRetriever localRetriever(List<KnowledgeBase> kbs) {

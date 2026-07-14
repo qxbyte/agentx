@@ -20,17 +20,32 @@ public class ApprovalRegistry {
 
     private final Map<UUID, CompletableFuture<Boolean>> pending = new ConcurrentHashMap<>();
     private final Map<UUID, java.util.Set<UUID>> byConversation = new ConcurrentHashMap<>();
+    /** 审批项归属：approvalId → 发起会话的用户 id，回传端点据此校验归属。 */
+    private final Map<UUID, UUID> owner = new ConcurrentHashMap<>();
 
     /** 登记一个待审批项，返回工具线程要阻塞等待的 future。 */
-    public CompletableFuture<Boolean> register(UUID conversationId, UUID approvalId) {
+    public CompletableFuture<Boolean> register(UUID userId, UUID conversationId, UUID approvalId) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         pending.put(approvalId, future);
+        owner.put(approvalId, userId);
         byConversation.computeIfAbsent(conversationId, k -> ConcurrentHashMap.newKeySet()).add(approvalId);
         return future;
     }
 
-    /** 前端回传决定：解决对应 future；返回是否命中一个未决项。 */
-    public boolean resolve(UUID approvalId, boolean approved) {
+    /**
+     * 前端回传决定：仅当 requesterId 是该审批的归属用户时才解决对应 future。
+     * 归属不符视同未命中（不向调用方泄漏审批项是否存在），仅记警告日志。
+     */
+    public boolean resolve(UUID approvalId, UUID requesterId, boolean approved) {
+        UUID ownerId = owner.get(approvalId);
+        if (ownerId == null) {
+            return false;
+        }
+        if (!ownerId.equals(requesterId)) {
+            log.warn("拒绝越权审批：user={} 尝试处理不属于其会话的审批 approval={}", requesterId, approvalId);
+            return false;
+        }
+        owner.remove(approvalId);
         CompletableFuture<Boolean> future = pending.remove(approvalId);
         if (future == null) {
             return false;
@@ -46,6 +61,7 @@ public class ApprovalRegistry {
             return;
         }
         for (UUID id : ids) {
+            owner.remove(id);
             CompletableFuture<Boolean> future = pending.remove(id);
             if (future != null && !future.isDone()) {
                 future.complete(false);
@@ -53,8 +69,9 @@ public class ApprovalRegistry {
         }
     }
 
-    /** 登记项完成后清理会话索引。 */
+    /** 登记项完成后清理会话索引与归属。 */
     public void forget(UUID conversationId, UUID approvalId) {
+        owner.remove(approvalId);
         java.util.Set<UUID> ids = byConversation.get(conversationId);
         if (ids != null) {
             ids.remove(approvalId);

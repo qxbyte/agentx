@@ -42,6 +42,11 @@ management:
   # spring.ai.chat.observations.log-prompt / log-completion
 
 agentx:
+  chat:
+    # 单用户并发流式对话上限（信号量），防止一个账号开大量长连接拖垮模型调用
+    max-concurrent-streams-per-user: ${AGENTX_MAX_STREAMS_PER_USER:3}
+    # 敏感词基线拦截（逗号分隔）：命中用户输入即拒绝，不进模型。留空即不拦截
+    sensitive-words: ${AGENTX_SENSITIVE_WORDS:}
   rag:
     storage-dir: ${AGENTX_RAG_STORAGE:${user.home}/.agentx/uploads}
     vector-dimensions: ${AGENTX_VECTOR_DIM:1024}

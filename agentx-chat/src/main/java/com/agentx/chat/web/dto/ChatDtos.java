@@ -35,4 +35,7 @@ public final class ChatDtos {
      *  kbIds 为本次检索追加的知识库（输入框多选，与会话/工作区默认知识库合并）。 */
     public record StreamRequest(UUID conversationId, @NotBlank String content, UUID modelConfigId,
                                UUID workspaceId, String mode, java.util.List<UUID> kbIds) {}
+
+    /** 重新生成请求（可选覆盖模型/模式，均为空则沿用会话既定配置）。 */
+    public record RegenerateRequest(UUID modelConfigId, String mode) {}
 }

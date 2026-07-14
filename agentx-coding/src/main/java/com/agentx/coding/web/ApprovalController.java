@@ -1,5 +1,7 @@
 package com.agentx.coding.web;
 
+import com.agentx.auth.security.AuthPrincipal;
+import com.agentx.auth.security.CurrentUser;
 import com.agentx.common.api.ApiResponse;
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
@@ -24,9 +26,11 @@ public class ApprovalController {
     public record ApprovalDecision(boolean approved) {}
 
     @PostMapping("/api/v1/chat/approvals/{approvalId}")
-    public ApiResponse<Void> resolve(@PathVariable UUID approvalId,
+    public ApiResponse<Void> resolve(@CurrentUser AuthPrincipal user,
+                                     @PathVariable UUID approvalId,
                                      @RequestBody ApprovalDecision decision) {
-        boolean hit = approvalRegistry.resolve(approvalId, decision.approved());
+        // 归属校验在 registry 内完成：非本人会话的审批视同不存在，防越权批准代码执行
+        boolean hit = approvalRegistry.resolve(approvalId, user.id(), decision.approved());
         if (!hit) {
             throw new BizException(ErrorCode.NOT_FOUND, "审批项不存在或已处理");
         }

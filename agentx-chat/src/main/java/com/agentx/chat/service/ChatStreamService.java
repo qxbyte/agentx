@@ -52,8 +52,55 @@ public class ChatStreamService {
     private final ObjectMapper objectMapper;
     private final List<ChatStreamCustomizer> customizers;
     private final com.agentx.infra.ai.stream.ApprovalRegistry approvalRegistry;
+    private final ConversationTitleGenerator titleGenerator;
+    private final ConcurrentStreamLimiter streamLimiter;
+    private final org.springframework.ai.chat.client.advisor.SafeGuardAdvisor safeGuardAdvisor;
+
+    /**
+     * 重新生成某条助手消息（设计文档 §4.4）：清除该轮消息并回滚记忆后，复用主链路
+     * 以相同用户提问重跑。会话既定的知识库/工作区沿用，模型/模式可按需覆盖。
+     * 并发额度先占再清场，避免清场后被并发上限拒绝导致消息丢失。
+     */
+    public SseEmitter regenerate(AuthPrincipal user, UUID assistantMessageId,
+                                 UUID modelConfigId, String mode) {
+        Runnable release = streamLimiter.tryAcquire(user.id());
+        if (release == null) {
+            return overLimitEmitter();
+        }
+        try {
+            var ctx = conversationService.prepareRegenerate(assistantMessageId, user.id());
+            StreamRequest req = new StreamRequest(ctx.conversationId(), ctx.userContent(),
+                    modelConfigId, ctx.workspaceId(), mode, null);
+            return doStream(user, req, release);
+        } catch (RuntimeException e) {
+            release.run();
+            throw e;
+        }
+    }
 
     public SseEmitter stream(AuthPrincipal user, StreamRequest req) {
+        Runnable release = streamLimiter.tryAcquire(user.id());
+        if (release == null) {
+            return overLimitEmitter();
+        }
+        try {
+            return doStream(user, req, release);
+        } catch (RuntimeException e) {
+            release.run();
+            throw e;
+        }
+    }
+
+    /** 并发上限拒绝：即时回一个 error 帧的短流，不占用模型资源。 */
+    private SseEmitter overLimitEmitter() {
+        SseEmitter emitter = new SseEmitter(5_000L);
+        SseEmitterSender sender = new SseEmitterSender(emitter, objectMapper);
+        sender.send(SseEvent.error("42900", "并发对话数已达上限，请等待当前对话结束后再试"));
+        sender.complete();
+        return emitter;
+    }
+
+    private SseEmitter doStream(AuthPrincipal user, StreamRequest req, Runnable release) {
         ChatConversation conversation = resolveConversation(user, req);
 
         ChatMessage userMessage = new ChatMessage();
@@ -68,14 +115,18 @@ public class ChatStreamService {
         SseEmitterSender sender = new SseEmitterSender(emitter, objectMapper);
         sender.send(SseEvent.meta(conversation.getId().toString(), assistantMessageId.toString()));
 
-        // Ask 模式兜底：流结束/超时/客户端断开时，解冻仍挂起的审批线程，避免虚拟线程泄漏
-        // （正常"批准/拒绝"由回传端点 ApprovalRegistry.resolve 完成，这里只兜住异常终止路径）
-        emitter.onCompletion(() -> approvalRegistry.cancelConversation(conversation.getId()));
-        emitter.onTimeout(() -> approvalRegistry.cancelConversation(conversation.getId()));
-        emitter.onError(e -> approvalRegistry.cancelConversation(conversation.getId()));
+        // 流终止（正常/超时/断开）统一收尾：解冻挂起的审批线程（避免虚拟线程泄漏）+
+        // 释放并发额度。release 幂等，三条回调任一触发都只释放一次。
+        Runnable finish = () -> {
+            approvalRegistry.cancelConversation(conversation.getId());
+            release.run();
+        };
+        emitter.onCompletion(finish);
+        emitter.onTimeout(finish);
+        emitter.onError(e -> finish.run());
 
         ChatClient client = resolveClient(conversation, req);
-        StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId);
+        StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId, req.content());
 
         ToolEventSink toolEventSink = new SseToolEventSink(sender, aggregator);
         ChatStreamContext context = ChatStreamContext.of(
@@ -86,6 +137,8 @@ public class ChatStreamService {
 
         ChatClient.ChatClientRequestSpec spec = client.prompt()
                 .user(req.content())
+                // 敏感词/prompt 注入基线防护（命中即拦截返回失败话术，不进模型）
+                .advisors(safeGuardAdvisor)
                 .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation.getId().toString()))
                 .toolContext(Map.of(
@@ -170,6 +223,7 @@ public class ChatStreamService {
         private final AuthPrincipal user;
         private final ChatConversation conversation;
         private final UUID assistantMessageId;
+        private final String userContent;
         private final StringBuilder content = new StringBuilder();
         private final StringBuilder reasoning = new StringBuilder();
         private final long startedAt = System.currentTimeMillis();
@@ -194,10 +248,12 @@ public class ChatStreamService {
             }
         }
 
-        StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId) {
+        StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId,
+                         String userContent) {
             this.user = user;
             this.conversation = conversation;
             this.assistantMessageId = assistantMessageId;
+            this.userContent = userContent;
         }
 
         void recordToolCall(String callId, String toolName, String argsJson) {
@@ -275,6 +331,8 @@ public class ChatStreamService {
                 auditor.record(user.id(), conversation.getId(), modelName,
                         promptTokens, completionTokens,
                         System.currentTimeMillis() - startedAt, AiCallAuditor.CallStatus.OK);
+                // 首轮结束后异步生成贴切标题（内部判定消息数==2，非首轮不覆盖）
+                titleGenerator.maybeGenerateAsync(conversation.getId(), userContent, content.toString());
                 sender.send(SseEvent.done(promptTokens, completionTokens, "stop"));
             } finally {
                 sender.complete();

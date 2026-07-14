@@ -90,39 +90,42 @@ public class DocumentService {
         return segmentRepository.findByDocIdOrderBySeqNoAsc(docId);
     }
 
-    /** 编辑分段内容：更新真源 + 重嵌该段向量。 */
-    @Transactional
+    /**
+     * 编辑分段内容：更新真源 + 重嵌该段向量。
+     * 不加 @Transactional：{@code save()} 自身事务已保证真源落库，而向量重嵌是远程
+     * embedding 调用，刻意置于事务外，避免长事务在等待 embedding 期间占用数据库连接。
+     */
     public KbSegment updateSegment(UUID segmentId, UUID userId, String content) {
         KbSegment segment = ownedSegment(segmentId, userId);
         segment.setContent(content);
         segment.setCharCount(content.length());
         segmentRepository.save(segment);
-        KbDocument doc = documentRepository.findById(segment.getDocId()).orElseThrow();
-        KnowledgeBase kb = knowledgeBaseService.getInternal(segment.getKbId());
-        var store = vectorStoreFactory.forKb(kb);
-        store.delete(new FilterExpressionBuilder()
-                .eq(VectorMetadata.SEGMENT_ID, segmentId.toString()).build());
-        if (segment.isEnabled()) {
-            store.add(List.of(RagIngestService.toVectorDocument(doc, segment)));
-        }
+        refreshSegmentVector(segment);
         return segment;
     }
 
-    /** 启停分段：禁用删向量保留真源行；启用时补回向量。 */
-    @Transactional
+    /** 启停分段：禁用删向量保留真源行；启用时补回向量（向量刷新同样在事务外）。 */
     public KbSegment toggleSegment(UUID segmentId, UUID userId, boolean enabled) {
         KbSegment segment = ownedSegment(segmentId, userId);
         segment.setEnabled(enabled);
         segmentRepository.save(segment);
+        refreshSegmentVector(segment);
+        return segment;
+    }
+
+    /**
+     * 重算单段向量：先删旧向量，启用中则重嵌。设计 §4.7 向量刷新与真源解耦——
+     * 刷新失败会向上抛出，此时真源已落库，重试即幂等修复。
+     */
+    private void refreshSegmentVector(KbSegment segment) {
         KbDocument doc = documentRepository.findById(segment.getDocId()).orElseThrow();
         KnowledgeBase kb = knowledgeBaseService.getInternal(segment.getKbId());
         var store = vectorStoreFactory.forKb(kb);
         store.delete(new FilterExpressionBuilder()
-                .eq(VectorMetadata.SEGMENT_ID, segmentId.toString()).build());
-        if (enabled) {
+                .eq(VectorMetadata.SEGMENT_ID, segment.getId().toString()).build());
+        if (segment.isEnabled()) {
             store.add(List.of(RagIngestService.toVectorDocument(doc, segment)));
         }
-        return segment;
     }
 
     private KbSegment ownedSegment(UUID segmentId, UUID userId) {

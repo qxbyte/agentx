@@ -79,10 +79,27 @@ class ApprovalGateTest {
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(result).isNotDone(); // 审批前保持阻塞
 
-        boolean hit = registry.resolve(UUID.fromString(requestedApprovalId.get()), true);
+        boolean hit = registry.resolve(UUID.fromString(requestedApprovalId.get()), context.userId(), true);
         assertThat(hit).isTrue();
         assertThat(result.get(2, TimeUnit.SECONDS)).contains("exit=0");
         assertThat(delegateCalled).isTrue();
+    }
+
+    @Test
+    void resolveByNonOwnerIsRejectedAndKeepsBlocking() throws Exception {
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 5_000);
+        CompletableFuture<String> result = callAsync(gate);
+
+        assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
+        // 越权：非会话归属用户尝试批准 → 视同未命中，工具线程仍阻塞、delegate 不执行
+        boolean hit = registry.resolve(UUID.fromString(requestedApprovalId.get()), UUID.randomUUID(), true);
+        assertThat(hit).isFalse();
+        assertThat(result).isNotDone();
+        assertThat(delegateCalled).isFalse();
+
+        // 归属用户仍可正常批准
+        assertThat(registry.resolve(UUID.fromString(requestedApprovalId.get()), context.userId(), true)).isTrue();
+        assertThat(result.get(2, TimeUnit.SECONDS)).contains("exit=0");
     }
 
     @Test
@@ -91,7 +108,7 @@ class ApprovalGateTest {
         CompletableFuture<String> result = callAsync(gate);
 
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
-        registry.resolve(UUID.fromString(requestedApprovalId.get()), false);
+        registry.resolve(UUID.fromString(requestedApprovalId.get()), context.userId(), false);
 
         assertThat(result.get(2, TimeUnit.SECONDS)).contains("拒绝");
         assertThat(delegateCalled).isFalse();

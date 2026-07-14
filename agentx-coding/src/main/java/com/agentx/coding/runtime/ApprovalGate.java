@@ -60,7 +60,7 @@ public class ApprovalGate implements ToolCallback {
         String kind = CodingToolPreviews.kindOf(toolName);
         Map<String, Object> preview = CodingToolPreviews.previewOf(toolName, toolInput, objectMapper);
 
-        CompletableFuture<Boolean> future = registry.register(conversationId, approvalId);
+        CompletableFuture<Boolean> future = registry.register(context.userId(), conversationId, approvalId);
         context.toolEventSink().onApprovalRequest(approvalId.toString(), toolName, kind, preview);
 
         boolean approved;

@@ -39,9 +39,23 @@ public class ExternalKbRetriever {
         List<Float> boxed = new ArrayList<>(vector.length);
         for (float v : vector) boxed.add(v);
 
+        if (kbs.size() == 1) {
+            return searchOne(kbs.getFirst(), boxed);
+        }
+        // 多外部库并行检索：各库一条虚拟线程，避免串行 HTTP 延迟叠加。
+        // searchOne 自身 fail-open（异常返回空），单库故障不影响其余。
         List<Document> out = new ArrayList<>();
-        for (ExternalKb kb : kbs) {
-            out.addAll(searchOne(kb, boxed));
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            List<java.util.concurrent.Future<List<Document>>> futures = kbs.stream()
+                    .map(kb -> executor.submit(() -> searchOne(kb, boxed)))
+                    .toList();
+            for (java.util.concurrent.Future<List<Document>> f : futures) {
+                try {
+                    out.addAll(f.get());
+                } catch (Exception e) {
+                    log.warn("外部知识库检索任务异常（已跳过）: {}", e.getMessage());
+                }
+            }
         }
         return out;
     }
