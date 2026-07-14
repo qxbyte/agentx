@@ -8,12 +8,14 @@
 
 | 能力 | 实现 | 说明 |
 |---|---|---|
-| 流式对话 | SSE 事件信封（8 种帧类型） | ChatGPT 风格 UI，思考过程/工具调用/引用溯源全程可视化 |
+| 流式对话 | SSE 事件信封（9 种帧类型） | ChatGPT 风格 UI，思考过程/工具调用/引用溯源全程可视化 |
 | 多模型接入 | ChatModelProvider 策略 SPI | DeepSeek 官方 · 通义/智谱/vLLM 等 OpenAI 兼容端点 · Ollama 私有化；运行时配置切换，api-key AES-GCM 加密 |
 | 会话记忆 | 双轨制 | 业务表存完整历史；Spring AI `JdbcChatMemoryRepository` 管模型上下文窗口 |
 | 工具调用 | 三级注册中心 | L1 代码级（`@AgentTool`+`@Tool`）· L2 MCP 远程 · L3 HTTP（预留 SPI）；启停运营开关、循环上限守卫、异常降级 |
 | Agent | 配置化 + 五种官方 workflow | `agent_definition` 零代码配置 ReAct Agent；Chain/Routing/Parallelization/Orchestrator-Workers/Evaluator-Optimizer 编排器（虚拟线程并行） |
-| RAG 知识库 | 五件套运营闭环 | Tika 解析 → 自研 overlap 分段 → 异步向量化（任务/进度/重试）→ 分段双写（可编辑真源）→ 命中测试（测-看-改） |
+| CodeAgent | 编码智能体（对标 Codex 桌面版） | 项目（工作区）体系 + Plan/Ask/Auto 三模式 + 审批门（虚拟线程阻塞待批）；diff/shell/读写工具富渲染，基于知识库内容修代码 bug |
+| RAG 知识库 | 五件套运营闭环 | Tika 解析 → Markdown 结构感知切片（标题/围栏/表格边界）→ 异步向量化（任务/进度/重试）→ 分段双写（可编辑真源）→ 命中测试（测-看-改） |
+| 外部知识库 | 三 API 固定接入模板 | 心跳/库信息/向量查询；AgentX 本端向量化后跨服务检索，与本地库按分共排；启停开关完全解耦，引用卡片可定位到源文档章节与行号 |
 | MCP | 双侧 | client：配置表驱动动态接入第三方（STDIO / Streamable-HTTP）；server：`@McpTool` 模板应用，企业包装存量系统的范本 |
 | 鉴权 | JWT + RBAC | ADMIN / USER 两级，数据按用户隔离（越权 404） |
 | 可观测 | Micrometer（Spring AI 内建） | token 用量 / 调用延迟 / 向量检索 / 工具执行 span；OTLP 导出配置模板；业务级统计报表 API |
@@ -21,15 +23,15 @@
 ## 架构
 
 ```
-┌────────────────────────  agentx-web (React 18 + TS + antd)  ────────────────────┐
-│   对话区（SSE 流式/思考块/工具卡片/引用角标） │ 知识库管理 │ 管理后台             │
+┌──────────────  agentx-web (React 18 + TS + Tailwind v4 + shadcn/ui)  ───────────┐
+│  对话区（SSE 流式/思考块/工具卡片/引用角标） │ 项目/CodeAgent │ 知识库 │ 设置     │
 └───────────────────────────────┬──────────────────────────────────────────────────┘
                           REST + SSE (JWT)
 ┌───────────────────────────────┴────────────────────  agentx-server（唯一启动器）─┐
-├──────────────┬──────────────┬──────────────┬──────────────┬─────────────────────┤
-│ agentx-chat  │ agentx-agent │ agentx-rag   │ agentx-mcp   │ agentx-tools        │
-│ 会话双轨/流式 │ 编排/ReAct   │ 知识库/检索   │ MCP client   │ 工具注册中心         │
-├──────────────┴──────────────┴──────────────┴──────────────┴─────────────────────┤
+├────────────┬────────────┬────────────┬──────────────┬────────────┬──────────────┤
+│ agentx-chat│ agentx-agent│ agentx-rag │ agentx-coding│ agentx-mcp │ agentx-tools │
+│ 会话/流式   │ 编排/ReAct │ 知识库/检索 │ 编码智能体    │ MCP client │ 工具注册中心  │
+├────────────┴────────────┴────────────┴──────────────┴────────────┴──────────────┤
 │      agentx-infra-ai —— 模型屏蔽层（唯一模型出口）                                │
 │      ChatClientFactory / EmbeddingModelFactory（Provider SPI + 缓存 + 事件驱逐）  │
 │      SseEvent 信封 / ChatStreamCustomizer SPI / AES-GCM / 调用审计                │
@@ -50,8 +52,8 @@
 |---|---|
 | 核心 | Spring AI **2.0.0 GA** · Spring Boot **4.1** · JDK **21**（虚拟线程） |
 | 数据 | PostgreSQL 17 + PGVector（业务 + 向量一库两用）· Flyway · Spring Data JPA |
-| 前端 | React 18 · TypeScript(strict) · Vite · antd v5 · zustand |
-| 构建 | Maven 多模块（10 模块） |
+| 前端 | React 18 · TypeScript(strict) · Vite · Tailwind CSS v4 · shadcn/ui（Radix 原语手写）· lucide-react · sonner · zustand · Inter / JetBrains Mono |
+| 构建 | Maven 多模块（11 模块） |
 
 ## 快速开始
 
@@ -102,10 +104,11 @@ cd agentx-web && npm run build  # 前端构建 + tsc 严格检查
 | `agentx-tools` | 工具注册中心 | `ToolRegistry` `ToolSource(SPI)` `@AgentTool` + 内置示例（时间/天气/只读 SQL） |
 | `agentx-chat` | 会话双轨 + 流式主链路 | `ChatStreamService` `ConversationService` `ChatMemoryConfig` |
 | `agentx-agent` | Agent 编排 | `AgentStreamCustomizer` `SseNotifyingToolCallback`（循环守卫+过程可视化）`WorkflowRunner` + 五种 `Workflow` |
-| `agentx-rag` | 知识库 | `RagIngestService` `OverlappingTextSplitter` `HitTestService` `RagStreamCustomizer` `VectorStoreFactory` |
+| `agentx-rag` | 知识库（本地 + 外部） | `RagIngestService` `MarkdownStructureSplitter` `OverlappingTextSplitter` `HitTestService` `RagStreamCustomizer` `ExternalKbService` `ExternalKbRetriever` `VectorStoreFactory` |
+| `agentx-coding` | 编码智能体 | `ShellTools` `WorkspaceReadTools/EditTools` `GitTools` `PathSandbox` `ApprovalGate`（虚拟线程阻塞审批）`CodingStreamCustomizer` `WorkspaceService`（项目/工作区） |
 | `agentx-mcp` | MCP client | `McpConnectionManager` `McpToolSource(L2)` |
 | `agentx-mcp-server` | MCP server 模板 | `@McpTool/@McpResource/@McpPrompt` 三件套（见其 README） |
-| `agentx-server` | 唯一启动器 | Flyway 迁移（V1–V5）、全局装配 |
+| `agentx-server` | 唯一启动器 | Flyway 迁移（V1–V8）、全局装配 |
 | `agentx-web` | 前端 | 见 `agentx-web/README.md` |
 
 ## SSE 流式协议（前后端契约）
@@ -116,14 +119,34 @@ cd agentx-web && npm run build  # 前端构建 + tsc 严格检查
 {"type":"meta","conversationId":"…","messageId":"…"}      // 首帧
 {"type":"text-delta","delta":"…"}                          // 正文增量
 {"type":"reasoning","delta":"…"}                           // 思考增量（deepseek-reasoner 等）
-{"type":"tool-call","id":"…","name":"…","args":"…"}        // Agent 发起工具调用
-{"type":"tool-result","id":"…","name":"…","result":"…"}    // 工具返回
-{"type":"rag-source","sources":[{docId,docName,segmentId,score,snippet}]}
+{"type":"tool-call","id":"…","name":"…","args":"…","kind":"shell","preview":"…"}   // kind/preview 供前端富渲染（diff/shell 等）
+{"type":"tool-result","id":"…","name":"…","result":"…","kind":"…","preview":"…"}   // 工具返回
+{"type":"approval-request","approvalId":"…","toolName":"…","kind":"shell","preview":{…}}  // CodeAgent 审批门：等待用户批准/拒绝
+{"type":"rag-source","sources":[{docId,docName,segmentId,score,snippet,path?,headings?,startLine?,endLine?}]}  // 可选定位字段
 {"type":"done","usage":{promptTokens,completionTokens},"finishReason":"stop"}
 {"type":"error","code":"…","message":"…"}                  // 业务错误走帧不断流
 ```
 
+`done`/`error` 是终止信号：前端收到即复原发送按钮并中止连接，不依赖服务端关流。
+
 反代注意：SSE 端点必须关缓冲/gzip、拉长超时——见 `agentx-web/nginx.conf` 与 `deploy/nginx-sse.conf.example`。
+
+## CodeAgent（编码智能体）
+
+对话页选择「项目」后即进入编码模式：模型/模式/项目在输入框内嵌工具条选择，可绑定知识库让智能体基于文档修 bug。
+
+- **项目（工作区）**：新建空白项目（`agentx.coding.projects-root` 下自动 `git init`）或指向现有文件夹；侧栏按项目分组会话，项目内新建的对话自动沿用项目归属与知识库。
+- **三模式**：`Plan`（只读分析不动文件）/ `Ask`（每个写操作经审批门，虚拟线程阻塞等待前端批准/拒绝/超时）/ `Auto`（免审批直执行）。
+- **工具面**：shell 执行、文件读写、unified-diff 补丁、git 操作，全部经 `PathSandbox` 限制在工作区内；前端按 `kind/preview` 富渲染 diff、终端输出与审批卡片。
+- **安全须知**：CodeAgent 会在服务器上真实执行命令与写文件。生产部署务必——① 仅对可信用户开放；② `projects-root` 指向专用目录，勿指向系统敏感路径；③ `Auto` 模式等于放开审批，默认建议 `Ask`；④ 容器化部署时把工作区挂载为独立卷并限制资源。
+
+## 外部知识库接入
+
+任何知识库系统实现**三个 HTTP API**（心跳 / 库信息 / 向量查询）即可被接入：AgentX 用本端默认 EMBEDDING 模型把问题向量化，携查询向量跨服务检索，命中与本地库结果按相似度合并注入上下文；引用来源卡片可定位到源文档的文件路径、章节链与行号区间。
+
+- 配置入口：设置 → 外部知识库（服务地址 / vault 仓库标识 / topK / 阈值），「测试连接」自动比对两侧 embedding 模型一致性；启停开关即完全解耦。
+- 完整协议规范与 curl 自测见应用内「对接文档」（`ExternalKbGuide`）；参考实现：notopolis `src/server/rag/external.ts`（约 100 行）。
+- 硬性前提：外部库建索引的 embedding 模型必须与 AgentX 默认 EMBEDDING 一致，向量空间不同则相似度无意义。
 
 ## 企业迭代指南
 
@@ -133,6 +156,7 @@ cd agentx-web && npm run build  # 前端构建 + tsc 严格检查
 | 业务 Agent | 管理后台配置（prompt + 工具 + 知识库 + workflow 类型） | 零代码 |
 | 复杂编排 | 实现 `Workflow` 接口注册为 bean | agentx-agent 新增一个类 |
 | 内部系统接入 | 复制 `agentx-mcp-server` 模板包一层，管理后台一配即入 | 新模块/新仓库 |
+| 已有知识库接入 | 按三 API 模板实现心跳/库信息/向量查询，设置页一配即用 | 对方系统 ~100 行，AgentX 零改动 |
 | 新模型供应商 | OpenAI 兼容的只加一条配置；私有协议实现 `ChatModelProvider` | infra-ai 一个类 |
 | 业务领域模块 | 新建 `agentx-xxx`，依赖 infra-ai/tools | parent pom 加一行 |
 | 接 SSO / 多租户 | 替换 auth 模块登录入口；全表已预留扩展位说明 | auth 模块内 |
@@ -144,6 +168,8 @@ cd agentx-web && npm run build  # 前端构建 + tsc 严格检查
 - 内置 `SqlQueryTools` 演示三道防线（白名单/语句形态/行数上限），生产建议叠加只读库账号。
 - Prompt 注入防护基线：system prompt 与用户输入隔离；如需敏感词拦截，在 `ChatStreamService` 的 advisor 链加 `SafeGuardAdvisor`（Spring AI 内建）。
 - MCP server 端点不要裸暴露公网，网关层加鉴权。
+- CodeAgent 在服务器上真实执行命令——生产开放前先读上文「CodeAgent · 安全须知」四条。
+- 外部知识库接入模板未定义鉴权头（面向内网/本机），暴露公网需反向代理加鉴权。
 
 ## 可观测
 
