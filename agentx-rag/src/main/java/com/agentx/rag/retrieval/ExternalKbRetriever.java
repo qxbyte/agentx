@@ -1,9 +1,7 @@
 package com.agentx.rag.retrieval;
 
-import com.agentx.infra.ai.client.EmbeddingModelFactory;
 import com.agentx.rag.domain.ExternalKb;
 import com.agentx.rag.vector.VectorMetadata;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
@@ -12,42 +10,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 外部知识库检索（设计：本地向量模型对 query 向量化一次，携 vault 调各外部库的
- * search API 取相似文本）。fail-open：单库超时/异常只丢该库结果并记日志，绝不断流。
- * 命中转为 Document 并对齐本地 rag-source 元数据（doc_name/doc_id/segment_id），
+ * 外部知识库检索（方案 B）：只把**查询文本**携 vault 发给各外部库的 search API，
+ * 由外部库用它自己的 embedding 模型向量化并检索——AgentX 不为外部检索做向量化，
+ * 彻底解耦两侧 embedding 模型。fail-open：单库超时/异常只丢该库结果并记日志，绝不断流。
+ * 命中转为 Document 并对齐 rag-source 元数据（doc_name/doc_id/segment_id + 定位字段），
  * 前端引用来源无差别展示（doc_name 前缀外部库名以示来源）。
+ * <p>
+ * 检索质量（多查询扩展、RRF 融合、rerank）由 AgentX 在 composite 合并层统一施加，
+ * 本类只负责"把文本查询打给外部库、取回候选"这一最小职责。
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ExternalKbRetriever {
 
-    private final EmbeddingModelFactory embeddingModelFactory;
-
-    /** 对启用中的外部库逐一检索；query 只向量化一次。 */
+    /** 用同一段查询文本并行检索所有启用的外部库。 */
     public List<Document> retrieve(String query, List<ExternalKb> kbs) {
-        if (kbs.isEmpty()) {
+        if (kbs.isEmpty() || query == null || query.isBlank()) {
             return List.of();
         }
-        float[] vector;
-        try {
-            vector = embeddingModelFactory.getDefault().embed(query);
-        } catch (Exception e) {
-            log.warn("外部知识库检索跳过：query 向量化失败 - {}", e.getMessage());
-            return List.of();
-        }
-        List<Float> boxed = new ArrayList<>(vector.length);
-        for (float v : vector) boxed.add(v);
-
         if (kbs.size() == 1) {
-            return searchOne(kbs.getFirst(), boxed);
+            return searchOne(kbs.getFirst(), query);
         }
         // 多外部库并行检索：各库一条虚拟线程，避免串行 HTTP 延迟叠加。
         // searchOne 自身 fail-open（异常返回空），单库故障不影响其余。
         List<Document> out = new ArrayList<>();
         try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
             List<java.util.concurrent.Future<List<Document>>> futures = kbs.stream()
-                    .map(kb -> executor.submit(() -> searchOne(kb, boxed)))
+                    .map(kb -> executor.submit(() -> searchOne(kb, query)))
                     .toList();
             for (java.util.concurrent.Future<List<Document>> f : futures) {
                 try {
@@ -61,13 +50,13 @@ public class ExternalKbRetriever {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Document> searchOne(ExternalKb kb, List<Float> vector) {
+    private List<Document> searchOne(ExternalKb kb, String query) {
         try {
             Map<String, Object> resp = com.agentx.rag.service.ExternalKbHttp.client(kb.getBaseUrl())
                     .post().uri(kb.getSearchPath())
                     .body(Map.of(
                             "vault", kb.getVaultId(),
-                            "vector", vector,
+                            "query", query,
                             "topK", kb.getTopK(),
                             "threshold", kb.getSimilarityThreshold()))
                     .retrieve().body(Map.class);
