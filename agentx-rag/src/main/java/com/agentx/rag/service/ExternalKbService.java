@@ -3,9 +3,6 @@ package com.agentx.rag.service;
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
 import com.agentx.common.util.UuidV7;
-import com.agentx.infra.ai.model.ModelConfig;
-import com.agentx.infra.ai.model.ModelConfigService;
-import com.agentx.infra.ai.model.ModelType;
 import com.agentx.rag.domain.ExternalKb;
 import com.agentx.rag.domain.ExternalKbRepository;
 import com.agentx.rag.web.dto.ExternalKbDtos.ProbeResult;
@@ -20,8 +17,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 外部知识库管理：CRUD + 连接探测（heartbeat + info），探测时比对外部库
- * embedding 模型与本地默认 EMBEDDING 配置，不一致给出提醒（混检无意义）。
+ * 外部知识库管理：CRUD + 连接探测（heartbeat + info）。
+ * B 方案下外部库用自己的 embedding 模型检索，两侧模型解耦——探测不再比对 embedding
+ * 一致性，只对"外部库尚未建立索引"给出提醒。
  */
 @Slf4j
 @Service
@@ -29,7 +27,6 @@ import java.util.UUID;
 public class ExternalKbService {
 
     private final ExternalKbRepository repository;
-    private final ModelConfigService modelConfigService;
 
     public List<ExternalKb> list() {
         return repository.findAllByOrderByCreatedAtAsc();
@@ -89,7 +86,7 @@ public class ExternalKbService {
             int chunkCount = info != null && info.get("chunkCount") instanceof Number n ? n.intValue() : 0;
             return new ProbeResult(alive, service,
                     info == null ? null : String.valueOf(info.get("name")),
-                    remoteModel, dims, chunkCount, null, embeddingWarning(remoteModel));
+                    remoteModel, dims, chunkCount, null, indexWarning(chunkCount));
         } catch (Exception e) {
             return new ProbeResult(alive, service, null, null, 0, 0,
                     "库信息获取失败（确认 vault 标识正确）: " + e.getMessage(), null);
@@ -126,21 +123,14 @@ public class ExternalKbService {
         }
     }
 
-    /** 外部库 embedding 模型与本地默认 EMBEDDING 配置不一致时的提醒文案。 */
-    private String embeddingWarning(String remoteModel) {
-        if (remoteModel == null || remoteModel.isBlank()) {
-            return "外部库未建立向量索引或未报告 embedding 模型";
-        }
-        try {
-            ModelConfig local = modelConfigService.getDefaultOf(ModelType.EMBEDDING);
-            if (!remoteModel.equalsIgnoreCase(local.getModelName())) {
-                return "embedding 模型不一致：本地默认为 " + local.getModelName()
-                        + "，外部库为 " + remoteModel + "。向量空间不同将导致检索失效，请保持一致";
-            }
-        } catch (Exception e) {
-            return "本地未配置默认 EMBEDDING 模型，无法比对一致性";
-        }
-        return null;
+    /**
+     * 探测提醒：B 方案下外部库用自己的 embedding 模型检索，两侧模型解耦——不再比对
+     * 一致性。仅对"外部库尚未建立向量索引"给出提醒（否则检索必然无结果）。
+     */
+    private static String indexWarning(int chunkCount) {
+        return chunkCount <= 0
+                ? "外部库尚未建立向量索引，检索将无结果——请先在外部库侧完成入库"
+                : null;
     }
 
     private void apply(ExternalKb kb, UpsertRequest req) {

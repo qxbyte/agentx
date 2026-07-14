@@ -212,7 +212,7 @@ export default function ExternalKbPage() {
     <div>
       <PageHeader
         title="外部知识库"
-        description="按固定 API 模板（心跳/库信息/向量查询）接入外部知识库，与项目内知识库共存检索；停用即完全忽略。注意：外部库 embedding 模型须与本平台默认向量模型一致"
+        description="按固定 API 模板（心跳/库信息/文本查询）接入外部知识库，与项目内知识库共存检索；停用即完全忽略。外部库用自己的向量模型检索，无需与本平台模型一致"
         extra={
           <div className="flex items-center gap-2">
             <ExternalKbGuide />
@@ -273,7 +273,7 @@ export default function ExternalKbPage() {
                             : <Zap className="size-4" />}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>测试连接（含 embedding 一致性检查）</TooltipContent>
+                      <TooltipContent>测试连接（心跳 + 库信息 + 索引状态）</TooltipContent>
                     </Tooltip>
                     <Button variant="ghost" size="icon" className="size-7" onClick={() => openEdit(kb)}>
                       <Pencil className="size-4" />
@@ -296,7 +296,7 @@ export default function ExternalKbPage() {
           <DialogHeader>
             <DialogTitle>{editing ? '编辑外部知识库' : '接入外部知识库'}</DialogTitle>
             <DialogDescription>
-              外部系统需实现固定模板的三个 API；向量模型须与本平台默认 EMBEDDING 配置一致
+              外部系统需实现固定模板的三个 API（心跳/库信息/文本查询）；外部库用自己的向量模型检索，无需与本平台一致
             </DialogDescription>
           </DialogHeader>
           <div className="mt-1 flex flex-col gap-4">
