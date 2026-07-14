@@ -37,6 +37,12 @@ public class AiCallAuditor {
         save("EMBEDDING", null, null, modelName, totalTokens, 0, latencyMs, status);
     }
 
+    /** RERANK 调用审计（检索精排）。与 CHAT/EMBEDDING 分开计量。 */
+    @Async
+    public void recordRerank(String modelName, long totalTokens, long latencyMs, CallStatus status) {
+        save("RERANK", null, null, modelName, totalTokens, 0, latencyMs, status);
+    }
+
     private void save(String modelType, UUID userId, UUID conversationId, String modelName,
                       long promptTokens, long completionTokens, long latencyMs, CallStatus status) {
         try {

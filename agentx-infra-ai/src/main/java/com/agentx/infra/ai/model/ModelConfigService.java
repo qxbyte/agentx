@@ -83,6 +83,11 @@ public class ModelConfigService {
                         "未配置默认 " + type + " 模型"));
     }
 
+    /** 按类型取默认启用配置，无则空——供"可选能力"（如 rerank 精排开关）判定是否启用。 */
+    public java.util.Optional<ModelConfig> findDefaultOf(ModelType type) {
+        return repository.findFirstByTypeAndDefaultModelTrueAndEnabledTrue(type);
+    }
+
     /** 按 ID 取启用中的配置（工厂消费）。 */
     public ModelConfig getEnabled(UUID id) {
         ModelConfig c = get(id);

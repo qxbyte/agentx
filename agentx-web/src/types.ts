@@ -137,7 +137,7 @@ export interface HitTestResult {
    ============================================================ */
 
 export type ProviderType = 'DEEPSEEK' | 'OPENAI_COMPATIBLE' | 'OLLAMA'
-export type ModelType = 'CHAT' | 'EMBEDDING'
+export type ModelType = 'CHAT' | 'EMBEDDING' | 'RERANK'
 
 export interface ModelConfig {
   id: string

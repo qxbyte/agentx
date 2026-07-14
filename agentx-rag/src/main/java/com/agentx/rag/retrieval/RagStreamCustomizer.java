@@ -1,6 +1,8 @@
 package com.agentx.rag.retrieval;
 
 import com.agentx.infra.ai.client.ChatClientFactory;
+import com.agentx.infra.ai.client.RerankModel;
+import com.agentx.infra.ai.client.RerankModelFactory;
 import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
 import com.agentx.rag.domain.ExternalKb;
@@ -92,12 +94,17 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
     private static final int NUM_QUERIES = 3;
     /** 无本地/外部库检索参数可依时的兜底候选池上限。 */
     private static final int DEFAULT_TOP_K = 8;
+    /** 开精排时 RRF 候选池放宽倍数（rerank 从更宽的池里精挑最终 topK）。 */
+    private static final int RERANK_POOL_FACTOR = 3;
+    /** 候选池硬上限，防止 rerank 输入过大拖慢/超额。 */
+    private static final int RERANK_POOL_MAX = 40;
 
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final VectorStoreFactory vectorStoreFactory;
     private final ExternalKbService externalKbService;
     private final ExternalKbRetriever externalKbRetriever;
     private final ChatClientFactory chatClientFactory;
+    private final RerankModelFactory rerankModelFactory;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
@@ -126,11 +133,18 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
             return merged;
         };
 
-        int fusionTopK = fusionTopK(localKbs, externals);
+        int finalTopK = fusionTopK(localKbs, externals);
+        // 精排开关：配置并启用了默认 RERANK 模型 → 开精排；否则退回 RRF-only。
+        // 开精排时 RRF 产出更宽候选池，交由 rerank 从中精挑最终 topK。
+        java.util.Optional<RerankModel> rerank = rerankModelFactory.findDefault();
+        int poolTopK = rerank.isPresent()
+                ? Math.min(finalTopK * RERANK_POOL_FACTOR, RERANK_POOL_MAX)
+                : finalTopK;
+
         var advisorBuilder = RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(composite)
-                // RRF 融合 + 截断到 topK：跨查询/跨来源按名次收敛为最终候选池（单查询时退化为保序+截断）
-                .documentJoiner(new ReciprocalRankFusionJoiner(fusionTopK))
+                // RRF 融合：跨查询/跨来源按名次收敛为候选池（单查询时退化为保序+截断）
+                .documentJoiner(new ReciprocalRankFusionJoiner(poolTopK))
                 // 未命中不硬拒答：让模型基于通用知识回答并说明未在知识库命中
                 .queryAugmenter(ContextualQueryAugmenter.builder()
                         .allowEmptyContext(true)
@@ -140,11 +154,14 @@ public class RagStreamCustomizer implements ChatStreamCustomizer {
         if (rewrite != null) {
             advisorBuilder.queryTransformers(rewrite);
         }
-        // 多查询扩展（宽召回）：原查询 + N-1 个不同角度变体各自检索，交给 RRF 融合。
+        // 多查询扩展（宽召回）：原查询 + N 个不同角度变体各自检索，交给 RRF 融合。
         QueryExpander expander = multiQueryExpander();
         if (expander != null) {
             advisorBuilder.queryExpander(expander);
         }
+        // rerank 精排（可选，最后一环）：对 RRF 合并池统一精排收窄到 finalTopK。
+        rerank.ifPresent(model -> advisorBuilder.documentPostProcessors(
+                new RerankDocumentPostProcessor(model, finalTopK)));
         spec.advisors(advisorBuilder.build());
     }
 

@@ -54,6 +54,7 @@ const PROVIDER_OPTIONS: { value: ProviderType; label: string }[] = [
 const TYPE_OPTIONS: { value: ModelType; label: string }[] = [
   { value: 'CHAT', label: '对话（CHAT）' },
   { value: 'EMBEDDING', label: '向量（EMBEDDING）' },
+  { value: 'RERANK', label: '重排（RERANK）' },
 ]
 
 interface ModelForm {
