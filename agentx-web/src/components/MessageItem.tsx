@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import type { ChatMessage } from '../types'
+import ActivityIndicator, { activityLabel } from './ActivityIndicator'
 import ApprovalCard from './coding/ApprovalCard'
 import Logo from './Logo'
 import ToolCallGroup from './ToolCallGroup'
@@ -45,7 +46,7 @@ function MessageItem({ message }: MessageItemProps) {
   // ASSISTANT
   const streaming = message.streaming === true
   const toolCalls = message.toolCalls ?? []
-  const showCursor = streaming && !message.error
+  const showActivity = streaming && !message.error
 
   return (
     <div className="ax-message ax-message--assistant">
@@ -64,7 +65,7 @@ function MessageItem({ message }: MessageItemProps) {
           <ApprovalCard key={item.approvalId} item={item} />
         ))}
         {message.content ? <MarkdownRenderer content={message.content} /> : null}
-        {showCursor && <span className="ax-cursor" aria-hidden="true" />}
+        {showActivity && <ActivityIndicator label={activityLabel(message)} />}
         {message.error ? (
           <div className="ax-msg-error" role="alert">
             {message.error.code && (
