@@ -216,6 +216,11 @@ public class ChatStreamService {
                                       java.util.Map<String, Object> preview) {
             sender.send(SseEvent.approvalRequest(approvalId, toolName, kind, preview));
         }
+
+        @Override
+        public void onApprovalResult(String approvalId, String outcome) {
+            sender.send(SseEvent.approvalResult(approvalId, outcome));
+        }
     }
 
     /** 聚合一次流式应答的可变状态，终态负责落库/审计/终帧。 */

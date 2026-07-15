@@ -75,6 +75,11 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
   return envelope.data
 }
 
+/** HTTP 404 判定：目标资源不存在或已被处理（如审批项已落定） */
+export function isNotFoundError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404
+}
+
 /** 从 axios / 普通异常中提取给用户看的文案 */
 export function extractErrorMessage(error: unknown, fallback = '请求失败，请稍后重试'): string {
   if (axios.isAxiosError(error)) {

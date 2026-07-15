@@ -30,6 +30,8 @@ class ApprovalGateTest {
     private final AtomicReference<String> requestedApprovalId = new AtomicReference<>();
     private final CountDownLatch requested = new CountDownLatch(1);
     private final AtomicBoolean delegateCalled = new AtomicBoolean(false);
+    /** 捕获 approval-result 终态帧：approvalId → outcome（前端卡片终态的权威来源） */
+    private final AtomicReference<String> resultOutcome = new AtomicReference<>();
 
     private ChatStreamContext context;
     private ToolCallback delegate;
@@ -48,6 +50,11 @@ class ApprovalGateTest {
                                           Map<String, Object> preview) {
                 requestedApprovalId.set(approvalId);
                 requested.countDown();
+            }
+
+            @Override
+            public void onApprovalResult(String approvalId, String outcome) {
+                resultOutcome.set(outcome);
             }
         };
         context = ChatStreamContext.of(UUID.randomUUID(), CONVERSATION_ID, null,
@@ -83,6 +90,8 @@ class ApprovalGateTest {
         assertThat(hit).isTrue();
         assertThat(result.get(2, TimeUnit.SECONDS)).contains("exit=0");
         assertThat(delegateCalled).isTrue();
+        // 终态帧：批准后下发 approved，前端卡片据此翻转
+        assertThat(resultOutcome.get()).isEqualTo("approved");
     }
 
     @Test
@@ -112,6 +121,8 @@ class ApprovalGateTest {
 
         assertThat(result.get(2, TimeUnit.SECONDS)).contains("拒绝");
         assertThat(delegateCalled).isFalse();
+        // 终态帧：拒绝后下发 rejected
+        assertThat(resultOutcome.get()).isEqualTo("rejected");
     }
 
     @Test
@@ -121,6 +132,8 @@ class ApprovalGateTest {
 
         assertThat(result).contains("未获批准");
         assertThat(delegateCalled).isFalse();
+        // 终态帧：超时也要翻转前端卡片为失效，避免停在 pending 可点
+        assertThat(resultOutcome.get()).isEqualTo("expired");
     }
 
     @Test

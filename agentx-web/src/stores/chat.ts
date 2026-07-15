@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import * as chatApi from '../api/chat'
 import * as codingApi from '../api/coding'
-import { extractErrorMessage } from '../api/http'
+import { extractErrorMessage, isNotFoundError } from '../api/http'
 import type { SseEvent } from '../sse/events'
 import { streamChat } from '../sse/streamChat'
 import type { ApprovalItem, ChatMessage, CodingMode, Conversation, Workspace } from '../types'
@@ -10,6 +10,30 @@ let localIdSeq = 0
 function nextLocalId(): string {
   localIdSeq += 1
   return `local-${Date.now()}-${localIdSeq}`
+}
+
+/** 审批回传在途集合：同步防重入（busy state 是异步的，同一帧连点会发两个请求） */
+const approvalInFlight = new Set<string>()
+
+/** 把某条审批置为指定终态；stillPendingOnly 时仅当当前是 pending 才翻转（权威帧优先） */
+function patchApprovalIn(
+  messages: ChatMessage[],
+  approvalId: string,
+  status: ApprovalItem['status'],
+  stillPendingOnly = false,
+): ChatMessage[] {
+  return messages.map((m) =>
+    m.approvals?.some((a) => a.approvalId === approvalId)
+      ? {
+          ...m,
+          approvals: m.approvals.map((a) =>
+            a.approvalId === approvalId && (!stillPendingOnly || a.status === 'pending')
+              ? { ...a, status }
+              : a,
+          ),
+        }
+      : m,
+  )
 }
 
 function byUpdatedAtDesc(a: Conversation, b: Conversation): number {
@@ -268,6 +292,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
           patchAssistant((m) => ({ ...m, approvals: [...(m.approvals ?? []), item] }))
           break
         }
+        case 'approval-result':
+          // 权威终态帧：后端审批 future 落定后下发（批准/拒绝/超时），
+          // 卡片终态以此为准——覆盖乐观更新丢失/重复点击等各种失同步
+          set((state) => ({
+            messages: patchApprovalIn(state.messages, event.approvalId, event.outcome),
+          }))
+          break
         case 'done':
           patchAssistant((m) => ({ ...m, tokenUsage: event.usage ?? null, streaming: false }))
           // done 帧即协议层终止信号：立即复原发送按钮并主动断开，
@@ -318,7 +349,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }))
       }
     } finally {
-      patchAssistant((m) => ({ ...m, streaming: false }))
+      // 流已终止：仍 pending 的审批卡一律置失效（后端断流时会取消未决审批，
+      // 注册项已不存在，留着可点的按钮只会 404）
+      patchAssistant((m) => ({
+        ...m,
+        streaming: false,
+        approvals:
+          m.approvals?.map((a) => (a.status === 'pending' ? { ...a, status: 'expired' } : a)) ??
+          m.approvals,
+      }))
       set((state) =>
         state.abortController === controller ? { streaming: false, abortController: null } : {},
       )
@@ -332,27 +371,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   async resolveApproval(approvalId, approved) {
-    const nextStatus = approved ? 'approved' : 'rejected'
+    // 同步防重入：busy state 异步生效，同一帧内连点会发两个请求——
+    // 第二个必 404（首个已 remove 注册项）并把已成功的卡片误回滚
+    if (approvalInFlight.has(approvalId)) return
+    approvalInFlight.add(approvalId)
     const patchStatus = (status: ApprovalItem['status']) =>
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m.approvals?.some((a) => a.approvalId === approvalId)
-            ? {
-                ...m,
-                approvals: m.approvals.map((a) =>
-                  a.approvalId === approvalId ? { ...a, status } : a,
-                ),
-              }
-            : m,
-        ),
-      }))
-    // 乐观置终态，失败回滚为 pending
-    patchStatus(nextStatus)
+      set((state) => ({ messages: patchApprovalIn(state.messages, approvalId, status) }))
+    // 乐观置终态；真正的权威终态由 approval-result 帧下发（见 handleEvent）
+    patchStatus(approved ? 'approved' : 'rejected')
     try {
       await codingApi.resolveApproval(approvalId, approved)
     } catch (error) {
-      patchStatus('pending')
+      // 404 = 后端已无此项（已处理/超时/会话结束）→ 置失效；
+      // 其余错误（网络抖动等）才回滚 pending 允许重试
+      patchStatus(isNotFoundError(error) ? 'expired' : 'pending')
       throw error
+    } finally {
+      approvalInFlight.delete(approvalId)
     }
   },
 

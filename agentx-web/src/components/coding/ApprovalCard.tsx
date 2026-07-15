@@ -67,21 +67,24 @@ export default function ApprovalCard({ item }: { item: ApprovalItem }) {
 
 function cardClass(status: ApprovalItem['status']): string {
   const base = 'mb-2.5 overflow-hidden rounded-xl border'
-  if (status === 'approved') return `${base} border-[#cde9de] bg-[#f2faf6]`
-  if (status === 'rejected') return `${base} border-[#efd7d5] bg-[#fbf3f2]`
-  return `${base} border-[#eee1c8] bg-[#fdfaf3]`
+  if (status === 'approved') return `${base} border-[var(--ax-ok-border)] bg-[var(--ax-ok-bg-soft)]`
+  if (status === 'rejected') return `${base} border-[var(--ax-danger-border)] bg-[var(--ax-danger-bg)]`
+  if (status === 'expired') return `${base} border-border bg-muted/30 opacity-75`
+  return `${base} border-[var(--ax-warn-border)] bg-[var(--ax-warn-bg-soft)]`
+}
+
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  approved: { label: '已批准', className: 'bg-[var(--ax-ok-bg)] text-[var(--ax-ok-text)]' },
+  rejected: { label: '已拒绝', className: 'bg-[var(--ax-danger-bg)] text-destructive' },
+  expired: { label: '已失效', className: 'bg-muted text-muted-foreground' },
 }
 
 function StatusBadge({ status }: { status: ApprovalItem['status'] }) {
-  if (status === 'pending') return null
-  const approved = status === 'approved'
+  const badge = STATUS_BADGE[status]
+  if (!badge) return null
   return (
-    <span
-      className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
-        approved ? 'bg-[#e9f6f1] text-[#0e8a6e]' : 'bg-[#fbf3f2] text-destructive'
-      }`}
-    >
-      {approved ? '已批准' : '已拒绝'}
+    <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+      {badge.label}
     </span>
   )
 }

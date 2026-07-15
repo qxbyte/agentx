@@ -39,6 +39,16 @@ public interface ToolEventSink {
         // 默认忽略（非 coding 场景不产生审批）
     }
 
+    /**
+     * 审批终态（CodeAgent Ask 模式）：审批 future 落定后发出，前端据此翻转审批卡。
+     * 无论批准/拒绝/超时都会触发——审批卡终态以此帧为权威，不依赖回传请求自身的响应。
+     *
+     * @param outcome approved / rejected / expired（超时或会话结束）
+     */
+    default void onApprovalResult(String approvalId, String outcome) {
+        // 默认忽略（非 coding 场景不产生审批）
+    }
+
     ToolEventSink NOOP = new ToolEventSink() {
         @Override
         public void onToolCall(String callId, String toolName, String argsJson) {}

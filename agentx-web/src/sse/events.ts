@@ -15,6 +15,7 @@ export type SseEvent =
       kind: string
       preview: ApprovalPreview
     }
+  | { type: 'approval-result'; approvalId: string; outcome: 'approved' | 'rejected' | 'expired' }
   | { type: 'done'; usage?: TokenUsage; finishReason?: string }
   | { type: 'error'; code?: string; message: string }
 
@@ -26,6 +27,7 @@ const KNOWN_TYPES: ReadonlySet<string> = new Set([
   'tool-result',
   'rag-source',
   'approval-request',
+  'approval-result',
   'done',
   'error',
 ])

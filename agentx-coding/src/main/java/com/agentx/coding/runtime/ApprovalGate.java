@@ -68,9 +68,13 @@ public class ApprovalGate implements ToolCallback {
             approved = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             registry.forget(conversationId, approvalId);
+            // 权威终态帧：超时/会话结束也要翻转前端审批卡，避免卡片停在 pending 可点
+            context.toolEventSink().onApprovalResult(approvalId.toString(), "expired");
             return "操作未获批准（审批超时或会话结束），已跳过：" + toolName;
         }
         registry.forget(conversationId, approvalId);
+        // 权威终态帧：无论批准/拒绝都下发，前端卡片终态以此为准（不依赖回传请求的响应）
+        context.toolEventSink().onApprovalResult(approvalId.toString(), approved ? "approved" : "rejected");
 
         if (!approved) {
             return "用户拒绝了此操作（" + toolName + "）。请调整方案或询问用户。";

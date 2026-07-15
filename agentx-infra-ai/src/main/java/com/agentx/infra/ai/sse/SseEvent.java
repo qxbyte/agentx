@@ -21,6 +21,7 @@ public record SseEvent(String type, Map<String, Object> data) {
     public static final String TOOL_RESULT = "tool-result";
     public static final String RAG_SOURCE = "rag-source";
     public static final String APPROVAL_REQUEST = "approval-request";
+    public static final String APPROVAL_RESULT = "approval-result";
     public static final String DONE = "done";
     public static final String ERROR = "error";
 
@@ -83,6 +84,16 @@ public record SseEvent(String type, Map<String, Object> data) {
                                            Map<String, Object> preview) {
         return new SseEvent(APPROVAL_REQUEST, Map.of(
                 "approvalId", approvalId, "toolName", toolName, "kind", kind, "preview", preview));
+    }
+
+    /**
+     * 审批终态帧（CodeAgent Ask 模式）：审批 future 落定后由后端权威下发，
+     * 前端据此翻转审批卡状态——防止「后端已处理、前端仍 pending 可点」的失同步。
+     *
+     * @param outcome approved / rejected / expired（超时或会话结束）
+     */
+    public static SseEvent approvalResult(String approvalId, String outcome) {
+        return new SseEvent(APPROVAL_RESULT, Map.of("approvalId", approvalId, "outcome", outcome));
     }
 
     public static SseEvent done(long promptTokens, long completionTokens, String finishReason) {
