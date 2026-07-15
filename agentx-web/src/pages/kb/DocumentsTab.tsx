@@ -212,7 +212,7 @@ export default function DocumentsTab({ kbId }: { kbId: string }) {
         onDrop={handleDrop}
         className={cn(
           'mb-4 flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-input bg-muted/30 px-6 py-8 text-center transition-colors hover:border-muted-foreground',
-          dragging && 'border-muted-foreground bg-black/[0.02]',
+          dragging && 'border-muted-foreground bg-[var(--ax-hover-weak)]',
         )}
       >
         <input type="file" multiple hidden onChange={handleInputChange} />

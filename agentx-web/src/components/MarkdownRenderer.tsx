@@ -4,7 +4,7 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import ReactMarkdown, { type ExtraProps } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
-import 'highlight.js/styles/github.css'
+// 代码高亮配色不走 highlight.js 自带 CSS（仅浅色）——index.css 自绘 .hljs-* 读 --ax-hl-* 随主题切换
 
 function extractLanguage(children: ReactNode): string {
   if (isValidElement(children)) {

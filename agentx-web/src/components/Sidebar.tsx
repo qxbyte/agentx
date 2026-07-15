@@ -5,12 +5,15 @@ import {
   FolderGit2,
   LogOut,
   MessageSquare,
+  Monitor,
+  Moon,
   MoreHorizontal,
   PanelLeftClose,
   Pencil,
   Plus,
   Settings2,
   SquarePen,
+  Sun,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -46,6 +49,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { extractErrorMessage } from '../api/http'
+import { setTheme, useTheme } from '../hooks/useTheme'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
 import type { Conversation, Workspace } from '../types'
@@ -57,6 +61,30 @@ import NewChatModal from './NewChatModal'
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: '管理员',
   USER: '成员',
+}
+
+/** 外观切换菜单项：浅色 → 深色 → 跟随系统 循环，点击不关闭菜单便于连续切换预览 */
+const THEME_META = {
+  light: { icon: Sun, label: '浅色' },
+  dark: { icon: Moon, label: '深色' },
+  system: { icon: Monitor, label: '跟随系统' },
+} as const
+const THEME_ORDER = ['light', 'dark', 'system'] as const
+
+function ThemeMenuItem() {
+  const theme = useTheme()
+  const { icon: Icon, label } = THEME_META[theme]
+  return (
+    <DropdownMenuItem
+      onSelect={(e) => {
+        e.preventDefault() // 保持菜单打开，切换立即可见
+        setTheme(THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length] ?? 'system')
+      }}
+    >
+      <Icon className="size-4" />
+      外观：{label}
+    </DropdownMenuItem>
+  )
 }
 
 interface SidebarProps {
@@ -513,6 +541,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
               设置
             </DropdownMenuItem>
           )}
+          <ThemeMenuItem />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="size-4" />
             退出登录

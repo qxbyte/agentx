@@ -351,7 +351,7 @@ export default function ExternalKbPage() {
                             {v.vaultId} · {v.chunkCount} 片段 · {v.embeddingModel ?? '未建索引'}
                           </span>
                         </span>
-                        {form.vaultId === v.vaultId && <CheckCircle2 className="size-4 shrink-0 text-[#0e8a6e]" />}
+                        {form.vaultId === v.vaultId && <CheckCircle2 className="size-4 shrink-0 text-[var(--ax-ok-text)]" />}
                       </button>
                     ))
                   )}
@@ -390,7 +390,7 @@ export default function ExternalKbPage() {
                   <span className="text-destructive">{probe.error}</span>
                 ) : (
                   <div className="flex flex-col gap-1">
-                    <span className="inline-flex items-center gap-1.5 text-[#0e8a6e]">
+                    <span className="inline-flex items-center gap-1.5 text-[var(--ax-ok-text)]">
                       <CheckCircle2 className="size-3.5" />
                       连接正常 · {probe.vaultName ?? form.vaultId} · {probe.chunkCount} 片段 ·
                       模型 {probe.embeddingModel ?? '未知'}（{probe.dims} 维）

@@ -1,21 +1,38 @@
 /* ============================================================
-   AgentX 设计 token（浅色）。
-   暗色出口：新增 [data-theme='dark'] { --ax-...: ... } 覆盖即可，
+   AgentX 设计 token。
+   浅色为默认；暗色由 html.dark 覆盖同名变量（见文件下方 .dark 块）。
    组件样式一律引用变量，不写死色值。
    ============================================================ */
 :root {
+  color-scheme: light;
   /* 主操作色：纯黑（OpenAI 式），hover 提亮一档 */
   --ax-primary: #0d0d0d;
   --ax-primary-strong: #2d2d2d;
+  /* primary/深色表面上的文字 */
+  --ax-on-primary: #ffffff;
   /* 点缀色：仅用于链接 / 选中态细节，低饱和蓝 */
   --ax-accent: #3b82f6;
 
+  --ax-canvas: #ececee;
   --ax-bg: #ffffff;
   --ax-surface: #ffffff;
   --ax-panel: #f9f9f9;
   --ax-border: #e5e5e5;
   --ax-border-subtle: #ececec;
+  /* 交互态加深边框（输入框 hover / 按钮 hover） */
+  --ax-border-strong: #c4c4c4;
+  --ax-border-hover: #cfcfcf;
   --ax-hairline: rgba(0, 0, 0, 0.08);
+  /* 弱交互底色（行 hover / 按钮 hover / 图标按钮） */
+  --ax-hover-weak: rgba(0, 0, 0, 0.02);
+  --ax-hover: rgba(0, 0, 0, 0.06);
+  --ax-selection: rgba(0, 0, 0, 0.1);
+  --ax-scrollbar: rgba(0, 0, 0, 0.16);
+  --ax-scrollbar-side: rgba(0, 0, 0, 0.14);
+  /* 卡片浮起投影（画布布局的侧栏/主区） */
+  --ax-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  /* 半透明磨砂表面（topbar / 消息条） */
+  --ax-glass: rgba(255, 255, 255, 0.92);
 
   --ax-text: #0d0d0d;
   --ax-text-secondary: #6e6e80;
@@ -28,16 +45,51 @@
   --ax-danger-border: #efd7d5;
   --ax-star: #d9a410;
 
+  /* 状态色三件套（标签/徽章/状态点） */
+  --ax-info-text: #3a5ea8;
+  --ax-info-bg: #f0f4fa;
+  --ax-info-border: #dbe4f2;
+  --ax-ok-text: #0e8a6e;
+  --ax-ok-bg: #e9f6f1;
+  --ax-ok-border: #cde9de;
+  --ax-warn-bg: #faf4ea;
+  --ax-warn-border: #eee1c8;
+  --ax-violet-text: #6d4aae;
+  --ax-violet-bg: #f3f0fb;
+  /* 状态卡面（比状态 bg 更浅一档，用于审批卡等大面积底色）与 diff 行底色 */
+  --ax-ok-bg-soft: #f2faf6;
+  --ax-warn-bg-soft: #fdfaf3;
+  --ax-diff-add: #e6f4ec;
+  --ax-diff-del: #fbecec;
+
   --ax-user-bubble: #f4f4f4;
   --ax-reasoning-bg: #f9f9f9;
+  --ax-reasoning-rail: #d5d5d5;
   --ax-code-bg: #f7f7f7;
   --ax-code-header: #efefef;
+  /* 中性小圆片（来源徽章 / usage 标签 / 中性 tag） */
+  --ax-chip-bg: #f2f2f3;
+  --ax-chip-bg-hover: #e8e8ea;
+
+  /* 图表悬浮信息卡（深底浅字，暗色下反转为浅底深字） */
+  --ax-tip-bg: color-mix(in srgb, var(--ax-text) 92%, transparent);
+  --ax-tip-text: #ffffff;
+  --ax-tip-text-dim: rgba(255, 255, 255, 0.78);
 
   --ax-sidebar-bg: var(--ax-panel);
   --ax-sidebar-text: #0d0d0d;
   --ax-sidebar-text-dim: #8e8e93;
   --ax-sidebar-hover: #ececec;
   --ax-sidebar-active: #e8e8e8;
+
+  /* 代码高亮（自绘 github 风，替代 highlight.js 全局 CSS，便于暗色覆盖） */
+  --ax-hl-keyword: #cf222e;
+  --ax-hl-string: #0a3069;
+  --ax-hl-number: #0550ae;
+  --ax-hl-title: #6639ba;
+  --ax-hl-comment: #59636e;
+  --ax-hl-attr: #953800;
+  --ax-hl-builtin: #8250df;
 
   --ax-font: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
@@ -48,6 +100,88 @@
   --ax-radius: 12px;
   --ax-radius-lg: 18px;
   --ax-sidebar-width: 260px;
+}
+
+/* ============================================================
+   暗色主题：html.dark 覆盖同名 token（ChatGPT 暗色系：石墨灰阶 + 提亮状态色）
+   ============================================================ */
+html.dark {
+  color-scheme: dark;
+  /* 暗色下主按钮反转为浅色（黑底黑钮不可见） */
+  --ax-primary: #ececec;
+  --ax-primary-strong: #ffffff;
+  --ax-on-primary: #141416;
+  --ax-accent: #7aa7f8;
+
+  --ax-canvas: #141416;
+  --ax-bg: #212123;
+  --ax-surface: #212123;
+  --ax-panel: #1a1a1c;
+  --ax-border: #3a3a3f;
+  --ax-border-subtle: #2e2e33;
+  --ax-border-strong: #55555c;
+  --ax-border-hover: #4a4a51;
+  --ax-hairline: rgba(255, 255, 255, 0.08);
+  --ax-hover-weak: rgba(255, 255, 255, 0.04);
+  --ax-hover: rgba(255, 255, 255, 0.08);
+  --ax-selection: rgba(255, 255, 255, 0.18);
+  --ax-scrollbar: rgba(255, 255, 255, 0.22);
+  --ax-scrollbar-side: rgba(255, 255, 255, 0.18);
+  --ax-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --ax-glass: rgba(33, 33, 35, 0.9);
+
+  --ax-text: #ececec;
+  --ax-text-secondary: #a6a6b3;
+  --ax-text-faint: #6d6d78;
+
+  --ax-success: #2fbf96;
+  --ax-warning: #dfa04b;
+  --ax-danger: #e06c6c;
+  --ax-danger-bg: #372525;
+  --ax-danger-border: #5a3838;
+  --ax-star: #e3b341;
+
+  --ax-info-text: #8fb3f0;
+  --ax-info-bg: #22293a;
+  --ax-info-border: #35415c;
+  --ax-ok-text: #4fc8a4;
+  --ax-ok-bg: #1c322b;
+  --ax-ok-border: #2c4f43;
+  --ax-warn-bg: #362d1d;
+  --ax-warn-border: #55452b;
+  --ax-violet-text: #b39ae0;
+  --ax-violet-bg: #2d2740;
+  --ax-ok-bg-soft: #1a2b24;
+  --ax-warn-bg-soft: #2e281c;
+  --ax-diff-add: #1c3128;
+  --ax-diff-del: #3a2525;
+
+  --ax-user-bubble: #2f2f33;
+  --ax-reasoning-bg: #1a1a1c;
+  --ax-reasoning-rail: #45454c;
+  --ax-code-bg: #17171a;
+  --ax-code-header: #232327;
+  --ax-chip-bg: #2c2c31;
+  --ax-chip-bg-hover: #383840;
+
+  /* 暗色下信息卡反转为浅底深字（与页面拉开层次） */
+  --ax-tip-bg: rgba(240, 240, 244, 0.96);
+  --ax-tip-text: #141416;
+  --ax-tip-text-dim: rgba(20, 20, 22, 0.66);
+
+  --ax-sidebar-text: #ececec;
+  --ax-sidebar-text-dim: #8b8b95;
+  --ax-sidebar-hover: #26262a;
+  --ax-sidebar-active: #2d2d32;
+
+  /* 代码高亮（github-dark 风） */
+  --ax-hl-keyword: #ff7b72;
+  --ax-hl-string: #a5d6ff;
+  --ax-hl-number: #79c0ff;
+  --ax-hl-title: #d2a8ff;
+  --ax-hl-comment: #8b949e;
+  --ax-hl-attr: #ffa657;
+  --ax-hl-builtin: #d2a8ff;
 }
 
 * {
@@ -77,7 +211,7 @@ body {
 }
 
 ::selection {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--ax-selection);
 }
 
 /* 细滚动条 */
@@ -86,14 +220,14 @@ body {
   height: 6px;
 }
 .ax-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.16);
+  background: var(--ax-scrollbar);
   border-radius: 3px;
 }
 .ax-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 .ax-sidebar .ax-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.14);
+  background: var(--ax-scrollbar-side);
 }
 
 :focus-visible {
@@ -118,7 +252,7 @@ body {
   display: flex;
   height: 100%;
   overflow: hidden;
-  background: #ececee;
+  background: var(--ax-canvas);
   padding: 10px;
   gap: 10px;
 }
@@ -131,7 +265,7 @@ body {
   background: var(--ax-bg);
   border: 1px solid var(--ax-border-subtle);
   border-radius: var(--ax-radius-lg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--ax-shadow-card);
   overflow: hidden;
 }
 
@@ -142,7 +276,7 @@ body {
   padding: 10px 16px;
   min-height: 52px;
   border-bottom: 1px solid var(--ax-border);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ax-glass);
   backdrop-filter: blur(8px);
 }
 
@@ -166,7 +300,7 @@ body {
   background: var(--ax-sidebar-bg);
   border: 1px solid var(--ax-border-subtle);
   border-radius: var(--ax-radius-lg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 6px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--ax-shadow-card);
   overflow: hidden;
   color: var(--ax-sidebar-text);
   transition: margin-left 0.2s ease;
@@ -217,7 +351,7 @@ body {
   color: var(--ax-text-secondary);
 }
 .ax-main .ax-icon-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--ax-hover);
   color: var(--ax-text);
 }
 
@@ -243,7 +377,7 @@ body {
 }
 .ax-new-chat .ant-btn:hover {
   background: var(--ax-surface) !important;
-  border-color: #cfcfcf !important;
+  border-color: var(--ax-border-hover) !important;
   color: var(--ax-text) !important;
 }
 
@@ -375,7 +509,7 @@ body {
   justify-content: center;
   border-radius: 50%;
   background: var(--ax-text);
-  color: #fff;
+  color: var(--ax-bg);
   font-size: 14px;
   font-weight: 600;
 }
@@ -462,20 +596,71 @@ body {
   color: var(--ax-text-faint);
 }
 
-/* 流式打字光标 */
-.ax-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 15px;
-  margin-left: 2px;
-  vertical-align: -2px;
-  border-radius: 2px;
-  background: var(--ax-text);
-  animation: ax-blink 1s steps(1) infinite;
+/* 流式活动指示器（Codex 风格）：动态四角星 + 文字扫描微光 */
+.ax-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+  user-select: none;
 }
-@keyframes ax-blink {
+.ax-activity-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--ax-text);
+  transform-origin: center;
+  animation: ax-spark 1.6s ease-in-out infinite;
+}
+/* 星标呼吸：缩小暗淡 → 放大点亮并转 90°（四角星旋转 90° 视觉上回到原位，无缝循环） */
+@keyframes ax-spark {
+  0% {
+    transform: scale(0.72) rotate(0deg);
+    opacity: 0.5;
+  }
   50% {
-    opacity: 0;
+    transform: scale(1.08) rotate(45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.72) rotate(90deg);
+    opacity: 0.5;
+  }
+}
+/* 文字扫描：灰底文字上一道高光从左到右扫过（gradient 织入文字，动 background-position） */
+.ax-activity-label {
+  font-size: 13px;
+  line-height: 20px;
+  background: linear-gradient(
+    90deg,
+    var(--ax-text-faint) 0%,
+    var(--ax-text-faint) 38%,
+    var(--ax-text) 50%,
+    var(--ax-text-faint) 62%,
+    var(--ax-text-faint) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ax-scan 2s linear infinite;
+}
+@keyframes ax-scan {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-activity-icon {
+    animation: none;
+  }
+  .ax-activity-label {
+    animation: none;
+    color: var(--ax-text-faint);
+    background: none;
   }
 }
 
@@ -526,7 +711,7 @@ body {
 .ax-reasoning {
   margin-bottom: 10px;
   border: 1px solid var(--ax-border-subtle);
-  border-left: 3px solid #d5d5d5;
+  border-left: 3px solid var(--ax-reasoning-rail);
   border-radius: var(--ax-radius);
   background: var(--ax-reasoning-bg);
   overflow: hidden;
@@ -582,7 +767,7 @@ body {
   text-align: left;
 }
 .ax-toolcall-header:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ax-hover-weak);
 }
 .ax-toolcall-name {
   font-family: var(--ax-mono);
@@ -646,7 +831,7 @@ body {
   padding: 2px 9px;
   border: none;
   border-radius: 999px;
-  background: #f2f2f3;
+  background: var(--ax-chip-bg);
   font-size: 11.5px;
   line-height: 18px;
   color: var(--ax-text-secondary);
@@ -654,7 +839,7 @@ body {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .ax-source-badge:hover {
-  background: #e8e8ea;
+  background: var(--ax-chip-bg-hover);
   color: var(--ax-text);
 }
 .ax-source-index {
@@ -771,6 +956,64 @@ body {
 }
 
 /* 代码块（带头部：语言 + 复制） */
+/* 代码高亮：自绘 github/github-dark 风 token 色（读 --ax-hl-*，随主题切换），
+   替代 highlight.js 自带的全局 CSS——那份只有浅色且无法按主题切换 */
+.hljs {
+  color: var(--ax-text);
+  background: transparent;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-template-tag,
+.hljs-doctag,
+.hljs-deletion {
+  color: var(--ax-hl-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--ax-hl-string);
+}
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-pseudo {
+  color: var(--ax-hl-number);
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-section {
+  color: var(--ax-hl-title);
+}
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--ax-hl-comment);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-name,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-params {
+  color: var(--ax-hl-attr);
+}
+.hljs-built_in,
+.hljs-type,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--ax-hl-builtin);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}
+
 .ax-codeblock {
   margin: 0 0 1em;
   border: 1px solid var(--ax-border-subtle);
@@ -806,7 +1049,7 @@ body {
   cursor: pointer;
 }
 .ax-codeblock-copy:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--ax-hover);
   color: var(--ax-text);
 }
 .ax-codeblock pre {
@@ -844,7 +1087,7 @@ body {
   transition: border-color 0.15s ease;
 }
 .ax-composer:focus-within {
-  border-color: #c4c4c4;
+  border-color: var(--ax-border-strong);
 }
 .ax-composer textarea {
   flex: 1;
@@ -873,7 +1116,7 @@ body {
   border: none;
   border-radius: 999px;
   background: var(--ax-primary);
-  color: #fff;
+  color: var(--ax-on-primary);
   font-size: 15px;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -883,7 +1126,7 @@ body {
 }
 .ax-send-btn:disabled {
   background: var(--ax-border);
-  color: #fff;
+  color: var(--ax-bg);
   cursor: not-allowed;
 }
 .ax-send-btn--stop {
@@ -948,7 +1191,7 @@ body {
   justify-content: center;
   border-radius: 26%;
   background: var(--ax-text);
-  color: #fff;
+  color: var(--ax-bg);
   flex-shrink: 0;
 }
 
@@ -1047,11 +1290,11 @@ body {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .ax-page .ant-upload-wrapper .ant-upload-drag:hover {
-  border-color: #c4c4c4;
+  border-color: var(--ax-border-strong);
 }
 .ax-page .ant-upload-wrapper .ant-upload-drag.ant-upload-drag-hover {
   border-color: var(--ax-text-secondary);
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ax-hover-weak);
 }
 .ax-page .ant-upload-drag .ant-upload-drag-icon .anticon {
   color: var(--ax-text-secondary);
@@ -1077,7 +1320,7 @@ body {
   transition: border-color 0.15s ease;
 }
 .ax-kb-card:hover {
-  border-color: #c4c4c4;
+  border-color: var(--ax-border-strong);
 }
 .ax-kb-card-head {
   display: flex;
@@ -1146,7 +1389,7 @@ body {
   transition: border-color 0.15s ease;
 }
 .ax-hit-card:hover {
-  border-color: #c4c4c4;
+  border-color: var(--ax-border-strong);
 }
 .ax-hit-card-head {
   display: flex;
@@ -1283,7 +1526,13 @@ body {
   font-weight: 600;
   color: var(--ax-text);
 }
+.ax-bars-wrap {
+  position: relative;
+  /* 顶部净空：柱高缩放到 72% 后，跟随卡片浮在最高柱之上仍不撞标题 */
+  padding-top: 44px;
+}
 .ax-bars {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -1294,10 +1543,9 @@ body {
   min-width: 0;
   height: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: default;
 }
 .ax-bar {
   width: 100%;
@@ -1305,16 +1553,99 @@ body {
   min-height: 2px;
   border-radius: 6px 6px 2px 2px;
   background: var(--ax-text);
-  opacity: 0.82;
-  transition: opacity 0.15s ease;
+  opacity: 0.7;
+  cursor: pointer;
+  transform-origin: bottom center;
+  /* 非线性缓动：轻微回弹（back-ease），让高度/强调更"灵动" */
+  transition:
+    opacity 0.25s ease,
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.2s ease;
 }
-.ax-bar-col:hover .ax-bar {
+.ax-bar-col.is-active .ax-bar {
+  opacity: 1;
+  transform: scaleX(1.08);
+}
+/* 命中某柱（.is-active 出现）时其余柱淡出，聚焦感更强；
+   由 is-active 驱动而非 wrap:hover，避免鼠标进入图表空白区就提前淡出 */
+.ax-bars:has(.ax-bar-col.is-active) .ax-bar {
+  opacity: 0.4;
+}
+.ax-bars:has(.ax-bar-col.is-active) .ax-bar-col.is-active .ax-bar {
   opacity: 1;
 }
-.ax-bar-label {
+.ax-bars-axis {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ax-axis-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   font-size: 10.5px;
   color: var(--ax-text-faint);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+.ax-axis-label.is-active {
+  color: var(--ax-text);
+  font-weight: 600;
+}
+/* 跟随柱子滑动的单张信息卡：left/bottom 走弹性 back-ease，出现走缩放淡入 */
+.ax-bar-tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  transform: translate(-50%, 0) scale(0.9);
+  opacity: 0;
+  min-width: 128px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: var(--ax-tip-bg);
+  color: var(--ax-tip-text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition:
+    left 0.45s cubic-bezier(0.34, 1.4, 0.5, 1),
+    bottom 0.45s cubic-bezier(0.34, 1.4, 0.5, 1),
+    opacity 0.2s ease,
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ax-bar-tip.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+/* 卡片下方小尖角，指向柱子 */
+.ax-bar-tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: inherit;
+  border-radius: 2px;
+}
+.ax-bar-tip-date {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.ax-bar-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ax-tip-text-dim);
+}
+.ax-bar-tip-row b {
+  color: var(--ax-tip-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
@@ -1327,21 +1658,21 @@ body {
 .ant-tag-purple,
 .ant-tag-magenta {
   color: var(--ax-text-secondary);
-  background: #f4f4f5;
+  background: var(--ax-chip-bg);
   border-color: var(--ax-border);
 }
 .ant-tag-geekblue,
 .ant-tag-blue,
 .ant-tag-processing {
-  color: #3a5ea8;
-  background: #f0f4fa;
-  border-color: #dbe4f2;
+  color: var(--ax-info-text);
+  background: var(--ax-info-bg);
+  border-color: var(--ax-info-border);
 }
 .ant-tag-success,
 .ant-tag-green {
-  color: #0e8a6e;
-  background: #e9f6f1;
-  border-color: #cde9de;
+  color: var(--ax-ok-text);
+  background: var(--ax-ok-bg);
+  border-color: var(--ax-ok-border);
 }
 .ant-tag-error,
 .ant-tag-red {
@@ -1353,8 +1684,8 @@ body {
 .ant-tag-orange,
 .ant-tag-gold {
   color: var(--ax-warning);
-  background: #faf4ea;
-  border-color: #eee1c8;
+  background: var(--ax-warn-bg);
+  border-color: var(--ax-warn-border);
 }
 
 /* ============================================================
@@ -1415,7 +1746,7 @@ body {
   padding: 5px 14px;
   border-radius: 999px;
   border: 1px solid var(--ax-border-subtle);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--ax-glass);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
   font-size: 13px;
@@ -1442,17 +1773,157 @@ body {
 }
 
 
-/* sonner toast：容器自动宽 + 内容随文不换行，保持视口水平居中
-   （sonner 给 ol/li 内联 width:var(--width)=356px，定宽会导致胶囊偏左或塌缩竖排） */
+/* sonner toast：强制视口水平居中（不随侧栏收放偏移）+ 容器自动宽
+   （sonner 给 ol/li 内联 width:var(--width)=356px，定宽会导致胶囊偏左或塌缩竖排；
+   left/right/transform 强制居中，杜绝布局变化时的偏移） */
 [data-sonner-toaster] {
   width: auto !important;
+  /* 纯信息提示（自动消失、无需交互）：禁掉指针事件，避免 hover 触发 sonner 展开态
+     与 position:relative 冲突导致宽度重算塌成窄条。 */
+  pointer-events: none !important;
+}
+/* 居中于「右侧内容区」：强制 left:50% + translateX(-50%)（视口居中），再用 margin-left
+   平移到内容区中心（位移 = 内容区中心 − 视口中心，见 useToastAnchor）。
+   三者都 !important，杜绝 sonner 各态（lifted 等）把 transform 顶成 none。 */
+[data-sonner-toaster][data-x-position='center'] {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  margin-left: var(--ax-toast-shift, 0px) !important;
 }
 [data-sonner-toast] {
   width: max-content !important;
   max-width: min(88vw, 720px) !important;
+  /* 关键：toast 默认 position:absolute 不撑父宽，会让 width:auto 的 toaster 塌成 0，
+     导致 translateX(-50%) 失效（位移=0）。改 relative 让它撑起 toaster 宽度，居中才成立。 */
+  position: relative !important;
 }
 [data-sonner-toast] [data-title] {
   white-space: nowrap;
+}
+
+/* iPhone 消息栏观感：磨砂玻璃胶囊。质感由多层叠出——
+   1) 上亮下暗的竖向渐变，模拟光从顶部打下的釉面；
+   2) 强 blur + 高饱和，透出背景色但柔化；
+   3) 分层投影用冷调深色(20,23,30)而非纯黑，漂浮更高级、更聚拢；
+   4) inset 顶部白色发丝高光 = 玻璃上沿的亮边，是"玻璃感"的关键；
+   5) inset 细内描边收边，避免糊边。 */
+.ax-toast {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64)) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 20px 50px -14px rgba(20, 23, 30, 0.3),
+    0 8px 18px -8px rgba(20, 23, 30, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(200%);
+  backdrop-filter: blur(26px) saturate(200%);
+}
+/* 顶部釉光 sheen：一道自上而下迅速淡出的高光，让胶囊像有一层弧面玻璃 */
+.ax-toast::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 62%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+}
+/* 内容抬到釉光之上，避免图标/文字被高光冲淡 */
+.ax-toast > * {
+  position: relative;
+  z-index: 1;
+}
+/* 暗色玻璃：深色半透渐变 + 白色发丝改弱 + 投影加重（黑底上白玻璃会刺眼） */
+html.dark .ax-toast {
+  background:
+    linear-gradient(180deg, rgba(52, 52, 58, 0.86), rgba(38, 38, 43, 0.72)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 20px 50px -14px rgba(0, 0, 0, 0.65),
+    0 8px 18px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.06) !important;
+}
+html.dark .ax-toast::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+}
+
+/* 灵动岛式弹出：由小到大顶端长出 → 落地挤压 → 多次衰减果冻抖动（X/Y 反相 squash&stretch）→ 缓缓定住。
+   整条 animation 用 linear，弹性与快慢全部编码进关键帧本身，两端各自用 timing-function 做慢起慢收。 */
+[data-sonner-toast] {
+  transform-origin: top center;
+}
+@keyframes ax-toast-in {
+  /* 慢起：小气泡从顶端缓缓冒头（这段 ease-in，起步偏慢） */
+  0% {
+    opacity: 0;
+    transform: translateY(-46%) scale(0.28, 0.28);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.35);
+  }
+  24% {
+    opacity: 1;
+    transform: translateY(-3%) scale(0.9, 0.9);
+    animation-timing-function: cubic-bezier(0.3, 1, 0.5, 1);
+  }
+  /* 落地：过冲并横向摊开（宽扁），像果冻砸下 */
+  40% {
+    transform: translateY(4%) scale(1.17, 1.04);
+  }
+  /* 回弹 1：竖直抻高（高瘦） */
+  54% {
+    transform: translateY(-1%) scale(0.94, 1.09);
+  }
+  /* 回弹 2：再横向鼓一下（衰减） */
+  67% {
+    transform: translateY(1%) scale(1.07, 0.97);
+  }
+  /* 回弹 3：微幅竖向 */
+  79% {
+    transform: translateY(0) scale(0.98, 1.025);
+  }
+  /* 回弹 4：几乎不可见的余震 */
+  89% {
+    transform: translateY(0) scale(1.008, 0.995);
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.3, 1);
+  }
+  /* 慢收：缓缓定在 1（末段趋缓） */
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1, 1);
+  }
+}
+@keyframes ax-toast-out {
+  /* 先蓄力压一下（果冻回吸），再快速缩回顶端淡出 */
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.7, -0.3);
+  }
+  26% {
+    opacity: 1;
+    transform: translateY(3%) scale(1.05, 0.94);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.85, 0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-42%) scale(0.3, 0.3);
+  }
+}
+[data-sonner-toast][data-mounted='true'] {
+  animation: ax-toast-in 1.05s linear both;
+}
+[data-sonner-toast][data-removed='true'] {
+  animation: ax-toast-out 0.42s linear both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast][data-mounted='true'],
+  [data-sonner-toast][data-removed='true'] {
+    animation: none;
+  }
 }
 
 /* 标签统一胶囊形 */

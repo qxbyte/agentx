@@ -70,7 +70,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
       {/* 开场芯片托层（Codex 式）：仅新对话阶段显示，发送首条消息后消失。
           项目入口进入的对话为锁定态：只读展示归属与知识库，不可更改 */}
       {isNewConversation && (
-        <div className="-mb-4 mx-4 flex items-center gap-1 rounded-t-[18px] bg-[#f0f0f2] px-3 pb-6 pt-1.5">
+        <div className="-mb-4 mx-4 flex items-center gap-1 rounded-t-[18px] bg-[var(--ax-chip-bg)] px-3 pb-6 pt-1.5">
           {projectLocked ? (
             <span
               className="flex h-7 items-center gap-1.5 px-2 text-xs text-[var(--ax-text-secondary)]"
@@ -92,7 +92,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
         </div>
       )}
 
-      <div className="relative flex flex-col rounded-[26px] border border-[var(--ax-border)] bg-[var(--ax-surface)] transition-colors focus-within:border-[#c4c4c4]">
+      <div className="relative flex flex-col rounded-[26px] border border-[var(--ax-border)] bg-[var(--ax-surface)] transition-colors focus-within:border-[var(--ax-border-strong)]">
 
       <textarea
         ref={textareaRef}

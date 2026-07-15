@@ -48,7 +48,7 @@ export default function KbPicker() {
           type="button"
           title="选择检索用的知识库（发送首条消息后随会话固化）"
           className={cn(
-            'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-black/[0.06]',
+            'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-[var(--ax-hover)]',
             active ? 'font-medium text-foreground' : 'text-[var(--ax-text-secondary)]',
           )}
         >
@@ -90,7 +90,7 @@ export default function KbPicker() {
                   </span>
                   <span className="min-w-0 flex-1 truncate">{kb.name}</span>
                   {kb.external && (
-                    <span className="shrink-0 rounded-full bg-[#f0f4fa] px-1.5 text-[10px] text-[#3a5ea8]">
+                    <span className="shrink-0 rounded-full bg-[var(--ax-info-bg)] px-1.5 text-[10px] text-[var(--ax-info-text)]">
                       外部
                     </span>
                   )}

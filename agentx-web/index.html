@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AgentX 企业级智能体平台" />
     <title>AgentX</title>
+    <script>
+      // 首屏防闪：样式加载前按存储的主题偏好（缺省跟随系统）提前打上 html.dark
+      ;(function () {
+        var t = localStorage.getItem('ax-theme')
+        var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

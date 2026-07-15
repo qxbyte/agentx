@@ -38,7 +38,7 @@ export default function DiffView({ diff }: { diff: string }) {
       <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-1.5">
         <span className="truncate font-mono text-xs text-foreground">{file.path}</span>
         <span className="ml-auto flex shrink-0 items-center gap-2 text-xs">
-          <span className="text-[#0e8a6e]">+{file.added}</span>
+          <span className="text-[var(--ax-ok-text)]">+{file.added}</span>
           <span className="text-destructive">-{file.removed}</span>
         </span>
       </div>
@@ -50,14 +50,14 @@ export default function DiffView({ diff }: { diff: string }) {
             {file.lines.map((line, i) => {
               if (line.type === 'hunk') {
                 return (
-                  <tr key={i} className="bg-[#f0f4fa] text-[#3a5ea8]">
+                  <tr key={i} className="bg-[var(--ax-info-bg)] text-[var(--ax-info-text)]">
                     <td className="select-none px-2 text-right opacity-60" colSpan={2} />
                     <td className="px-2 py-0.5 whitespace-pre">{line.text}</td>
                   </tr>
                 )
               }
               const bg =
-                line.type === 'add' ? 'bg-[#e6f4ec]' : line.type === 'del' ? 'bg-[#fbecec]' : ''
+                line.type === 'add' ? 'bg-[var(--ax-diff-add)]' : line.type === 'del' ? 'bg-[var(--ax-diff-del)]' : ''
               const sign = line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' '
               return (
                 <tr key={i} className={bg}>

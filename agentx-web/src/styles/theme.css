@@ -51,6 +51,39 @@
     Consolas, 'Liberation Mono', monospace;
 }
 
+/* 暗色：与 index.css html.dark 的 --ax-* 数值保持一致（同一套灰阶/状态色） */
+.dark {
+  --background: #212123;
+  --foreground: #ececec;
+  --card: #212123;
+  --card-foreground: #ececec;
+  --popover: #26262a;
+  --popover-foreground: #ececec;
+  --primary: #ececec;
+  --primary-foreground: #141416;
+  --secondary: #2f2f33;
+  --secondary-foreground: #ececec;
+  --muted: #2a2a2e;
+  --muted-foreground: #a6a6b3;
+  --accent: #2f2f33;
+  --accent-foreground: #ececec;
+  --destructive: #e06c6c;
+  --destructive-foreground: #141416;
+  --border: #3a3a3f;
+  --input: #4a4a51;
+  --ring: #7a7a85;
+
+  --canvas: #141416;
+  --sidebar: #1a1a1c;
+  --sidebar-foreground: #ececec;
+  --sidebar-border: #2e2e33;
+  --sidebar-accent: #26262a;
+  --sidebar-accent-foreground: #ececec;
+
+  --success: #2fbf96;
+  --warning: #dfa04b;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

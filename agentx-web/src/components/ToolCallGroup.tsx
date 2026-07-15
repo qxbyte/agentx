@@ -22,7 +22,7 @@ function CompactRow({ call }: { call: ToolCallInfo }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-7 w-full items-center gap-2 px-3 text-left transition-colors hover:bg-black/[0.02]"
+        className="flex h-7 w-full items-center gap-2 px-3 text-left transition-colors hover:bg-[var(--ax-hover-weak)]"
       >
         {finished ? (
           <span className="size-1.5 shrink-0 rounded-full bg-[var(--ax-success)]/70" />
@@ -73,7 +73,7 @@ export default function ToolCallGroup({ calls }: { calls: ToolCallInfo[] }) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="flex h-8 w-full items-center gap-2 px-3 text-left text-xs transition-colors hover:bg-black/[0.015]"
+          className="flex h-8 w-full items-center gap-2 px-3 text-left text-xs transition-colors hover:bg-[var(--ax-hover-weak)]"
         >
           <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="font-medium">{calls.length} 个操作</span>
@@ -98,7 +98,7 @@ export default function ToolCallGroup({ calls }: { calls: ToolCallInfo[] }) {
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="ax-toolcall mb-2.5 block w-full text-left transition-colors hover:bg-black/[0.015]"
+      className="ax-toolcall mb-2.5 block w-full text-left transition-colors hover:bg-[var(--ax-hover-weak)]"
     >
       <div className="flex h-8 items-center gap-2 px-3 text-xs">
         <Wrench className="size-3.5 shrink-0 text-muted-foreground" />

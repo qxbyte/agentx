@@ -182,7 +182,7 @@ export default function WorkspaceFormDialog({
 
 function ValFlag({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 ${ok ? 'text-[#0e8a6e]' : 'text-destructive'}`}>
+    <span className={`inline-flex items-center gap-1 ${ok ? 'text-[var(--ax-ok-text)]' : 'text-destructive'}`}>
       {ok ? <CheckCircle2 className="size-3.5" /> : <XCircle className="size-3.5" />}
       {label}
     </span>

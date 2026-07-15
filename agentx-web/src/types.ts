@@ -325,7 +325,8 @@ export interface ApprovalPreview {
   [key: string]: unknown
 }
 
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+/** expired：审批超时 / 会话结束 / 后端已无此项——卡片失效，不可再操作 */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired'
 
 /** 外部知识库（固定三 API 模板接入；enabled=false 检索完全跳过） */
 export interface ExternalKb {

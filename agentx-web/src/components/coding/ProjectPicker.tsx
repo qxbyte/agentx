@@ -43,7 +43,7 @@ export default function ProjectPicker() {
           <button
             type="button"
             className={cn(
-              'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-black/[0.06]',
+              'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-[var(--ax-hover)]',
               coding ? 'font-medium text-foreground' : 'text-[var(--ax-text-secondary)]',
             )}
           >
