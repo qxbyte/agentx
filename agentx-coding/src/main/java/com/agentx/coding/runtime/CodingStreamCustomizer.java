@@ -32,9 +32,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class CodingStreamCustomizer implements ChatStreamCustomizer {
 
-    /** 全部编码工具名（注册中心里的 @AgentTool 方法名）。 */
+    /** 全部编码工具名（注册中心里的 @AgentTool 方法名）。网络工具只读（查文档/搜报错），三模式可用。 */
     private static final List<String> READONLY_TOOLS =
-            List.of("listDir", "readFile", "grepFiles", "findFiles", "gitStatus", "gitDiff");
+            List.of("listDir", "readFile", "grepFiles", "findFiles", "gitStatus", "gitDiff",
+                    "webFetch", "webSearch");
     private static final List<String> WRITE_TOOLS =
             List.of("writeFile", "applyPatch", "runShell", "gitCommit");
     /** 编码会话的工具调用上限（防失控循环）。 */
@@ -93,6 +94,7 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
                 工作区名：%s。所有文件路径都是相对工作区根的相对路径。
                 先用只读工具（listDir/readFile/grepFiles/findFiles）充分理解代码，再动手修改。
                 如果绑定了知识库，优先检索其中的规范与背景知识辅助定位问题。
+                遇到不熟悉的报错、依赖或 API 时，可用 webSearch 联网搜索、webFetch 打开文档链接查证。
                 """.formatted(ws.getName());
         return base + switch (mode) {
             case PLAN -> "当前是【规划模式】：你只能读取与分析，禁止修改文件或执行命令。产出清晰的修复方案供人工审阅。";

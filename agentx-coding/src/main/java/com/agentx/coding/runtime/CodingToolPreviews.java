@@ -25,6 +25,8 @@ public final class CodingToolPreviews {
             case "findFiles" -> "find";
             case "listDir" -> "list";
             case "gitStatus", "gitDiff" -> "git";
+            case "webFetch" -> "fetch";
+            case "webSearch" -> "search";
             default -> null;
         };
     }
@@ -47,6 +49,8 @@ public final class CodingToolPreviews {
                 if (path != null) preview.put("path", str(path));
                 if (query != null) preview.put("query", str(query));
             }
+            case "webFetch" -> preview.put("url", str(args.get("url")));
+            case "webSearch" -> preview.put("query", str(args.get("query")));
             default -> {
                 return null;
             }
