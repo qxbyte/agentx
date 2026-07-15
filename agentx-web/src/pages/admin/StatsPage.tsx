@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import * as adminApi from '../../api/admin'
 import { extractErrorMessage } from '../../api/http'
 import ErrorState from '../../components/ErrorState'
@@ -19,6 +18,14 @@ function formatNumber(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === '') return '—'
   const n = typeof v === 'string' ? Number(v) : v
   return Number.isFinite(n) ? n.toLocaleString('zh-CN') : String(v)
+}
+
+/** 日期串（可能是 ISO 时间戳）→ 本地「MM-DD」；无法解析时退回原串前 10 位。 */
+function formatDay(v: string | null | undefined): string {
+  if (!v) return ''
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return v.slice(0, 10)
+  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /** by-model 常见字段的中文列名，未命中的字段原样展示 */
@@ -43,6 +50,7 @@ export default function StatsPage() {
   const [byModel, setByModel] = useState<ModelTokenStat[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -156,30 +164,72 @@ export default function StatsPage() {
         {daily.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">暂无用量数据</div>
         ) : (
-          <div className="ax-bars">
-            {daily.map((d, i) => {
-              const total = dailyTotals[i] ?? 0
-              return (
-                <Tooltip key={d.date || String(i)}>
-                  <TooltipTrigger asChild>
-                    <div className="ax-bar-col">
+          (() => {
+            const n = daily.length
+            const active = hoveredDay != null ? daily[hoveredDay] : null
+            // 柱高缩放到柱区 72%，留顶部净空给跟随卡片；卡片底边跟随柱顶之上
+            const barPct = (v: number) => Math.max(2, Math.round((v / maxDaily) * 72))
+            const activePct = hoveredDay != null ? barPct(dailyTotals[hoveredDay] ?? 0) : 0
+            return (
+              <div className="ax-bars-wrap" onMouseLeave={() => setHoveredDay(null)}>
+                <div className="ax-bars">
+                  {daily.map((d, i) => {
+                    const total = dailyTotals[i] ?? 0
+                    return (
                       <div
-                        className="ax-bar"
-                        style={{ height: `${Math.max(1, Math.round((total / maxDaily) * 100))}%` }}
-                      />
-                      <span className="ax-bar-label">{d.date ? d.date.slice(5) : ''}</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div>{d.date}</div>
-                    <div>调用 {formatNumber(d.total_calls ?? 0)} 次</div>
-                    <div>Prompt {formatNumber(d.prompt_tokens ?? 0)}</div>
-                    <div>Completion {formatNumber(d.completion_tokens ?? 0)}</div>
-                  </TooltipContent>
-                </Tooltip>
-              )
-            })}
-          </div>
+                        key={d.date || String(i)}
+                        className={`ax-bar-col${hoveredDay === i ? ' is-active' : ''}`}
+                      >
+                        {/* hover 目标是柱子本身，而非整条通高的列，避免鼠标落在柱子上方/旁边空白也命中 */}
+                        <div
+                          className="ax-bar"
+                          style={{ height: `${barPct(total)}%` }}
+                          onMouseEnter={() => setHoveredDay(i)}
+                          onMouseLeave={() => setHoveredDay(null)}
+                        />
+                      </div>
+                    )
+                  })}
+                  {/* 单张卡片跟随悬停柱子滑动（弹性 back-ease），不为每根柱子各建一个 tooltip */}
+                  <div
+                    className={`ax-bar-tip${active ? ' is-shown' : ''}`}
+                    style={{
+                      left: `${((Math.max(0, hoveredDay ?? 0) + 0.5) / n) * 100}%`,
+                      bottom: `calc(${activePct}% + 16px)`,
+                    }}
+                  >
+                    {active && (
+                      <>
+                        <div className="ax-bar-tip-date">{formatDay(active.date)}</div>
+                        <div className="ax-bar-tip-row">
+                          <span>调用</span>
+                          <b>{formatNumber(active.total_calls ?? 0)}</b>
+                        </div>
+                        <div className="ax-bar-tip-row">
+                          <span>Prompt</span>
+                          <b>{formatNumber(active.prompt_tokens ?? 0)}</b>
+                        </div>
+                        <div className="ax-bar-tip-row">
+                          <span>Completion</span>
+                          <b>{formatNumber(active.completion_tokens ?? 0)}</b>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="ax-bars-axis">
+                  {daily.map((d, i) => (
+                    <span
+                      key={d.date || String(i)}
+                      className={`ax-axis-label${hoveredDay === i ? ' is-active' : ''}`}
+                    >
+                      {formatDay(d.date)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })()
         )}
       </div>
 

@@ -57,6 +57,13 @@ const TYPE_OPTIONS: { value: ModelType; label: string }[] = [
   { value: 'RERANK', label: '重排（RERANK）' },
 ]
 
+/** 类型标签配色：对话=蓝、向量=绿、重排=紫，一眼区分。 */
+const TYPE_BADGE_VARIANT: Record<ModelType, 'info' | 'success' | 'violet'> = {
+  CHAT: 'info',
+  EMBEDDING: 'success',
+  RERANK: 'violet',
+}
+
 interface ModelForm {
   name: string
   providerType: ProviderType
@@ -298,7 +305,7 @@ export default function ModelsPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={record.type === 'CHAT' ? 'info' : 'default'}>{record.type}</Badge>
+                  <Badge variant={TYPE_BADGE_VARIANT[record.type] ?? 'default'}>{record.type}</Badge>
                 </TableCell>
                 <TableCell className="max-w-0 truncate">{record.modelName}</TableCell>
                 <TableCell className="font-mono text-xs">{record.maskedApiKey || '—'}</TableCell>
