@@ -256,6 +256,8 @@ export interface AgentView {
   kbIds: string | null
   maxIterations: number
   enabled: boolean
+  /** USER=管理端创建 / PLUGIN=插件贡献(只读) */
+  source: string
 }
 
 export interface AgentPayload {
@@ -514,6 +516,7 @@ export interface InstalledPluginView {
   enabled: boolean
   installedAt: string
   skillCount: number
+  agentCount: number
   /** 暂不支持的能力名单,如 ["hooks"] */
   unsupported: string[]
 }

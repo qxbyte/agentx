@@ -271,7 +271,14 @@ export default function AgentsPage() {
               const kbIds = parseJsonArray(agent.kbIds)
               return (
                 <TableRow key={agent.id}>
-                  <TableCell className="max-w-0 truncate">{agent.name}</TableCell>
+                  <TableCell className="max-w-0 truncate">
+                    {agent.name}
+                    {agent.source === 'PLUGIN' && (
+                      <Badge variant="outline" className="ml-1.5 text-[10px] text-muted-foreground">
+                        插件
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="info">{agent.workflowType}</Badge>
                   </TableCell>
@@ -314,6 +321,8 @@ export default function AgentsPage() {
                         variant="ghost"
                         size="icon"
                         className="size-7"
+                        disabled={agent.source === 'PLUGIN'}
+                        title={agent.source === 'PLUGIN' ? '插件贡献的 Agent,由插件管理' : undefined}
                         onClick={() => openEdit(agent)}
                       >
                         <Pencil className="size-4" />
@@ -322,6 +331,7 @@ export default function AgentsPage() {
                         variant="ghost"
                         size="icon"
                         className="size-7 text-destructive hover:text-destructive"
+                        disabled={agent.source === 'PLUGIN'}
                         onClick={() => setDeleteTarget(agent)}
                       >
                         <Trash2 className="size-4" />

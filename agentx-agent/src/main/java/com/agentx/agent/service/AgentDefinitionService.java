@@ -69,13 +69,25 @@ public class AgentDefinitionService {
     public AgentDefinition update(UUID id, UpsertRequest req) {
         AgentDefinition agent = repository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Agent 不存在"));
+        requireUserOwned(agent);
         apply(agent, req);
         return repository.save(agent);
     }
 
     @Transactional
     public void delete(UUID id) {
-        repository.deleteById(id);
+        repository.findById(id).ifPresent(agent -> {
+            requireUserOwned(agent);
+            repository.delete(agent);
+        });
+    }
+
+    /** 插件贡献的 Agent 只读：由插件安装/启停/卸载联动维护。 */
+    private void requireUserOwned(AgentDefinition agent) {
+        if ("PLUGIN".equals(agent.getSource())) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "该 Agent 由插件「" + agent.getPluginId() + "」提供,不可编辑或删除;可在插件页停用/卸载插件");
+        }
     }
 
     private void apply(AgentDefinition agent, UpsertRequest req) {

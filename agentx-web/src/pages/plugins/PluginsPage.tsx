@@ -208,8 +208,9 @@ export default function PluginsPage() {
                                 checked={inst.enabled}
                                 onCheckedChange={(checked) => void handleToggle(inst, checked)}
                               />
-                              <span className="text-xs text-muted-foreground">
+                              <span className="shrink-0 text-xs text-muted-foreground">
                                 {inst.skillCount} 技能
+                                {inst.agentCount > 0 ? ` · ${inst.agentCount} 子代理` : ''}
                               </span>
                               {inst.unsupported.length > 0 && (
                                 <Badge

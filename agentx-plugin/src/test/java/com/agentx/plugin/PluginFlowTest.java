@@ -1,5 +1,6 @@
 package com.agentx.plugin;
 
+import com.agentx.agent.service.PluginAgentRegistry;
 import com.agentx.plugin.service.GitFetcher;
 import com.agentx.plugin.service.ManifestReader;
 import com.agentx.plugin.service.MarketplaceService;
@@ -27,6 +28,7 @@ class PluginFlowTest {
     private MarketplaceService marketplaces;
     private PluginService plugins;
     private PluginSkillProvider provider;
+    private PluginAgentRegistry agentRegistry;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -45,12 +47,20 @@ class PluginFlowTest {
                 和用户一起头脑风暴：$ARGUMENTS""");
         write(marketplaceDir.resolve("plugins/demo/commands/ship.md"), "发布流程：$1");
         write(marketplaceDir.resolve("plugins/demo/hooks/hooks.json"), "{}");
+        write(marketplaceDir.resolve("plugins/demo/agents/reviewer.md"), """
+                ---
+                name: reviewer
+                description: 代码审查子代理
+                ---
+
+                你是一位严格的代码审查者。""");
 
         ObjectMapper om = new ObjectMapper();
         PluginRegistry registry = new PluginRegistry(pluginsRoot.toString(), om);
         ManifestReader manifests = new ManifestReader(om);
+        agentRegistry = org.mockito.Mockito.mock(PluginAgentRegistry.class);
         marketplaces = new MarketplaceService(registry, new GitFetcher(), manifests);
-        plugins = new PluginService(registry, marketplaces, manifests, new GitFetcher());
+        plugins = new PluginService(registry, marketplaces, manifests, new GitFetcher(), agentRegistry);
         provider = new PluginSkillProvider(registry);
     }
 
@@ -74,10 +84,20 @@ class PluginFlowTest {
                 .isEqualTo(pluginsRoot.resolve("cache/local-mp/demo/1.2.0"));
         assertThat(Path.of(installed.installPath()).resolve("skills/brainstorm/SKILL.md")).exists();
 
-        // 能力盘点:2 个 skill(skills+commands),暂不支持名单 = [hooks]
+        // 能力盘点:2 个 skill(skills+commands) + 1 个子代理,暂不支持名单 = [hooks](agents 已支持)
         var caps = plugins.capabilities(installed);
         assertThat(caps.skillCount()).isEqualTo(2);
+        assertThat(caps.agentCount()).isEqualTo(1);
         assertThat(caps.unsupported()).containsExactly("hooks");
+        // agents 同步联动:安装时以命名空间名 + body 即 system prompt 同步
+        @SuppressWarnings("unchecked")
+        var specCaptor = org.mockito.ArgumentCaptor.forClass(
+                (Class<java.util.List<PluginAgentRegistry.PluginAgentSpec>>) (Class<?>) java.util.List.class);
+        org.mockito.Mockito.verify(agentRegistry)
+                .sync(org.mockito.Mockito.eq("demo@local-mp"), specCaptor.capture(), org.mockito.Mockito.eq(true));
+        assertThat(specCaptor.getValue()).hasSize(1);
+        assertThat(specCaptor.getValue().get(0).name()).isEqualTo("demo:reviewer");
+        assertThat(specCaptor.getValue().get(0).systemPrompt()).contains("代码审查者");
 
         // provider:命名空间 skill 可列出、可查找
         assertThat(provider.list()).extracting(SkillFile::name)

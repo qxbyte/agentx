@@ -37,12 +37,12 @@ public final class PluginDtos {
     /** 已安装插件视图;unsupported 为暂不支持的能力名单(如 ["hooks"])。 */
     public record InstalledView(String id, String name, String marketplace, String version,
                                 String description, boolean enabled, String installedAt,
-                                int skillCount, List<String> unsupported) {
+                                int skillCount, int agentCount, List<String> unsupported) {
         public static InstalledView of(InstalledPlugin p, String description,
                                        PluginService.Capabilities caps) {
             return new InstalledView(p.id(), p.name(), p.marketplace(), p.version(),
                     description, p.enabled(), p.installedAt(),
-                    caps.skillCount(), caps.unsupported());
+                    caps.skillCount(), caps.agentCount(), caps.unsupported());
         }
     }
 }

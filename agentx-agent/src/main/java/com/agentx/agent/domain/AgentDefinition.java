@@ -52,6 +52,14 @@ public class AgentDefinition {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    /** 来源：USER（管理端创建）/ PLUGIN（插件 agents/*.md 同步,只读）。 */
+    @Column(nullable = false)
+    private String source = "USER";
+
+    /** source=PLUGIN 时为所属插件 id（name@marketplace）。 */
+    @Column(name = "plugin_id")
+    private String pluginId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

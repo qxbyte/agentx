@@ -1,7 +1,9 @@
 package com.agentx.plugin.service;
 
+import com.agentx.agent.service.PluginAgentRegistry;
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
+import com.agentx.skill.store.SkillMarkdown;
 import com.agentx.plugin.store.InstalledPlugin;
 import com.agentx.plugin.store.KnownMarketplace;
 import com.agentx.plugin.store.PluginRegistry;
@@ -30,6 +32,7 @@ public class PluginService {
     private final MarketplaceService marketplaces;
     private final ManifestReader manifests;
     private final GitFetcher git;
+    private final PluginAgentRegistry agentRegistry;
 
     public InstalledPlugin install(String name, String marketplaceName) {
         KnownMarketplace marketplace = marketplaces.getOrThrow(marketplaceName);
@@ -88,6 +91,8 @@ public class PluginService {
         InstalledPlugin installed = new InstalledPlugin(name, marketplaceName, target.toString(),
                 version, true, Instant.now().toString(), git.headSha(gitShaDir));
         registry.putPlugin(installed);
+        // 插件 agents/*.md 同步为只读 Agent 定义(source=PLUGIN,随插件生命周期联动)
+        agentRegistry.sync(installed.id(), parseAgents(installed), true);
         log.info("插件已安装 {}@{} version={} path={}", name, marketplaceName, version, target);
         return installed;
     }
@@ -107,6 +112,7 @@ public class PluginService {
     public InstalledPlugin setEnabled(String id, boolean enabled) {
         InstalledPlugin updated = getOrThrow(id).withEnabled(enabled);
         registry.putPlugin(updated);
+        agentRegistry.setEnabled(id, enabled);
         return updated;
     }
 
@@ -120,6 +126,7 @@ public class PluginService {
             throw new UncheckedIOException("删除插件目录失败: " + id, e);
         }
         registry.removePlugin(id);
+        agentRegistry.remove(id);
     }
 
     /* ---------- 内部 ---------- */
@@ -162,16 +169,46 @@ public class PluginService {
         return false;
     }
 
-    /** 能力盘点:skills 数与暂不支持的能力名单(hooks/agents/MCP),供列表展示。 */
-    public record Capabilities(int skillCount, List<String> unsupported) {}
+    /** 能力盘点:skills/agents 数与暂不支持的能力名单(hooks/MCP),供列表展示。 */
+    public record Capabilities(int skillCount, int agentCount, List<String> unsupported) {}
 
     public Capabilities capabilities(InstalledPlugin plugin) {
         Path root = Path.of(plugin.installPath());
         List<String> unsupported = new java.util.ArrayList<>();
         if (Files.isRegularFile(root.resolve("hooks").resolve("hooks.json"))) unsupported.add("hooks");
-        if (Files.isDirectory(root.resolve("agents"))) unsupported.add("agents");
         if (Files.isRegularFile(root.resolve(".mcp.json"))) unsupported.add("MCP");
-        return new Capabilities(countSkills(root), List.copyOf(unsupported));
+        return new Capabilities(countSkills(root), parseAgents(plugin).size(), List.copyOf(unsupported));
+    }
+
+    /**
+     * 解析插件 agents/*.md（Claude Code 子代理定义:frontmatter description + body 即
+     * system prompt）→ 命名空间化的 Agent 规格。model/tools 等 Claude 专属字段忽略。
+     */
+    private List<PluginAgentRegistry.PluginAgentSpec> parseAgents(InstalledPlugin plugin) {
+        Path dir = Path.of(plugin.installPath()).resolve("agents");
+        if (!Files.isDirectory(dir)) {
+            return List.of();
+        }
+        List<PluginAgentRegistry.PluginAgentSpec> specs = new java.util.ArrayList<>();
+        try (Stream<Path> entries = Files.list(dir)) {
+            for (Path file : entries.sorted().toList()) {
+                String fileName = file.getFileName().toString();
+                if (!Files.isRegularFile(file) || !fileName.endsWith(".md")) {
+                    continue;
+                }
+                String agentName = fileName.substring(0, fileName.length() - 3);
+                if (!MarketplaceService.NAME_PATTERN.matcher(agentName).matches()) {
+                    continue;
+                }
+                var parsed = SkillMarkdown.parse(agentName,
+                        Files.readString(file), Instant.now());
+                specs.add(new PluginAgentRegistry.PluginAgentSpec(
+                        plugin.name() + ":" + agentName, parsed.description(), parsed.content()));
+            }
+        } catch (IOException e) {
+            log.warn("插件 agents 扫描失败: {}", dir, e);
+        }
+        return specs;
     }
 
     private static int countSkills(Path root) {

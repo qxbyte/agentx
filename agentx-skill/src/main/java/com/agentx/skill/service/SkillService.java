@@ -46,6 +46,38 @@ public class SkillService {
         return store.scan();
     }
 
+    /**
+     * 可被模型自动触发的技能（M2）：enabled 且 modelInvocable,
+     * 与 user-invocable 无关——仅模型可用的内部技能（user-invocable: false）正是走这条路。
+     */
+    public List<SkillFile> listModelInvocable() {
+        List<SkillFile> merged = new java.util.ArrayList<>(
+                store.scan().stream()
+                        .filter(SkillFile::enabled)
+                        .filter(SkillFile::modelInvocable)
+                        .toList());
+        for (SkillProvider provider : providers) {
+            provider.list().stream().filter(SkillFile::modelInvocable).forEach(merged::add);
+        }
+        return merged;
+    }
+
+    /** 按名查找可自动触发的技能（skill 工具的 L2 加载入口）。 */
+    public java.util.Optional<SkillFile> findModelInvocable(String name) {
+        if (name.contains(":")) {
+            for (SkillProvider provider : providers) {
+                var found = provider.find(name).filter(SkillFile::modelInvocable);
+                if (found.isPresent()) {
+                    return found;
+                }
+            }
+            return java.util.Optional.empty();
+        }
+        return store.find(name)
+                .filter(SkillFile::enabled)
+                .filter(SkillFile::modelInvocable);
+    }
+
     public SkillFile getOwned(String name) {
         return store.find(name)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "技能不存在"));

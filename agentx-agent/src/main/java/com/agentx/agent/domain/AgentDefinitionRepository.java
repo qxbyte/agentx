@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface AgentDefinitionRepository extends JpaRepository<AgentDefinition, UUID> {
     List<AgentDefinition> findByEnabledTrueOrderByCreatedAtAsc();
     Optional<AgentDefinition> findByName(String name);
+    List<AgentDefinition> findByPluginId(String pluginId);
 }
