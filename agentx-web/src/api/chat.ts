@@ -40,3 +40,15 @@ export function listMessages(conversationId: string): Promise<ChatMessage[]> {
     method: 'GET',
   })
 }
+
+/** 提交 askUserQuestion 的答案，解冻阻塞的工具线程 */
+export function answerQuestion(
+  questionId: string,
+  answers: import('../types').QuestionAnswer[],
+): Promise<void> {
+  return request<void>({
+    url: `/v1/chat/questions/${questionId}`,
+    method: 'POST',
+    data: { answers },
+  })
+}

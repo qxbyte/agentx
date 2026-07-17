@@ -46,6 +46,11 @@ public class ChatMessage {
     @Column(name = "token_usage", columnDefinition = "jsonb")
     private String tokenUsage;
 
+    /** 用户消息的附件元数据（[{id, filename, sizeBytes}]），供历史气泡渲染附件芯片 */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String attachments;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

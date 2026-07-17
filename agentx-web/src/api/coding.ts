@@ -45,3 +45,12 @@ export function resolveApproval(approvalId: string, approved: boolean): Promise<
     data: { approved },
   })
 }
+
+/** 编码模式切换回传：轮内立即生效（切 AUTO 时后端自动批准全部未决审批） */
+export function updateCodingMode(conversationId: string, mode: string): Promise<void> {
+  return request<void>({
+    url: `/v1/chat/conversations/${conversationId}/coding-mode`,
+    method: 'PUT',
+    data: { mode },
+  })
+}

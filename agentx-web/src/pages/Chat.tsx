@@ -6,6 +6,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import ChatInput from '../components/ChatInput'
 import Logo from '../components/Logo'
 import MessageItem from '../components/MessageItem'
+import PlanPanel from '../components/PlanPanel'
 import Sidebar from '../components/Sidebar'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useToastAnchor } from '../hooks/useToastAnchor'
@@ -35,6 +36,8 @@ export default function ChatPage() {
   const openConversation = useChatStore((s) => s.openConversation)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const stopStreaming = useChatStore((s) => s.stopStreaming)
+  const plan = useChatStore((s) => s.plan)
+  const clearPlan = useChatStore((s) => s.clearPlan)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -142,6 +145,7 @@ export default function ChatPage() {
         </div>
 
         <div className="ax-composer-wrap">
+          {plan && <PlanPanel plan={plan} onDismiss={clearPlan} />}
           <ChatInput streaming={streaming} onSend={handleSend} onStop={stopStreaming} />
           <div className="ax-composer-hint">
             Enter 发送 · Shift + Enter 换行 · 内容由 AI 生成，请注意甄别

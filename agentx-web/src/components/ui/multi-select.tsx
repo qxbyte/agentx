@@ -45,7 +45,7 @@ export function MultiSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex min-h-9 w-full items-center justify-between gap-2 rounded-2xl border border-input bg-background px-3 py-1.5 text-left text-sm transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-black/[0.04]"
+          className="flex min-h-9 w-full items-center justify-between gap-2 rounded-2xl border border-input bg-background px-3 py-1.5 text-left text-sm transition-colors focus:outline-none focus:border-[var(--ax-border-strong)]"
         >
           {value.length === 0 ? (
             <span className="text-muted-foreground">{placeholder}</span>
@@ -72,7 +72,7 @@ export function MultiSelect({
           <ChevronDown className="size-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent portalled={false} align="start" className="w-(--radix-popover-trigger-width) p-0">
         <div className="border-b border-border p-2">
           <input
             className="h-8 w-full rounded-lg bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"

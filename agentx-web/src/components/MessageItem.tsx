@@ -1,7 +1,19 @@
+import { RotateCcw, Zap } from 'lucide-react'
 import { memo } from 'react'
-import type { ChatMessage } from '../types'
+import { useChatStore } from '../stores/chat'
+import type {
+  ChatMessage,
+  QuestionAnswer,
+  QuestionItem,
+  QuestionSpec,
+  ToolCallInfo,
+} from '../types'
 import ActivityIndicator, { activityLabel } from './ActivityIndicator'
+import AttachmentCard from './AttachmentCard'
+import AttachmentThumb from './AttachmentThumb'
 import ApprovalCard from './coding/ApprovalCard'
+import FileCard from './FileCard'
+import QuestionCard from './QuestionCard'
 import Logo from './Logo'
 import ToolCallGroup from './ToolCallGroup'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -14,10 +26,40 @@ interface MessageItemProps {
 }
 
 function MessageItem({ message }: MessageItemProps) {
+  // hook 须在 role 分支前调用；skills 极少变化，订阅代价可忽略
+  const skills = useChatStore((s) => s.skills)
+
   if (message.role === 'USER') {
+    // /name 开头且命中已知 skill → 渲染命令徽章（对标 Claude Code 的命令展示）
+    const command = /^\/([a-z0-9-]+(?::[a-z0-9-]+)?)(?:\s+([\s\S]*))?$/.exec(message.content.trim())
+    const skillName = command && skills.some((s) => s.name === command[1]) ? command[1] : null
     return (
       <div className="ax-message ax-message--user">
-        <div className="ax-user-bubble">{message.content}</div>
+        <div className="ax-user-stack">
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="ax-attach-bar ax-attach-bar--history">
+              {message.attachments.map((a) =>
+                a.kind === 'image' ? (
+                  <AttachmentThumb key={a.id} filename={a.filename} attachmentId={a.id} />
+                ) : (
+                  <AttachmentCard key={a.id} filename={a.filename} compact />
+                ),
+              )}
+            </div>
+          )}
+          <div className="ax-user-bubble">
+            {skillName ? (
+              <>
+                <span className="mr-1.5 inline-flex translate-y-[-1px] items-center gap-1 rounded-full bg-[var(--ax-info-bg)] px-2 py-0.5 align-middle font-mono text-[12px] font-medium text-[var(--ax-info-text)]">
+                  <Zap className="size-3" />/{skillName}
+                </span>
+                {command?.[2] ?? ''}
+              </>
+            ) : (
+              message.content
+            )}
+          </div>
+        </div>
       </div>
     )
   }
@@ -45,7 +87,26 @@ function MessageItem({ message }: MessageItemProps) {
 
   // ASSISTANT
   const streaming = message.streaming === true
-  const toolCalls = message.toolCalls ?? []
+  // updatePlan 由输入框上方的计划面板独立呈现；文件生成用专属文件卡片；
+  // askUserQuestion 用专属提问卡（实时经 SSE 帧，历史从 toolCalls 重建）
+  const FILE_TOOLS = ['generateDocument', 'generateSpreadsheet']
+  const allCalls = message.toolCalls ?? []
+  const fileCalls = allCalls.filter((c) => FILE_TOOLS.includes(c.name))
+  const toolCalls = allCalls.filter(
+    (c) => c.name !== 'updatePlan' && c.name !== 'askUserQuestion' && !FILE_TOOLS.includes(c.name),
+  )
+  // 提问卡数据源：流式期间用 message.questions（SSE 帧驱动）；
+  // 历史消息（刷新后）从 askUserQuestion 的 toolCalls 记录重建终态卡
+  const liveQuestions = message.questions ?? []
+  const historyQuestions =
+    liveQuestions.length > 0
+      ? []
+      : allCalls
+          // 仅重建已完成的调用：执行中（result 未至）的提问卡由 question-request 帧实时渲染
+          .filter((c) => c.name === 'askUserQuestion' && c.result !== undefined)
+          .map(toHistoryQuestion)
+          .filter((q): q is QuestionItem => q !== null)
+  const questionItems = [...liveQuestions, ...historyQuestions]
   const showActivity = streaming && !message.error
 
   return (
@@ -61,8 +122,14 @@ function MessageItem({ message }: MessageItemProps) {
           />
         ) : null}
         <ToolCallGroup calls={toolCalls} />
+        {fileCalls.map((c) => (
+          <FileCard key={c.id} call={c} />
+        ))}
         {message.approvals?.map((item) => (
           <ApprovalCard key={item.approvalId} item={item} />
+        ))}
+        {questionItems.map((item) => (
+          <QuestionCard key={item.questionId} item={item} />
         ))}
         {message.content ? <MarkdownRenderer content={message.content} /> : null}
         {showActivity && <ActivityIndicator label={activityLabel(message)} />}
@@ -72,6 +139,17 @@ function MessageItem({ message }: MessageItemProps) {
               <span className="ax-msg-error-code">{message.error.code}</span>
             )}
             {message.error.message}
+            {/* 未落库的本地轮次（如登录过期 401 被过滤器拦截）可原文重发 */}
+            {!streaming && message.id.startsWith('local-') && (
+              <button
+                type="button"
+                className="ax-msg-error-retry"
+                onClick={() => useChatStore.getState().resendFailed(message.id)}
+              >
+                <RotateCcw className="size-3" />
+                重新发送
+              </button>
+            )}
           </div>
         ) : null}
         {message.ragSources && message.ragSources.length > 0 ? (
@@ -86,6 +164,27 @@ function MessageItem({ message }: MessageItemProps) {
       </div>
     </div>
   )
+}
+
+/** 历史消息的 askUserQuestion toolCall 记录 → 终态提问卡数据（解析失败返回 null 静默跳过） */
+function toHistoryQuestion(call: ToolCallInfo): QuestionItem | null {
+  try {
+    const args =
+      typeof call.args === 'string' ? (JSON.parse(call.args) as { questions?: QuestionSpec[] }) : null
+    if (!args?.questions?.length) return null
+    const result =
+      typeof call.result === 'string'
+        ? (JSON.parse(call.result) as { status?: string; answers?: QuestionAnswer[] })
+        : null
+    return {
+      questionId: `history-${call.id}`,
+      questions: args.questions,
+      status: result?.status === 'answered' ? 'answered' : 'expired',
+      answers: result?.answers ?? null,
+    }
+  } catch {
+    return null
+  }
 }
 
 export default memo(MessageItem)

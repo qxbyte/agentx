@@ -1,0 +1,197 @@
+package com.agentx.plugin.service;
+
+import com.agentx.common.api.ErrorCode;
+import com.agentx.common.exception.BizException;
+import com.agentx.plugin.store.InstalledPlugin;
+import com.agentx.plugin.store.KnownMarketplace;
+import com.agentx.plugin.store.PluginRegistry;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+/**
+ * 插件安装/启停/卸载。安装副本落 cache/&lt;marketplace&gt;/&lt;plugin&gt;/&lt;version&gt;/
+ * （对齐 Claude Code 三级布局）;拷贝跳过 .git 与符号链接。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class PluginService {
+
+    private final PluginRegistry registry;
+    private final MarketplaceService marketplaces;
+    private final ManifestReader manifests;
+    private final GitFetcher git;
+
+    public InstalledPlugin install(String name, String marketplaceName) {
+        KnownMarketplace marketplace = marketplaces.getOrThrow(marketplaceName);
+        var manifest = marketplaces.manifest(marketplaceName).orElseThrow(() -> new BizException(
+                ErrorCode.BAD_REQUEST, "marketplace 清单不可读: " + marketplaceName));
+        var entry = manifest.plugins().stream()
+                .filter(p -> p.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND,
+                        "marketplace " + marketplaceName + " 中没有插件 " + name));
+        if (!MarketplaceService.NAME_PATTERN.matcher(name).matches()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "插件名称非法: " + name);
+        }
+
+        // 解析 source 得到插件源目录
+        Path sourceDir;
+        Path gitShaDir;
+        switch (entry.sourceType()) {
+            case "relative" -> {
+                Path base = Path.of(marketplace.installLocation());
+                sourceDir = base.resolve(entry.locator()).normalize();
+                if (!sourceDir.startsWith(base)) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "插件路径越界: " + entry.locator());
+                }
+                gitShaDir = base;
+            }
+            case "github" -> {
+                sourceDir = cloneTemp("https://github.com/" + entry.locator() + ".git");
+                gitShaDir = sourceDir;
+            }
+            case "url" -> {
+                sourceDir = cloneTemp(entry.locator());
+                gitShaDir = sourceDir;
+            }
+            default -> throw new BizException(ErrorCode.BAD_REQUEST,
+                    "该插件的 source 类型暂不支持: " + entry.sourceType());
+        }
+        if (!Files.isDirectory(sourceDir)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "插件源目录不存在: " + sourceDir);
+        }
+
+        // 版本优先级:plugin.json > marketplace 条目 > unknown(对齐 Claude Code 实测)
+        String version = manifests.readPluginMeta(sourceDir)
+                .map(ManifestReader.PluginMeta::version)
+                .filter(v -> !v.isBlank())
+                .orElse(entry.version() == null || entry.version().isBlank() ? "unknown" : entry.version());
+
+        Path target = registry.cacheDir().resolve(marketplaceName).resolve(name).resolve(version);
+        try {
+            MarketplaceService.deleteRecursively(registry.cacheDir().resolve(marketplaceName).resolve(name));
+            copyTree(sourceDir, target);
+        } catch (IOException e) {
+            throw new UncheckedIOException("插件拷贝失败: " + name, e);
+        }
+
+        InstalledPlugin installed = new InstalledPlugin(name, marketplaceName, target.toString(),
+                version, true, Instant.now().toString(), git.headSha(gitShaDir));
+        registry.putPlugin(installed);
+        log.info("插件已安装 {}@{} version={} path={}", name, marketplaceName, version, target);
+        return installed;
+    }
+
+    public Map<String, InstalledPlugin> list() {
+        return registry.plugins();
+    }
+
+    public InstalledPlugin getOrThrow(String id) {
+        InstalledPlugin plugin = registry.plugins().get(id);
+        if (plugin == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "插件未安装: " + id);
+        }
+        return plugin;
+    }
+
+    public InstalledPlugin setEnabled(String id, boolean enabled) {
+        InstalledPlugin updated = getOrThrow(id).withEnabled(enabled);
+        registry.putPlugin(updated);
+        return updated;
+    }
+
+    public void uninstall(String id) {
+        InstalledPlugin plugin = getOrThrow(id);
+        try {
+            // 删整个 cache/<marketplace>/<name>(含历史版本目录)
+            MarketplaceService.deleteRecursively(
+                    registry.cacheDir().resolve(plugin.marketplace()).resolve(plugin.name()));
+        } catch (IOException e) {
+            throw new UncheckedIOException("删除插件目录失败: " + id, e);
+        }
+        registry.removePlugin(id);
+    }
+
+    /* ---------- 内部 ---------- */
+
+    private Path cloneTemp(String url) {
+        try {
+            Path temp = Files.createTempDirectory("agentx-plugin-");
+            git.cloneShallow(url, temp);
+            return temp;
+        } catch (IOException e) {
+            throw new UncheckedIOException("创建临时目录失败", e);
+        }
+    }
+
+    /** 递归拷贝,跳过 .git 与符号链接。 */
+    private static void copyTree(Path from, Path to) throws IOException {
+        try (Stream<Path> walk = Files.walk(from)) {
+            for (Path src : walk.toList()) {
+                if (Files.isSymbolicLink(src) || src.getFileName().toString().equals(".git")
+                        || pathContains(from.relativize(src), ".git")) {
+                    continue;
+                }
+                Path dst = to.resolve(from.relativize(src).toString());
+                if (Files.isDirectory(src)) {
+                    Files.createDirectories(dst);
+                } else {
+                    Files.createDirectories(dst.getParent());
+                    Files.copy(src, dst);
+                }
+            }
+        }
+    }
+
+    private static boolean pathContains(Path relative, String segment) {
+        for (Path part : relative) {
+            if (part.toString().equals(segment)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 能力盘点:skills 数与暂不支持的能力名单(hooks/agents/MCP),供列表展示。 */
+    public record Capabilities(int skillCount, List<String> unsupported) {}
+
+    public Capabilities capabilities(InstalledPlugin plugin) {
+        Path root = Path.of(plugin.installPath());
+        List<String> unsupported = new java.util.ArrayList<>();
+        if (Files.isRegularFile(root.resolve("hooks").resolve("hooks.json"))) unsupported.add("hooks");
+        if (Files.isDirectory(root.resolve("agents"))) unsupported.add("agents");
+        if (Files.isRegularFile(root.resolve(".mcp.json"))) unsupported.add("MCP");
+        return new Capabilities(countSkills(root), List.copyOf(unsupported));
+    }
+
+    private static int countSkills(Path root) {
+        int count = 0;
+        Path skillsDir = root.resolve("skills");
+        if (Files.isDirectory(skillsDir)) {
+            try (Stream<Path> entries = Files.list(skillsDir)) {
+                count += (int) entries.filter(p -> Files.isRegularFile(p.resolve("SKILL.md"))).count();
+            } catch (IOException e) {
+                log.warn("skills 目录扫描失败: {}", skillsDir, e);
+            }
+        }
+        Path commandsDir = root.resolve("commands");
+        if (Files.isDirectory(commandsDir)) {
+            try (Stream<Path> entries = Files.list(commandsDir)) {
+                count += (int) entries.filter(p -> p.getFileName().toString().endsWith(".md")).count();
+            } catch (IOException e) {
+                log.warn("commands 目录扫描失败: {}", commandsDir, e);
+            }
+        }
+        return count;
+    }
+}

@@ -1,4 +1,5 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { redirectToLogin, refreshAccessToken } from '../api/http'
 import { getAccessToken } from '../api/tokens'
 import { parseSseEvent, type SseEvent } from './events'
 
@@ -8,12 +9,16 @@ export interface StreamChatParams {
   content: string
   /** 本次消息使用的模型（覆盖会话默认） */
   modelConfigId?: string
+  /** 用户显式切回「默认模型」：后端据此清除会话固化的模型选择 */
+  useDefaultModel?: boolean
   /** CodeAgent：绑定的工作区；非空即进入 coding 模式 */
   workspaceId?: string
   /** CodeAgent：Plan / Ask / Auto */
   mode?: string
   /** 本次检索追加的知识库（输入框多选） */
   kbIds?: string[]
+  /** 本条消息携带的已上传附件 */
+  attachmentIds?: string[]
   signal: AbortSignal
   onEvent: (event: SseEvent) => void
 }
@@ -41,11 +46,43 @@ export class StreamFatalError extends Error {
 /**
  * 发起流式对话。Promise 在流正常结束时 resolve；
  * 中断（AbortController）时抛出 AbortError；HTTP/网络错误抛出 StreamFatalError。
+ *
+ * 鉴权：本通道绕过 axios 拦截器，401 时复用同一套单飞刷新机制——
+ * 刷新成功自动重试一次（401 发生在 onopen，尚无任何副作用，重试安全）；
+ * 刷新失败（refresh token 也过期）跳登录页，与 axios 路径行为一致。
  */
 export async function streamChat(params: StreamChatParams): Promise<void> {
-  const { conversationId, content, modelConfigId, workspaceId, mode, kbIds, signal, onEvent } =
-    params
-  const token = getAccessToken()
+  try {
+    await runStream(params, getAccessToken())
+  } catch (error) {
+    if (error instanceof StreamFatalError && error.status === 401) {
+      let token: string
+      try {
+        token = await refreshAccessToken()
+      } catch {
+        redirectToLogin()
+        throw error
+      }
+      await runStream(params, token)
+      return
+    }
+    throw error
+  }
+}
+
+async function runStream(params: StreamChatParams, token: string | null): Promise<void> {
+  const {
+    conversationId,
+    content,
+    modelConfigId,
+    useDefaultModel,
+    workspaceId,
+    mode,
+    kbIds,
+    attachmentIds,
+    signal,
+    onEvent,
+  } = params
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -61,9 +98,11 @@ export async function streamChat(params: StreamChatParams): Promise<void> {
       ...(conversationId ? { conversationId } : {}),
       content,
       ...(modelConfigId ? { modelConfigId } : {}),
+      ...(useDefaultModel ? { useDefaultModel } : {}),
       ...(workspaceId ? { workspaceId } : {}),
       ...(mode ? { mode } : {}),
       ...(kbIds && kbIds.length > 0 ? { kbIds } : {}),
+      ...(attachmentIds && attachmentIds.length > 0 ? { attachmentIds } : {}),
     }),
     signal,
     // 切到后台标签页时不中断流

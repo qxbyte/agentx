@@ -1,6 +1,6 @@
 import {
+  Blocks,
   BookOpen,
-  Bot,
   ChevronDown,
   FolderGit2,
   LogOut,
@@ -12,7 +12,9 @@ import {
   Pencil,
   Plus,
   Settings2,
+  SlidersHorizontal,
   SquarePen,
+  SquareSlash,
   Sun,
   Trash2,
 } from 'lucide-react'
@@ -186,6 +188,20 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
       label: '项目',
       active: location.pathname.startsWith('/workspaces'),
     },
+    {
+      key: 'skills',
+      to: '/skills',
+      icon: <SquareSlash />,
+      label: '技能',
+      active: location.pathname.startsWith('/skills'),
+    },
+    {
+      key: 'plugins',
+      to: '/plugins',
+      icon: <Blocks />,
+      label: '插件',
+      active: location.pathname.startsWith('/plugins'),
+    },
     // 「设置」入口收进底部用户菜单（点头像弹出）
   ]
 
@@ -343,13 +359,13 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
               variant="outline"
               size="icon"
               className="ax-new-chat-agent h-[38px] w-[42px] bg-background"
-              aria-label="选择 Agent 或知识库新建对话"
+              aria-label="自定义新建：选择 Agent 或知识库"
               onClick={() => setNewChatOpen(true)}
             >
-              <Bot className="size-4" />
+              <SlidersHorizontal className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">选择 Agent / 知识库新建</TooltipContent>
+          <TooltipContent side="right">自定义新建（Agent / 知识库）</TooltipContent>
         </Tooltip>
       </div>
 

@@ -54,6 +54,24 @@ public class ApprovalRegistry {
         return true;
     }
 
+    /**
+     * 模式切到 AUTO 的即时生效：把该用户在此会话的全部未决审批一次性批准，
+     * 解冻阻塞中的工具线程直接执行。归属不符的登记项跳过（防越权批量批准）。
+     */
+    public int approveConversation(UUID conversationId, UUID requesterId) {
+        java.util.Set<UUID> ids = byConversation.get(conversationId);
+        if (ids == null) {
+            return 0;
+        }
+        int approved = 0;
+        for (UUID id : java.util.List.copyOf(ids)) {
+            if (requesterId.equals(owner.get(id)) && resolve(id, requesterId, true)) {
+                approved++;
+            }
+        }
+        return approved;
+    }
+
     /** 会话结束/断流：未决审批一律以拒绝收尾，解冻悬挂的工具线程。 */
     public void cancelConversation(UUID conversationId) {
         java.util.Set<UUID> ids = byConversation.remove(conversationId);

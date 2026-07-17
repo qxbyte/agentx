@@ -5,3 +5,8 @@ spring:
     password: agentx
   flyway:
     clean-disabled: false
+agentx:
+  skills:
+    root: ${java.io.tmpdir}/agentx-test-skills
+  plugins:
+    root: ${java.io.tmpdir}/agentx-test-plugins

@@ -47,4 +47,29 @@ public class OpenAiCompatibleChatModelProvider implements ChatModelProvider {
                 .options(options.build())
                 .build();
     }
+
+    /**
+     * 多模态通道：DeepSeek 协议客户端的消息 content 是纯 String（结构上无法携带图片），
+     * 带图轮次改用 spring-ai-openai（openai-java SDK），其 content 数组原生支持 image_url。
+     */
+    @Override
+    public ChatModel buildVision(ModelConfig config, String apiKey) {
+        // spring-ai-openai 自带 OkHttp 传输实现（openai-java 官方 okhttp 客户端为可选依赖未随包）
+        com.openai.client.OpenAIClient client = new com.openai.client.OpenAIClientImpl(
+                com.openai.core.ClientOptions.builder()
+                        .httpClient(org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient
+                                .builder().build())
+                        .baseUrl(config.getBaseUrl())
+                        // apiKey(String) 不落 credential 槽位，须显式给 Bearer 凭证
+                        .credential(com.openai.credential.BearerTokenCredential.create(apiKey))
+                        .build());
+        return org.springframework.ai.openai.OpenAiChatModel.builder()
+                .openAiClient(client)
+                // 流式走 async 客户端：不显式传入时模型会自建（无凭证 → IllegalStateException）
+                .openAiClientAsync(client.async())
+                .options(org.springframework.ai.openai.OpenAiChatOptions.builder()
+                        .model(config.getModelName())
+                        .build())
+                .build();
+    }
 }

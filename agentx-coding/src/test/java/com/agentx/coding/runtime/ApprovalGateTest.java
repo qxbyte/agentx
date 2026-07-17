@@ -25,6 +25,7 @@ class ApprovalGateTest {
     private static final UUID CONVERSATION_ID = UUID.randomUUID();
 
     private final ApprovalRegistry registry = new ApprovalRegistry();
+    private final CodingModeRegistry modeRegistry = new CodingModeRegistry();
     private final ObjectMapper objectMapper = new ObjectMapper();
     /** 捕获 approval-request 帧里的 approvalId（前端回传所依赖的标识） */
     private final AtomicReference<String> requestedApprovalId = new AtomicReference<>();
@@ -80,7 +81,7 @@ class ApprovalGateTest {
 
     @Test
     void approveUnblocksAndExecutesDelegate() throws Exception {
-        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 5_000);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
         CompletableFuture<String> result = callAsync(gate);
 
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
@@ -96,7 +97,7 @@ class ApprovalGateTest {
 
     @Test
     void resolveByNonOwnerIsRejectedAndKeepsBlocking() throws Exception {
-        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 5_000);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
         CompletableFuture<String> result = callAsync(gate);
 
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
@@ -113,7 +114,7 @@ class ApprovalGateTest {
 
     @Test
     void rejectReturnsRefusalWithoutExecuting() throws Exception {
-        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 5_000);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
         CompletableFuture<String> result = callAsync(gate);
 
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
@@ -127,7 +128,7 @@ class ApprovalGateTest {
 
     @Test
     void timeoutReturnsSkippedWithoutExecuting() throws Exception {
-        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 150);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 150);
         String result = gate.call("{\"command\":\"ls\"}"); // 无人回传，等到超时
 
         assertThat(result).contains("未获批准");
@@ -137,8 +138,37 @@ class ApprovalGateTest {
     }
 
     @Test
+    void liveAutoModeSkipsApprovalEntirely() {
+        // 轮内切换立即生效：实时模式已是 AUTO → 不发审批帧、直接执行
+        modeRegistry.seed(CONVERSATION_ID, context.userId(), CodingMode.ASK);
+        modeRegistry.update(CONVERSATION_ID, context.userId(), CodingMode.AUTO);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
+
+        String result = gate.call("{\"command\":\"ls\"}");
+
+        assertThat(result).contains("exit=0");
+        assertThat(delegateCalled).isTrue();
+        assertThat(requestedApprovalId.get()).isNull(); // 全程未发起审批
+    }
+
+    @Test
+    void approveConversationUnblocksPendingWhenSwitchedToAuto() throws Exception {
+        // 审批等待中切 AUTO：端点调用 approveConversation → 未决审批批准、工具解冻执行
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
+        CompletableFuture<String> result = callAsync(gate);
+
+        assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();
+        int approved = registry.approveConversation(CONVERSATION_ID, context.userId());
+
+        assertThat(approved).isEqualTo(1);
+        assertThat(result.get(2, TimeUnit.SECONDS)).contains("exit=0");
+        assertThat(delegateCalled).isTrue();
+        assertThat(resultOutcome.get()).isEqualTo("approved");
+    }
+
+    @Test
     void cancelConversationRejectsPendingApproval() throws Exception {
-        ApprovalGate gate = new ApprovalGate(delegate, context, registry, objectMapper, 5_000);
+        ApprovalGate gate = new ApprovalGate(delegate, context, registry, modeRegistry, objectMapper, 5_000);
         CompletableFuture<String> result = callAsync(gate);
 
         assertThat(requested.await(2, TimeUnit.SECONDS)).isTrue();

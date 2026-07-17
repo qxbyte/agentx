@@ -29,5 +29,29 @@
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
     </dependency>
+    <!-- 文件下载端点鉴权（@CurrentUser AuthPrincipal） -->
+    <dependency>
+      <groupId>com.agentx</groupId>
+      <artifactId>agentx-auth</artifactId>
+    </dependency>
+    <!-- 文件生成：docx/pptx/xlsx 渲染 -->
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+    </dependency>
+    <!-- 文件生成：markdown 解析（AST 供 docx/pptx，HTML 供 pdf） -->
+    <dependency>
+      <groupId>com.vladsch.flexmark</groupId>
+      <artifactId>flexmark</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.vladsch.flexmark</groupId>
+      <artifactId>flexmark-ext-tables</artifactId>
+    </dependency>
+    <!-- 文件生成：html → pdf -->
+    <dependency>
+      <groupId>io.github.openhtmltopdf</groupId>
+      <artifactId>openhtmltopdf-pdfbox</artifactId>
+    </dependency>
   </dependencies>
 </project>

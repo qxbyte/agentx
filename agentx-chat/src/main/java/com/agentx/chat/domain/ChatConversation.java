@@ -40,6 +40,11 @@ public class ChatConversation {
     @Column(name = "workspace_id")
     private UUID workspaceId;
 
+    /** updatePlan 工具最近一次调用的参数原文（计划步骤 JSON），供前端恢复计划面板。 */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "plan_state", columnDefinition = "jsonb")
+    private String planState;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 

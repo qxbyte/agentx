@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderGit2, FolderOpen, FolderPlus } from 'lucide-react'
+import { Check, FolderGit2, FolderOpen, FolderPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   DropdownMenu,
@@ -49,10 +49,9 @@ export default function ProjectPicker() {
           >
             <FolderGit2 className="size-3.5" />
             <span className="max-w-[160px] truncate">{current ? current.name : '选择项目'}</span>
-            <ChevronDown className="size-3 opacity-50" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[13rem]">
+        <DropdownMenuContent side="top" align="start" className="min-w-[13rem]">
           <DropdownMenuItem onClick={() => setWorkspaceId(null)}>
             <span className={cn('size-4', workspaceId === null ? 'opacity-100' : 'opacity-0')}>
               <Check className="size-4" />

@@ -45,6 +45,7 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
     private final ToolRegistry toolRegistry;
     private final CodingApprovalDecorator approvalDecorator;
     private final CodingToolPreviewProvider previewProvider;
+    private final CodingModeRegistry modeRegistry;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
@@ -53,6 +54,8 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
         }
         CodingWorkspace ws = workspaceService.getOwned(context.workspaceId(), context.userId());
         CodingMode mode = parseMode(context.codingMode());
+        // 播种实时模式表：轮内切换（回传端点更新）后 ApprovalGate 按最新值放行/拦截
+        modeRegistry.seed(context.conversationId(), context.userId(), mode);
 
         // 工作区绑定的知识库并入检索：本定制器 @Order(15) 早于 RAG(20)，加入后由其消费
         if (ws.getKbId() != null) {

@@ -16,6 +16,8 @@ import ChatPage from './pages/Chat'
 import WorkspacesPage from './pages/coding/WorkspacesPage'
 import KbDetailPage from './pages/kb/KbDetailPage'
 import KbListPage from './pages/kb/KbListPage'
+import PluginsPage from './pages/plugins/PluginsPage'
+import SkillsPage from './pages/skills/SkillsPage'
 import LoginPage from './pages/Login'
 import { useAuthStore } from './stores/auth'
 
@@ -61,6 +63,8 @@ export default function App() {
             <Route path="/kb" element={<KbListPage />} />
             <Route path="/kb/:kbId" element={<KbDetailPage />} />
             <Route path="/workspaces" element={<WorkspacesPage />} />
+            <Route path="/skills" element={<SkillsPage />} />
+            <Route path="/plugins" element={<PluginsPage />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="models" replace />} />

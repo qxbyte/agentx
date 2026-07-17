@@ -19,7 +19,7 @@ http.interceptors.request.use((config) => {
 /** 单飞（single-flight）刷新：并发 401 只发起一次 refresh 请求 */
 let refreshPromise: Promise<string> | null = null
 
-async function refreshAccessToken(): Promise<string> {
+async function doRefresh(): Promise<string> {
   const refreshToken = getRefreshToken()
   if (!refreshToken) throw new Error('缺少 refreshToken')
   // 用裸 axios，避免走本实例的拦截器造成递归
@@ -30,7 +30,15 @@ async function refreshAccessToken(): Promise<string> {
   return accessToken
 }
 
-function redirectToLogin(): void {
+/** 刷新 access token（单飞）。SSE 流等绕过 axios 的通道也复用此机制（见 streamChat）。 */
+export function refreshAccessToken(): Promise<string> {
+  refreshPromise ??= doRefresh().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
+export function redirectToLogin(): void {
   clearTokens()
   if (window.location.pathname !== '/login') {
     window.location.href = '/login'
@@ -50,15 +58,12 @@ http.interceptors.response.use(
     if (status === 401 && config && !config._retried && !isAuthEndpoint) {
       config._retried = true
       try {
-        refreshPromise = refreshPromise ?? refreshAccessToken()
-        const token = await refreshPromise
+        const token = await refreshAccessToken()
         config.headers.Authorization = `Bearer ${token}`
         return http.request(config)
       } catch (refreshError) {
         redirectToLogin()
         return Promise.reject(refreshError)
-      } finally {
-        refreshPromise = null
       }
     }
     return Promise.reject(error)

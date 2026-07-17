@@ -42,6 +42,14 @@
     </dependency>
     <dependency>
       <groupId>com.agentx</groupId>
+      <artifactId>agentx-skill</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.agentx</groupId>
+      <artifactId>agentx-plugin</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.agentx</groupId>
       <artifactId>agentx-coding</artifactId>
     </dependency>
     <dependency>

@@ -554,8 +554,19 @@ body {
   justify-content: flex-end;
 }
 
-.ax-user-bubble {
+/* 用户消息列：附件芯片 + 气泡的右对齐容器；宽度约束在此层（气泡内 max-width
+   百分比若引用自适应父层会循环坍缩成单字竖排） */
+.ax-user-stack {
+  display: flex;
+  min-width: 0;
   max-width: 78%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.ax-user-bubble {
+  max-width: 100%;
   padding: 10px 16px;
   border-radius: 20px;
   background: var(--ax-user-bubble);
@@ -679,6 +690,24 @@ body {
   font-family: var(--ax-mono);
   font-size: 12px;
   opacity: 0.75;
+}
+.ax-msg-error-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--ax-danger-border);
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ax-danger);
+  transition: background-color 0.15s ease;
+}
+.ax-msg-error-retry:hover {
+  background: var(--ax-danger-border);
 }
 
 /* 空会话欢迎态 */
@@ -1073,6 +1102,507 @@ body {
 .ax-composer-wrap {
   padding: 8px 20px 18px;
 }
+
+/* 任务计划面板（Codex update_plan 式）：固定输入框上方，随 SSE 实时更新。
+   宽度对齐开场芯片托层：输入框 780px 容器内缩 16px（mx-4） */
+.ax-plan {
+  max-width: 748px;
+  margin: 0 auto 8px;
+  border: 1px solid var(--ax-border);
+  border-radius: 14px;
+  background: var(--ax-surface);
+  overflow: hidden;
+}
+.ax-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ax-text);
+}
+.ax-plan-header:hover {
+  background: var(--ax-hover-weak);
+}
+.ax-plan-title {
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ax-plan-count {
+  font-weight: 500;
+  color: var(--ax-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ax-plan-current {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-weight: 400;
+  color: var(--ax-text-secondary);
+}
+.ax-plan-chevron {
+  flex-shrink: 0;
+  color: var(--ax-text-faint);
+  transition: transform 0.15s ease;
+}
+.ax-plan-chevron--closed {
+  transform: rotate(-90deg);
+}
+.ax-plan-dismiss {
+  display: flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 6px;
+  color: var(--ax-text-faint);
+}
+.ax-plan-dismiss:hover {
+  background: var(--ax-hover);
+  color: var(--ax-text);
+}
+.ax-plan-steps {
+  margin: 0;
+  padding: 2px 12px 10px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+.ax-plan-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ax-text-secondary);
+}
+.ax-plan-mark {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ax-border-strong);
+  border-radius: 50%;
+}
+.ax-plan-step--completed .ax-plan-mark {
+  background: var(--ax-primary);
+  border-color: var(--ax-primary);
+  color: var(--ax-on-primary);
+}
+.ax-plan-step--completed .ax-plan-text {
+  color: var(--ax-text-faint);
+  text-decoration: line-through;
+}
+.ax-plan-step--in_progress {
+  color: var(--ax-text);
+  font-weight: 500;
+}
+.ax-plan-step--in_progress .ax-plan-mark {
+  border-color: var(--ax-primary);
+}
+.ax-plan-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ax-primary);
+  animation: ax-plan-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ax-plan-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-plan-dot {
+    animation: none;
+  }
+}
+
+/* 生成文件卡片（消息内）：点击整卡下载 */
+.ax-filecard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 6px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--ax-border);
+  border-radius: var(--ax-radius);
+  background: var(--ax-surface);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.ax-filecard:hover {
+  border-color: var(--ax-border-strong);
+  background: var(--ax-hover-weak);
+}
+.ax-filecard--pending,
+.ax-filecard--failed {
+  cursor: default;
+  font-size: 13px;
+  color: var(--ax-text-secondary);
+}
+.ax-filecard--failed {
+  color: var(--ax-danger);
+  border-color: var(--ax-danger-border);
+  background: var(--ax-danger-bg);
+}
+.ax-filecard-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--ax-primary);
+  color: var(--ax-on-primary);
+}
+.ax-filecard-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ax-filecard-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ax-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ax-filecard-sub {
+  font-size: 12px;
+  color: var(--ax-text-secondary);
+}
+.ax-filecard-action {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--ax-text-secondary);
+}
+.ax-filecard:hover .ax-filecard-action {
+  color: var(--ax-text);
+}
+
+/* 输入框附件（ChatGPT 式卡片）：图标色块 + 文件名 + 格式副标题 + 悬浮 × */
+.ax-attach-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+.ax-attach-bar--history {
+  padding: 0;
+  justify-content: flex-end;
+}
+.ax-attach {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 260px;
+  padding: 7px 12px 7px 8px;
+  border: 1px solid var(--ax-border);
+  border-radius: 14px;
+  background: var(--ax-bg);
+}
+.ax-attach--failed {
+  border-color: var(--ax-danger-border);
+}
+.ax-attach--compact {
+  padding: 5px 10px 5px 6px;
+}
+.ax-attach-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  color: #fff;
+}
+.ax-attach--compact .ax-attach-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.ax-attach-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ax-attach-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ax-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ax-attach-sub {
+  font-size: 11.5px;
+  color: var(--ax-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ax-attach--failed .ax-attach-sub {
+  color: var(--ax-danger);
+}
+.ax-attach-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ax-surface);
+  border-radius: 50%;
+  background: var(--ax-text);
+  color: var(--ax-bg);
+  cursor: pointer;
+  padding: 0;
+}
+.ax-attach-remove:hover {
+  opacity: 0.8;
+}
+
+/* ============================================================
+   全局：按钮类控件永不显示聚焦边框（用户约定）。
+   来源有二：shadcn 的 focus-visible:ring-ring（近黑色 ring token）、
+   Chrome 新版对无 outline 重置按钮画的黑色默认聚焦环——尤其在
+   Radix 菜单关闭回焦触发 :focus-visible 时凭空出现。
+   输入框/文本域的聚焦描边不受影响（作用域仅按钮类元素）。
+   ============================================================ */
+button:focus,
+button:focus-visible,
+[role='button']:focus,
+[role='button']:focus-visible,
+[role='option']:focus,
+[role='option']:focus-visible,
+[role='menuitem']:focus,
+[role='menuitem']:focus-visible,
+[role='menuitemcheckbox']:focus,
+[role='menuitemcheckbox']:focus-visible,
+[role='menuitemradio']:focus,
+[role='menuitemradio']:focus-visible,
+[role='tab']:focus,
+[role='tab']:focus-visible {
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+/* ============================================================
+   弹层通用弹出动画（复用层）：从触发点由小放大 + 回弹（macOS 展开质感）。
+   用法：内容元素挂 .ax-pop + 对应原点变体（transform-origin 取
+   Radix popper 计算出的触发点方位变量，弹层永远从点击处生长）。
+   Dialog/AlertDialog 居中弹窗带 translate 定位，用独立的 --dialog 变体。
+   ============================================================ */
+.ax-pop[data-state='open'],
+.ax-pop[data-state='delayed-open'] {
+  animation: ax-pop-in 0.38s cubic-bezier(0.34, 1.45, 0.44, 1);
+}
+.ax-pop[data-state='closed'] {
+  animation: ax-pop-out 0.18s ease-in forwards;
+}
+@keyframes ax-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ax-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+.ax-pop--dropdown {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+.ax-pop--select {
+  transform-origin: var(--radix-select-content-transform-origin);
+}
+.ax-pop--popover {
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+.ax-pop--tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+.ax-pop--dialog[data-state='open'] {
+  animation: ax-pop-dialog-in 0.4s cubic-bezier(0.34, 1.4, 0.44, 1);
+}
+.ax-pop--dialog[data-state='closed'] {
+  animation: ax-pop-dialog-out 0.18s ease-in forwards;
+}
+/* 居中弹窗：在最终位置原地由小放大（不做位移——Tailwind v4 的 translate
+   为独立属性负责居中，keyframes 里再写 translate 会双重位移导致"飞移"） */
+@keyframes ax-pop-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ax-pop-dialog-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-pop[data-state='open'],
+  .ax-pop[data-state='delayed-open'],
+  .ax-pop[data-state='closed'],
+  .ax-pop--dialog[data-state='open'],
+  .ax-pop--dialog[data-state='closed'] {
+    animation: none;
+  }
+}
+
+/* 编码模式滑块药丸：非线性回弹位移 + 果冻挤压（transform 动画与 left 过渡互不干扰） */
+.ax-mode-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+  background: var(--ax-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition:
+    left 0.42s cubic-bezier(0.34, 1.56, 0.44, 1),
+    width 0.42s cubic-bezier(0.34, 1.56, 0.44, 1);
+  will-change: left, transform;
+}
+/* 通用果冻挤压动画工具类：给任意元素加 .ax-jelly 即可重放（remove → reflow → add） */
+.ax-jelly {
+  animation: ax-jelly 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@keyframes ax-jelly {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.18, 0.82);
+  }
+  55% {
+    transform: scale(0.92, 1.08);
+  }
+  75% {
+    transform: scale(1.04, 0.96);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-mode-thumb {
+    transition: none;
+  }
+  .ax-jelly {
+    animation: none;
+  }
+}
+
+/* 图片附件缩略图（ChatGPT 式方块）：待发送/历史通用 */
+.ax-thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border: 1px solid var(--ax-border);
+  border-radius: 12px;
+  overflow: visible;
+  background: var(--ax-bg);
+}
+.ax-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11px;
+  display: block;
+}
+.ax-thumb-placeholder,
+.ax-thumb-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ax-text-faint);
+  border-radius: 11px;
+}
+.ax-thumb-loading {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* 输入框左下角 + 按钮（与工具条 24px 高度体系对齐） */
+.ax-attach-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ax-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ax-attach-add:hover {
+  background: var(--ax-hover);
+  color: var(--ax-text);
+}
 .ax-composer {
   max-width: 780px;
   margin: 0 auto;
@@ -1185,13 +1715,12 @@ body {
 /* ============================================================
    Logo（单色黑，OpenAI 式极简）
    ============================================================ */
+/* 品牌标识：独立轨道结环 X（无容器底），currentColor 跟随主题反色 */
 .ax-logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 26%;
-  background: var(--ax-text);
-  color: var(--ax-bg);
+  color: var(--ax-text);
   flex-shrink: 0;
 }
 
@@ -1734,7 +2263,7 @@ body {
   .ax-composer-wrap {
     padding: 6px 12px 12px;
   }
-  .ax-user-bubble {
+  .ax-user-stack {
     max-width: 88%;
   }
 }

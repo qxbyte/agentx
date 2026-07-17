@@ -13,10 +13,11 @@ import tools.jackson.databind.ObjectMapper;
 public class CodingApprovalDecoratorImpl implements CodingApprovalDecorator {
 
     private final ApprovalRegistry approvalRegistry;
+    private final CodingModeRegistry modeRegistry;
     private final ObjectMapper objectMapper;
 
     @Override
     public ToolCallback decorate(ToolCallback delegate, ChatStreamContext context) {
-        return new ApprovalGate(delegate, context, approvalRegistry, objectMapper);
+        return new ApprovalGate(delegate, context, approvalRegistry, modeRegistry, objectMapper);
     }
 }

@@ -1,5 +1,5 @@
 import { Loader2, Pencil, Plus, Star, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -110,9 +110,24 @@ export default function ModelsPage() {
 
   const patch = (p: Partial<ModelForm>) => setForm((prev) => ({ ...prev, ...p }))
 
+  /** 稳定排序：按类型分组（CHAT → EMBEDDING → RERANK）、组内按名称。
+      与 is_default 无关——点「设为默认」只亮星，不重排列表 */
+  const TYPE_GROUPS: { type: ModelConfig['type']; label: string }[] = [
+    { type: 'CHAT', label: '对话模型' },
+    { type: 'EMBEDDING', label: '向量模型' },
+    { type: 'RERANK', label: '重排模型' },
+  ]
+  const TYPE_ORDER: Record<string, number> = { CHAT: 0, EMBEDDING: 1, RERANK: 2 }
+  const sortConfigs = (list: ModelConfig[]) =>
+    [...list].sort(
+      (a, b) =>
+        (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9) ||
+        a.name.localeCompare(b.name, 'zh-Hans-CN'),
+    )
+
   const refresh = async () => {
     try {
-      setConfigs(await adminApi.listModelConfigs())
+      setConfigs(sortConfigs(await adminApi.listModelConfigs()))
       setLoadError(null)
     } catch (error) {
       setLoadError(extractErrorMessage(error, '加载模型配置失败'))
@@ -269,13 +284,25 @@ export default function ModelsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {configs.map((record) => (
+            {TYPE_GROUPS.filter((g) => configs.some((c) => c.type === g.type)).map((group) => (
+              <Fragment key={group.type}>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={8}
+                    className="bg-[var(--ax-panel)] py-1.5 text-xs font-medium text-muted-foreground"
+                  >
+                    {group.label}
+                  </TableCell>
+                </TableRow>
+                {configs
+                  .filter((c) => c.type === group.type)
+                  .map((record) => (
               <TableRow key={record.id}>
                 <TableCell>
-                  {record.isDefault ? (
+                  {record.defaultModel ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>
+                        <span className="flex size-7 items-center justify-center">
                           <Star className="size-4 fill-[var(--ax-star)] text-[var(--ax-star)]" />
                         </span>
                       </TooltipTrigger>
@@ -336,6 +363,8 @@ export default function ModelsPage() {
                   </div>
                 </TableCell>
               </TableRow>
+                  ))}
+              </Fragment>
             ))}
           </TableBody>
         </Table>

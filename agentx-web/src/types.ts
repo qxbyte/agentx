@@ -27,8 +27,53 @@ export interface Conversation {
   modelConfigId: string | null
   /** CodeAgent：会话归属的项目（工作区）；null 为普通对话。侧栏据此分组。 */
   workspaceId: string | null
+  /** updatePlan 工具最近一次调用的参数原文（JSON 字符串），恢复计划面板用 */
+  planState?: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** 消息附件元数据（chat_message.attachments，历史气泡芯片渲染用） */
+export interface AttachmentMeta {
+  id: string
+  filename: string
+  /** text | image（旧数据可能缺省，按 text 处理） */
+  kind?: string
+  sizeBytes: number
+}
+
+/** 输入框待发送附件（上传即解析；ready 后才可随消息发送） */
+export interface PendingAttachment {
+  /** 本地临时 key（上传前生成，贯穿生命周期） */
+  key: string
+  /** 服务端附件 id（ready 后存在） */
+  id?: string
+  filename: string
+  relPath?: string
+  /** text | image */
+  kind: 'text' | 'image'
+  /** 图片的本地预览 blob URL（发送/移除时 revoke） */
+  previewUrl?: string
+  sizeBytes: number
+  truncated?: boolean
+  status: 'uploading' | 'ready' | 'failed'
+  error?: string
+}
+
+/** 计划步骤状态（与后端 PlanTools 约定一致） */
+export type PlanStepStatus = 'pending' | 'in_progress' | 'completed'
+
+export interface PlanStep {
+  step: string
+  status: PlanStepStatus
+}
+
+/** 模型 updatePlan 工具调用的参数结构：输入框上方计划面板的数据源 */
+export interface PlanState {
+  /** 模型按任务内容起的计划标题；缺失时面板回落「计划」 */
+  title?: string | null
+  steps: PlanStep[]
+  explanation?: string | null
 }
 
 export interface RagSource {
@@ -149,7 +194,8 @@ export interface ModelConfig {
   modelName: string
   type: ModelType
   enabled: boolean
-  isDefault?: boolean
+  /** 与后端 ModelConfigDtos.View 字段名一致 */
+  defaultModel?: boolean
 }
 
 export interface ModelConfigPayload {
@@ -273,6 +319,8 @@ export interface ChatMessage {
   toolCalls?: ToolCallInfo[] | null
   ragSources?: RagSource[] | null
   tokenUsage?: TokenUsage | null
+  /** 用户消息附件元数据（服务端为 JSON 字符串，normalizeMessage 解析为数组） */
+  attachments?: AttachmentMeta[] | null
   createdAt?: string
   /** 客户端状态：正在流式生成 */
   streaming?: boolean
@@ -280,6 +328,37 @@ export interface ChatMessage {
   error?: MessageError | null
   /** CodeAgent Ask 模式：待审批 / 已处理的操作卡 */
   approvals?: ApprovalItem[] | null
+  /** askUserQuestion 工具：待作答 / 已作答的提问卡 */
+  questions?: QuestionItem[] | null
+}
+
+/* ---------- askUserQuestion 提问交互 ---------- */
+
+export interface QuestionOption {
+  label: string
+  description?: string | null
+}
+
+export interface QuestionSpec {
+  question: string
+  header?: string | null
+  options: QuestionOption[]
+  multiSelect?: boolean
+}
+
+/** 提交给后端的单问答案（跳过时 skipped=true 且无 selected） */
+export interface QuestionAnswer {
+  question: string
+  selected: string[]
+  otherText?: string
+  skipped?: boolean
+}
+
+export interface QuestionItem {
+  questionId: string
+  questions: QuestionSpec[]
+  status: 'pending' | 'answered' | 'expired'
+  answers?: QuestionAnswer[] | null
 }
 
 /* ============================================================
@@ -361,4 +440,80 @@ export interface ApprovalItem {
   kind: ApprovalKind | string
   preview: ApprovalPreview
   status: ApprovalStatus
+}
+
+/* ---------- Skill 斜杠命令 ---------- */
+
+/** 补全菜单元数据（渐进式披露 L1，不含 content） */
+export interface SkillMeta {
+  id: string
+  name: string
+  description: string
+  argumentHint?: string | null
+}
+
+/** 管理列表视图（含启停与调用开关状态，不含 content） */
+export interface SkillView {
+  id: string
+  name: string
+  description: string
+  argumentHint?: string | null
+  enabled: boolean
+  userInvocable: boolean
+  modelInvocable: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** 详情（含 content，编辑用） */
+export interface SkillDetail {
+  id: string
+  name: string
+  description: string
+  argumentHint?: string | null
+  content: string
+  enabled: boolean
+  userInvocable: boolean
+  modelInvocable: boolean
+}
+
+export interface SkillPayload {
+  name: string
+  description: string
+  argumentHint?: string
+  content: string
+  userInvocable?: boolean
+  modelInvocable?: boolean
+}
+
+/* ---------- Plugin(本机目录化,对齐 Claude Code) ---------- */
+
+export interface AvailablePlugin {
+  name: string
+  description: string
+  version: string
+  sourceType: string
+  installed: boolean
+  enabled?: boolean | null
+}
+
+export interface MarketplaceView {
+  name: string
+  sourceType: string
+  locator: string
+  installLocation: string
+  plugins: AvailablePlugin[]
+}
+
+export interface InstalledPluginView {
+  id: string
+  name: string
+  marketplace: string
+  version: string
+  description: string
+  enabled: boolean
+  installedAt: string
+  skillCount: number
+  /** 暂不支持的能力名单,如 ["hooks"] */
+  unsupported: string[]
 }

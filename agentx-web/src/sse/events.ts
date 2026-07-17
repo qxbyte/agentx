@@ -1,4 +1,4 @@
-import type { ApprovalPreview, RagSource, TokenUsage } from '../types'
+import type { ApprovalPreview, QuestionSpec, RagSource, TokenUsage } from '../types'
 
 /** SSE 流式协议事件（类型化 discriminated union） */
 export type SseEvent =
@@ -16,6 +16,8 @@ export type SseEvent =
       preview: ApprovalPreview
     }
   | { type: 'approval-result'; approvalId: string; outcome: 'approved' | 'rejected' | 'expired' }
+  | { type: 'question-request'; questionId: string; questions: QuestionSpec[] }
+  | { type: 'question-result'; questionId: string; outcome: 'answered' | 'expired'; answers?: string }
   | { type: 'done'; usage?: TokenUsage; finishReason?: string }
   | { type: 'error'; code?: string; message: string }
 
@@ -28,6 +30,8 @@ const KNOWN_TYPES: ReadonlySet<string> = new Set([
   'rag-source',
   'approval-request',
   'approval-result',
+  'question-request',
+  'question-result',
   'done',
   'error',
 ])

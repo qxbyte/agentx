@@ -47,6 +47,30 @@ public class ChatClientFactory {
         return cache.get(configId, id -> build(modelConfigService.getEnabled(id)));
     }
 
+    /** 多模态客户端缓存（与文本客户端分离，键同为 configId）。 */
+    private final com.github.benmanes.caffeine.cache.Cache<UUID, ChatClient> visionCache =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .maximumSize(64)
+                    .build();
+
+    /**
+     * 获取支持图片的 ChatClient；configId 为空取平台默认 CHAT 模型。
+     * 供应商不支持多模态时返回 null（调用方决定报错话术）。
+     */
+    public ChatClient getVision(UUID configId) {
+        ModelConfig config = configId != null
+                ? modelConfigService.getEnabled(configId)
+                : modelConfigService.getDefaultChat();
+        ChatModelProvider provider = providers.get(config.getProviderType());
+        if (provider == null) {
+            return null;
+        }
+        return visionCache.get(config.getId(), id -> {
+            var model = provider.buildVision(config, modelConfigService.decryptedApiKey(config));
+            return model == null ? null : ChatClient.builder(model).build();
+        });
+    }
+
     /** 获取默认 CHAT 模型的 client。 */
     public ChatClient getDefault() {
         ModelConfig config = modelConfigService.getDefaultChat();
@@ -69,5 +93,6 @@ public class ChatClientFactory {
     @EventListener
     public void onModelConfigChanged(ModelConfigChangedEvent event) {
         cache.invalidate(event.configId());
+        visionCache.invalidate(event.configId());
     }
 }

@@ -22,4 +22,14 @@ public interface ChatModelProvider {
      * @param apiKey 已解密的 api-key；无需鉴权的供应商（如 Ollama）可为 null
      */
     ChatModel build(ModelConfig config, String apiKey);
+
+    /**
+     * 构建支持多模态（图片 Media）的 ChatModel；不支持的供应商返回 null。
+     * <p>
+     * 默认文本客户端与多模态客户端分离：文本轮次保留 reasoning_content 解析
+     * 等协议特性，带图轮次切换到本方法构建的客户端。
+     */
+    default ChatModel buildVision(ModelConfig config, String apiKey) {
+        return null;
+    }
 }

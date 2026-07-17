@@ -103,6 +103,34 @@ public class ConversationService {
         });
     }
 
+    /** 会话记住模型选择：本轮显式选择的模型回写会话，刷新/重开后沿用（除非再次切换）。 */
+    @Transactional
+    public void rememberModelChoice(ChatConversation c, UUID modelConfigId) {
+        if (modelConfigId == null || modelConfigId.equals(c.getModelConfigId())) {
+            return;
+        }
+        c.setModelConfigId(modelConfigId);
+        conversationRepository.save(c);
+    }
+
+    /** 用户显式切回「默认模型」：清除会话固化的模型选择。 */
+    public void clearModelChoice(ChatConversation c) {
+        if (c.getModelConfigId() == null) {
+            return;
+        }
+        c.setModelConfigId(null);
+        conversationRepository.save(c);
+    }
+
+    /** updatePlan 工具回写：持久化会话最新计划（参数原文 JSON，前端刷新/切换会话恢复面板）。 */
+    @Transactional
+    public void updatePlanState(UUID conversationId, String planJson) {
+        conversationRepository.findById(conversationId).ifPresent(c -> {
+            c.setPlanState(planJson);
+            conversationRepository.save(c);
+        });
+    }
+
     @Transactional
     public ChatMessage saveMessage(ChatMessage message) {
         if (message.getId() == null) {

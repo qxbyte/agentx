@@ -19,7 +19,8 @@ spring:
   servlet:
     multipart:
       max-file-size: 50MB
-      max-request-size: 50MB
+      # 文件夹批量附件上传单请求可含最多 50 个文件
+      max-request-size: 200MB
 
 server:
   port: 8080
@@ -56,6 +57,19 @@ agentx:
     refresh-ttl: 7d
   crypto:
     master-key: ${AGENTX_MASTER_KEY:}
+  files:
+    # 模型生成文件（generateDocument/generateSpreadsheet）的受管存储目录
+    storage-dir: ${AGENTX_FILES_STORAGE:${user.home}/.agentx/generated}
+    # PDF 中文字体（TTF/OTF 单文件路径）；缺省时自动探测系统 CJK 字体
+    pdf-font: ${AGENTX_PDF_FONT:}
   coding:
     # 「新建空白项目」的落盘根目录：空白项目统一建在此目录下并 git init
     projects-root: ${AGENTX_PROJECTS_ROOT:${user.home}/.agentx/projects}
+  skills:
+    # Skill 斜杠命令目录（对标 Claude Code / Codex 本地目录化配置）：
+    # <root>/<name>.md 或 <root>/<name>/SKILL.md，手动增删改文件即时生效
+    root: ${AGENTX_SKILLS_ROOT:${user.home}/.agentx/skills}
+  plugins:
+    # 插件目录（对齐 Claude Code ~/.claude/plugins 布局）：
+    # marketplaces/ + cache/<marketplace>/<plugin>/<version>/ + 两个注册 json
+    root: ${AGENTX_PLUGINS_ROOT:${user.home}/.agentx/plugins}

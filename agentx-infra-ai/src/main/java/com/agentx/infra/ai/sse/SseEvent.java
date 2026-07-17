@@ -22,6 +22,8 @@ public record SseEvent(String type, Map<String, Object> data) {
     public static final String RAG_SOURCE = "rag-source";
     public static final String APPROVAL_REQUEST = "approval-request";
     public static final String APPROVAL_RESULT = "approval-result";
+    public static final String QUESTION_REQUEST = "question-request";
+    public static final String QUESTION_RESULT = "question-result";
     public static final String DONE = "done";
     public static final String ERROR = "error";
 
@@ -94,6 +96,23 @@ public record SseEvent(String type, Map<String, Object> data) {
      */
     public static SseEvent approvalResult(String approvalId, String outcome) {
         return new SseEvent(APPROVAL_RESULT, Map.of("approvalId", approvalId, "outcome", outcome));
+    }
+
+    /** 提问请求帧（askUserQuestion 工具）：questions 为结构化问题清单，前端渲染选择卡。 */
+    public static SseEvent questionRequest(String questionId, Object questions) {
+        return new SseEvent(QUESTION_REQUEST, Map.of("questionId", questionId, "questions", questions));
+    }
+
+    /**
+     * 提问终态帧：future 落定后由后端权威下发（answered / expired），
+     * 前端据此翻转提问卡——机制同审批终态帧。answers 为空时省略。
+     */
+    public static SseEvent questionResult(String questionId, String outcome, String answersJson) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("questionId", questionId);
+        data.put("outcome", outcome);
+        if (answersJson != null) data.put("answers", answersJson);
+        return new SseEvent(QUESTION_RESULT, data);
     }
 
     public static SseEvent done(long promptTokens, long completionTokens, String finishReason) {

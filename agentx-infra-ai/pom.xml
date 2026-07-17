@@ -28,6 +28,11 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-deepseek</artifactId>
     </dependency>
+    <!-- OPENAI_COMPATIBLE 的多模态（图片）通道：DeepSeek 协议客户端仅支持纯文本 -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-openai</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-ollama</artifactId>

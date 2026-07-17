@@ -61,7 +61,7 @@ export default function KbPicker() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-60 p-1">
+      <PopoverContent side="top" align="start" className="w-60 p-1">
         {options.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-muted-foreground">
             暂无可用知识库（本地在「知识库」页创建，外部在设置里接入）
@@ -76,7 +76,7 @@ export default function KbPicker() {
                   type="button"
                   onClick={() => toggle(kb.id)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent',
+                    'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] transition-colors hover:bg-accent',
                     checked && 'bg-accent/50',
                   )}
                 >

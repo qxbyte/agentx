@@ -23,20 +23,22 @@ public class ApprovalGate implements ToolCallback {
     private final ToolCallback delegate;
     private final ChatStreamContext context;
     private final ApprovalRegistry registry;
+    private final CodingModeRegistry modeRegistry;
     private final ObjectMapper objectMapper;
     /** 审批等待上限（毫秒）；可注入以便单测用短超时。 */
     private final long timeoutMillis;
 
-    public ApprovalGate(ToolCallback delegate, ChatStreamContext context,
-                        ApprovalRegistry registry, ObjectMapper objectMapper) {
-        this(delegate, context, registry, objectMapper, DEFAULT_TIMEOUT_MILLIS);
+    public ApprovalGate(ToolCallback delegate, ChatStreamContext context, ApprovalRegistry registry,
+                        CodingModeRegistry modeRegistry, ObjectMapper objectMapper) {
+        this(delegate, context, registry, modeRegistry, objectMapper, DEFAULT_TIMEOUT_MILLIS);
     }
 
-    public ApprovalGate(ToolCallback delegate, ChatStreamContext context,
-                        ApprovalRegistry registry, ObjectMapper objectMapper, long timeoutMillis) {
+    public ApprovalGate(ToolCallback delegate, ChatStreamContext context, ApprovalRegistry registry,
+                        CodingModeRegistry modeRegistry, ObjectMapper objectMapper, long timeoutMillis) {
         this.delegate = delegate;
         this.context = context;
         this.registry = registry;
+        this.modeRegistry = modeRegistry;
         this.objectMapper = objectMapper;
         this.timeoutMillis = timeoutMillis;
     }
@@ -56,6 +58,11 @@ public class ApprovalGate implements ToolCallback {
         String toolName = delegate.getToolDefinition().name();
         UUID approvalId = UUID.randomUUID();
         UUID conversationId = context.conversationId();
+
+        // 轮内实时模式（模式切换立即生效）：本轮虽以 ASK 开局，用户已切 AUTO 则直接放行
+        if (modeRegistry.currentOr(conversationId, CodingMode.ASK) == CodingMode.AUTO) {
+            return toolContext == null ? delegate.call(toolInput) : delegate.call(toolInput, toolContext);
+        }
 
         String kind = CodingToolPreviews.kindOf(toolName);
         Map<String, Object> preview = CodingToolPreviews.previewOf(toolName, toolInput, objectMapper);

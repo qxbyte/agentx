@@ -49,6 +49,21 @@ public interface ToolEventSink {
         // 默认忽略（非 coding 场景不产生审批）
     }
 
+    /**
+     * 用户提问请求（askUserQuestion 工具）：工具阻塞前发出，前端渲染选择卡。
+     *
+     * @param questionId 提问标识，前端据此回传答案
+     * @param questions  结构化问题清单（1-4 问，各含 options/multiSelect）
+     */
+    default void onQuestionRequest(String questionId, Object questions) {
+        // 默认忽略（无交互通道的场景）
+    }
+
+    /** 提问终态（answered / expired）：机制同审批终态帧，前端以此为权威翻转卡片。 */
+    default void onQuestionResult(String questionId, String outcome, String answersJson) {
+        // 默认忽略
+    }
+
     ToolEventSink NOOP = new ToolEventSink() {
         @Override
         public void onToolCall(String callId, String toolName, String argsJson) {}

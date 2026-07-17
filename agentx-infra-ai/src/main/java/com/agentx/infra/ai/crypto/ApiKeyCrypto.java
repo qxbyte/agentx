@@ -12,6 +12,8 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -25,16 +27,31 @@ public class ApiKeyCrypto {
 
     public ApiKeyCrypto(@Value("${agentx.crypto.master-key:}") String masterKeyB64) {
         if (masterKeyB64 == null || masterKeyB64.isBlank()) {
-            log.warn("AGENTX_MASTER_KEY 未设置，使用随机密钥（重启后已存密文不可解，仅限开发环境）");
-            try {
-                KeyGenerator kg = KeyGenerator.getInstance("AES");
-                kg.init(256);
-                this.key = kg.generateKey();
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
+            // 开发环境兜底：首启生成密钥并持久化到 ~/.agentx/master.key，
+            // 此后每次启动复用——避免"每次重启随机密钥→已存模型 API Key 全部解不开"。
+            // 生产环境仍应显式配置 AGENTX_MASTER_KEY。
+            this.key = loadOrCreateLocalKey();
+            log.warn("AGENTX_MASTER_KEY 未设置，使用本地持久化开发密钥 ~/.agentx/master.key（生产环境请显式配置）");
         } else {
             this.key = new SecretKeySpec(Base64.getDecoder().decode(masterKeyB64), "AES");
+        }
+    }
+
+    private static SecretKey loadOrCreateLocalKey() {
+        Path keyFile = Path.of(System.getProperty("user.home"), ".agentx", "master.key");
+        try {
+            if (Files.exists(keyFile)) {
+                byte[] raw = Base64.getDecoder().decode(Files.readString(keyFile).strip());
+                return new SecretKeySpec(raw, "AES");
+            }
+            KeyGenerator kg = KeyGenerator.getInstance("AES");
+            kg.init(256);
+            SecretKey generated = kg.generateKey();
+            Files.createDirectories(keyFile.getParent());
+            Files.writeString(keyFile, Base64.getEncoder().encodeToString(generated.getEncoded()));
+            return generated;
+        } catch (Exception e) {
+            throw new IllegalStateException("本地开发密钥初始化失败: " + keyFile, e);
         }
     }
 
