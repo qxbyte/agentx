@@ -42,7 +42,12 @@ public class McpServerService {
     public McpServerConfig update(UUID id, UpsertRequest req) {
         McpServerConfig config = get(id);
         boolean wasEnabled = config.isEnabled();
-        apply(config, req);
+        if ("PLUGIN".equals(config.getSource())) {
+            // 插件贡献的配置参数只读(由插件文件维护),仅允许用户切换启停(信任边界开关)
+            config.setEnabled(req.enabled());
+        } else {
+            apply(config, req);
+        }
         McpServerConfig saved = repository.save(config);
         // 连接生命周期跟随启用状态
         if (wasEnabled && !saved.isEnabled()) {
@@ -55,8 +60,13 @@ public class McpServerService {
 
     @Transactional
     public void delete(UUID id) {
+        McpServerConfig config = get(id);
+        if ("PLUGIN".equals(config.getSource())) {
+            throw new BizException(ErrorCode.BAD_REQUEST,
+                    "该 MCP 配置由插件「" + config.getPluginId() + "」提供,请通过卸载插件移除");
+        }
         connectionManager.disconnect(id);
-        repository.delete(get(id));
+        repository.delete(config);
     }
 
     /** 测试连通性：临时连接 initialize + listTools（不改变常驻连接）。 */

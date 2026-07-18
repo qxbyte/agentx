@@ -42,6 +42,14 @@ public class McpServerConfig {
     @Column(name = "last_health_at")
     private Instant lastHealthAt;
 
+    /** 来源：USER（管理端创建）/ PLUGIN（插件 .mcp.json 同步,参数只读）。 */
+    @Column(nullable = false)
+    private String source = "USER";
+
+    /** source=PLUGIN 时为所属插件 id（name@marketplace）。 */
+    @Column(name = "plugin_id")
+    private String pluginId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

@@ -49,6 +49,12 @@ public class PluginController {
         return ApiResponse.ok(views);
     }
 
+    @PostMapping("/api/v1/plugins/marketplaces/{name}/update")
+    public ApiResponse<MarketplaceView> updateMarketplace(@PathVariable String name) {
+        marketplaces.update(name);
+        return ApiResponse.ok(marketplaceView(name));
+    }
+
     @DeleteMapping("/api/v1/plugins/marketplaces/{name}")
     public ApiResponse<Void> removeMarketplace(@PathVariable String name) {
         marketplaces.remove(name);
@@ -69,6 +75,11 @@ public class PluginController {
     public ApiResponse<InstalledView> setEnabled(@PathVariable String id,
                                                  @RequestBody EnabledRequest req) {
         return ApiResponse.ok(installedView(plugins.setEnabled(id, req.enabled())));
+    }
+
+    @PostMapping("/api/v1/plugins/{id}/update")
+    public ApiResponse<InstalledView> update(@PathVariable String id) {
+        return ApiResponse.ok(installedView(plugins.update(id)));
     }
 
     @DeleteMapping("/api/v1/plugins/{id}")

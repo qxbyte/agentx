@@ -23,6 +23,12 @@ public class GitFetcher {
         run(List.of("git", "clone", "--depth", "1", "--quiet", url, dest.toString()), null);
     }
 
+    /** 浅克隆仓库更新到远端最新（fetch --depth 1 + reset --hard,兼容 force-push）。 */
+    public void updateShallow(Path repo) {
+        run(List.of("git", "-C", repo.toString(), "fetch", "--depth", "1", "--quiet", "origin", "HEAD"), null);
+        run(List.of("git", "-C", repo.toString(), "reset", "--hard", "--quiet", "FETCH_HEAD"), null);
+    }
+
     /** HEAD 提交 SHA；非 git 目录返回 null。 */
     public String headSha(Path repo) {
         try {

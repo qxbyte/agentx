@@ -3,6 +3,7 @@ package com.agentx.skill.stream;
 import com.agentx.infra.ai.stream.ChatStreamContext;
 import com.agentx.infra.ai.stream.ChatStreamCustomizer;
 import com.agentx.infra.ai.stream.SseNotifyingToolCallback;
+import com.agentx.skill.service.SkillResourceService;
 import com.agentx.skill.service.SkillService;
 import com.agentx.skill.store.SkillFile;
 import lombok.RequiredArgsConstructor;
@@ -30,17 +31,27 @@ public class SkillAutoTriggerCustomizer implements ChatStreamCustomizer {
     private static final int MAX_SKILL_LOADS = 8;
 
     private final SkillService skillService;
+    private final SkillResourceService resourceService;
     private final ObjectMapper objectMapper;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
         List<SkillFile> invocable = skillService.listModelInvocable();
-        if (invocable.isEmpty()) {
+        AtomicInteger counter = new AtomicInteger();
+        List<ToolCallback> tools = new java.util.ArrayList<>();
+        if (!invocable.isEmpty()) {
+            tools.add(new SkillLoadTool(skillService, resourceService, objectMapper, invocable));
+        }
+        // readSkillFile 独立于自动触发:斜杠展开的技能同样需要读 L3 资源
+        if (!invocable.isEmpty() || !skillService.listEnabled().isEmpty()) {
+            tools.add(new ReadSkillFileTool(resourceService, objectMapper));
+        }
+        if (tools.isEmpty()) {
             return;
         }
-        AtomicInteger counter = new AtomicInteger();
-        ToolCallback tool = new SkillLoadTool(skillService, objectMapper, invocable);
-        spec.toolCallbacks(List.of(new SseNotifyingToolCallback(
-                tool, context.toolEventSink(), counter, MAX_SKILL_LOADS)));
+        spec.toolCallbacks(tools.stream()
+                .<ToolCallback>map(t -> new SseNotifyingToolCallback(
+                        t, context.toolEventSink(), counter, MAX_SKILL_LOADS))
+                .toList());
     }
 }

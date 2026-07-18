@@ -1,6 +1,8 @@
 package com.agentx.plugin.service;
 
 import com.agentx.agent.service.PluginAgentRegistry;
+import com.agentx.mcp.domain.McpServerConfig;
+import com.agentx.mcp.service.PluginMcpRegistry;
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
 import com.agentx.skill.store.SkillMarkdown;
@@ -33,6 +35,8 @@ public class PluginService {
     private final ManifestReader manifests;
     private final GitFetcher git;
     private final PluginAgentRegistry agentRegistry;
+    private final PluginMcpRegistry mcpRegistry;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public InstalledPlugin install(String name, String marketplaceName) {
         KnownMarketplace marketplace = marketplaces.getOrThrow(marketplaceName);
@@ -93,6 +97,8 @@ public class PluginService {
         registry.putPlugin(installed);
         // 插件 agents/*.md 同步为只读 Agent 定义(source=PLUGIN,随插件生命周期联动)
         agentRegistry.sync(installed.id(), parseAgents(installed), true);
+        // 插件 .mcp.json 同步为 MCP 配置(默认停用,用户显式启用=信任边界)
+        mcpRegistry.sync(installed.id(), parseMcpServers(installed));
         log.info("插件已安装 {}@{} version={} path={}", name, marketplaceName, version, target);
         return installed;
     }
@@ -113,7 +119,22 @@ public class PluginService {
         InstalledPlugin updated = getOrThrow(id).withEnabled(enabled);
         registry.putPlugin(updated);
         agentRegistry.setEnabled(id, enabled);
+        if (!enabled) {
+            mcpRegistry.disableAll(id);
+        }
         return updated;
+    }
+
+    /** 更新插件:先刷新其 marketplace(git pull),再重装(重拷贝+agents 重同步),保留启停状态。 */
+    public InstalledPlugin update(String id) {
+        InstalledPlugin current = getOrThrow(id);
+        marketplaces.update(current.marketplace());
+        InstalledPlugin fresh = install(current.name(), current.marketplace());
+        if (!current.enabled()) {
+            fresh = setEnabled(id, false);
+        }
+        log.info("插件已更新 {} {} -> {}", id, current.version(), fresh.version());
+        return fresh;
     }
 
     public void uninstall(String id) {
@@ -127,6 +148,7 @@ public class PluginService {
         }
         registry.removePlugin(id);
         agentRegistry.remove(id);
+        mcpRegistry.remove(id);
     }
 
     /* ---------- 内部 ---------- */
@@ -169,15 +191,49 @@ public class PluginService {
         return false;
     }
 
-    /** 能力盘点:skills/agents 数与暂不支持的能力名单(hooks/MCP),供列表展示。 */
-    public record Capabilities(int skillCount, int agentCount, List<String> unsupported) {}
+    /** 能力盘点:skills/agents/MCP 数与暂不支持的能力名单(hooks),供列表展示。 */
+    public record Capabilities(int skillCount, int agentCount, int mcpCount, List<String> unsupported) {}
 
     public Capabilities capabilities(InstalledPlugin plugin) {
         Path root = Path.of(plugin.installPath());
         List<String> unsupported = new java.util.ArrayList<>();
         if (Files.isRegularFile(root.resolve("hooks").resolve("hooks.json"))) unsupported.add("hooks");
-        if (Files.isRegularFile(root.resolve(".mcp.json"))) unsupported.add("MCP");
-        return new Capabilities(countSkills(root), parseAgents(plugin).size(), List.copyOf(unsupported));
+        return new Capabilities(countSkills(root), parseAgents(plugin).size(),
+                parseMcpServers(plugin).size(), List.copyOf(unsupported));
+    }
+
+    /**
+     * 解析插件 .mcp.json（Claude Code 同款:mcpServers 映射,command/args/env → STDIO,
+     * url/headers → STREAMABLE_HTTP）→ 命名空间化的 MCP 规格。
+     */
+    private List<PluginMcpRegistry.PluginMcpSpec> parseMcpServers(InstalledPlugin plugin) {
+        Path file = Path.of(plugin.installPath()).resolve(".mcp.json");
+        if (!Files.isRegularFile(file)) {
+            return List.of();
+        }
+        List<PluginMcpRegistry.PluginMcpSpec> specs = new java.util.ArrayList<>();
+        try {
+            var rootNode = objectMapper.readTree(Files.readString(file));
+            var servers = rootNode.path("mcpServers");
+            servers.propertyNames().forEach(serverName -> {
+                if (!MarketplaceService.NAME_PATTERN.matcher(serverName).matches()) {
+                    log.warn("插件 MCP server 命名非法,跳过: {}", serverName);
+                    return;
+                }
+                var node = servers.path(serverName);
+                String qualified = plugin.name() + ":" + serverName;
+                if (node.has("command")) {
+                    specs.add(new PluginMcpRegistry.PluginMcpSpec(qualified,
+                            McpServerConfig.Transport.STDIO, objectMapper.writeValueAsString(node)));
+                } else if (node.has("url")) {
+                    specs.add(new PluginMcpRegistry.PluginMcpSpec(qualified,
+                            McpServerConfig.Transport.STREAMABLE_HTTP, objectMapper.writeValueAsString(node)));
+                }
+            });
+        } catch (IOException | RuntimeException e) {
+            log.warn("插件 .mcp.json 解析失败: {}", file, e);
+        }
+        return specs;
     }
 
     /**

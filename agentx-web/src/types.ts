@@ -517,6 +517,7 @@ export interface InstalledPluginView {
   installedAt: string
   skillCount: number
   agentCount: number
+  mcpCount: number
   /** 暂不支持的能力名单,如 ["hooks"] */
   unsupported: string[]
 }

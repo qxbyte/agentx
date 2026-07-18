@@ -94,6 +94,24 @@ public class PluginSkillProvider implements SkillProvider {
         return Files.isRegularFile(command) ? parse(pluginName, skillName, command) : Optional.empty();
     }
 
+    @Override
+    public Optional<java.nio.file.Path> resourceDir(String name) {
+        int colon = name.indexOf(':');
+        if (colon <= 0) {
+            return Optional.empty();
+        }
+        String pluginName = name.substring(0, colon);
+        String skillName = name.substring(colon + 1);
+        InstalledPlugin plugin = registry.plugins().values().stream()
+                .filter(p -> p.enabled() && p.name().equals(pluginName))
+                .findFirst().orElse(null);
+        if (plugin == null || !SKILL_NAME.matcher(skillName).matches()) {
+            return Optional.empty();
+        }
+        Path dir = Path.of(plugin.installPath()).resolve("skills").resolve(skillName);
+        return Files.isDirectory(dir) ? Optional.of(dir) : Optional.empty();
+    }
+
     private Optional<SkillFile> parse(String pluginName, String skillName, Path file) {
         if (!SKILL_NAME.matcher(skillName).matches()) {
             log.debug("跳过非法命名的插件 skill: {}", file);

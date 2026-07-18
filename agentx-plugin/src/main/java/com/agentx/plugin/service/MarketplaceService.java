@@ -100,6 +100,18 @@ public class MarketplaceService {
         return manifests.readMarketplace(Path.of(getOrThrow(name).installLocation()));
     }
 
+    /** 更新 marketplace 目录:git 来源拉取远端最新;本地路径来源本就是活引用,仅刷新时间戳。 */
+    public KnownMarketplace update(String name) {
+        KnownMarketplace mp = getOrThrow(name);
+        if (!"path".equals(mp.type())) {
+            git.updateShallow(Path.of(mp.installLocation()));
+        }
+        KnownMarketplace updated = new KnownMarketplace(
+                mp.type(), mp.locator(), mp.installLocation(), Instant.now().toString());
+        registry.putMarketplace(name, updated);
+        return updated;
+    }
+
     public void remove(String name) {
         KnownMarketplace mp = getOrThrow(name);
         // 只删自己 clone 的目录;本地路径来源仅解除注册

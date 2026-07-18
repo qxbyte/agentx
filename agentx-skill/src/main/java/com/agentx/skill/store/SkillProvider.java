@@ -16,4 +16,12 @@ public interface SkillProvider {
 
     /** 按全限定名查找；不属于本 provider 的名字返回 empty。 */
     Optional<SkillFile> find(String name);
+
+    /**
+     * 技能的资源基准目录（L3:references/ scripts/ assets/ 所在处）；
+     * 平铺单文件技能或非本 provider 的名字返回 empty。
+     */
+    default Optional<java.nio.file.Path> resourceDir(String name) {
+        return Optional.empty();
+    }
 }

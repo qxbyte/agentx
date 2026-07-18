@@ -29,6 +29,7 @@ public class SkillExpansionService {
     private final SkillFileStore store;
     /** 额外 skill 来源（plugin 命名空间）；无实现时为空列表。 */
     private final java.util.List<com.agentx.skill.store.SkillProvider> providers;
+    private final SkillResourceService resourceService;
 
     public String expand(String content) {
         if (content == null) {
@@ -46,8 +47,9 @@ public class SkillExpansionService {
         String args = command.group(2) == null ? "" : command.group(2).strip();
         String body = substitute(skill.content(), args);
         log.debug("skill 展开 /{} args.len={}", skill.name(), args.length());
-        return "<skill_instructions name=\"%s\" invoked_as=\"%s\">\n%s\n</skill_instructions>"
-                .formatted(skill.name(), escapeAttr(trimmed), body);
+        return "<skill_instructions name=\"%s\" invoked_as=\"%s\">\n%s\n</skill_instructions>%s"
+                .formatted(skill.name(), escapeAttr(trimmed), body,
+                        resourceService.resourcesNote(skill.name()));
     }
 
     /**

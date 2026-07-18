@@ -15,6 +15,14 @@ export function listMarketplaces(): Promise<MarketplaceView[]> {
   return request<MarketplaceView[]>({ url: '/v1/plugins/marketplaces', method: 'GET' })
 }
 
+export function updateMarketplace(name: string): Promise<MarketplaceView> {
+  return request<MarketplaceView>({
+    url: `/v1/plugins/marketplaces/${name}/update`,
+    method: 'POST',
+    timeout: 200_000,
+  })
+}
+
 export function removeMarketplace(name: string): Promise<void> {
   return request<void>({ url: `/v1/plugins/marketplaces/${name}`, method: 'DELETE' })
 }
@@ -37,6 +45,14 @@ export function setPluginEnabled(id: string, enabled: boolean): Promise<Installe
     url: `/v1/plugins/${encodeURIComponent(id)}/enabled`,
     method: 'PATCH',
     data: { enabled },
+  })
+}
+
+export function updatePlugin(id: string): Promise<InstalledPluginView> {
+  return request<InstalledPluginView>({
+    url: `/v1/plugins/${encodeURIComponent(id)}/update`,
+    method: 'POST',
+    timeout: 200_000,
   })
 }
 

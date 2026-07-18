@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface McpServerConfigRepository extends JpaRepository<McpServerConfig, UUID> {
     List<McpServerConfig> findByEnabledTrue();
     Optional<McpServerConfig> findByName(String name);
+    java.util.List<McpServerConfig> findByPluginId(String pluginId);
 }

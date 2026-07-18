@@ -1,4 +1,4 @@
-import { Blocks, Download, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Blocks, Download, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -37,6 +37,7 @@ export default function PluginsPage() {
   const [source, setSource] = useState('')
   const [adding, setAdding] = useState(false)
   const [installing, setInstalling] = useState<string | null>(null)
+  const [updating, setUpdating] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<
     { kind: 'marketplace'; name: string } | { kind: 'plugin'; id: string; name: string } | null
   >(null)
@@ -93,6 +94,33 @@ export default function PluginsPage() {
       toast.error(extractErrorMessage(error, '安装失败'))
     } finally {
       setInstalling(null)
+    }
+  }
+
+  const handleUpdatePlugin = async (id: string) => {
+    setUpdating(id)
+    try {
+      const plugin = await pluginsApi.updatePlugin(id)
+      toast.success(`已更新 ${plugin.name} 至 v${plugin.version}`)
+      refreshMenu()
+      await refresh()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '更新失败'))
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const handleUpdateMarketplace = async (name: string) => {
+    setUpdating(`mp:${name}`)
+    try {
+      await pluginsApi.updateMarketplace(name)
+      toast.success(`marketplace「${name}」已更新`)
+      await refresh()
+    } catch (error) {
+      toast.error(extractErrorMessage(error, '更新失败'))
+    } finally {
+      setUpdating(null)
     }
   }
 
@@ -171,6 +199,16 @@ export default function PluginsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="size-7 shrink-0"
+                  title="更新 marketplace（git 拉取最新清单）"
+                  disabled={updating === `mp:${mp.name}`}
+                  onClick={() => void handleUpdateMarketplace(mp.name)}
+                >
+                  <RefreshCw className={`size-4 ${updating === `mp:${mp.name}` ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="size-7 shrink-0 text-destructive hover:text-destructive"
                   onClick={() => setRemoveTarget({ kind: 'marketplace', name: mp.name })}
                 >
@@ -211,6 +249,7 @@ export default function PluginsPage() {
                               <span className="shrink-0 text-xs text-muted-foreground">
                                 {inst.skillCount} 技能
                                 {inst.agentCount > 0 ? ` · ${inst.agentCount} 子代理` : ''}
+                                {inst.mcpCount > 0 ? ` · ${inst.mcpCount} MCP(默认停用)` : ''}
                               </span>
                               {inst.unsupported.length > 0 && (
                                 <Badge
@@ -221,6 +260,16 @@ export default function PluginsPage() {
                                   含 {inst.unsupported.join('/')}（暂不支持）
                                 </Badge>
                               )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                title="更新插件（重新拉取并安装最新版本）"
+                                disabled={updating === id}
+                                onClick={() => void handleUpdatePlugin(id)}
+                              >
+                                <RefreshCw className={`size-4 ${updating === id ? 'animate-spin' : ''}`} />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"

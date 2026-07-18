@@ -1,5 +1,6 @@
 package com.agentx.skill.stream;
 
+import com.agentx.skill.service.SkillResourceService;
 import com.agentx.skill.service.SkillService;
 import com.agentx.skill.store.SkillFile;
 import org.springframework.ai.chat.model.ToolContext;
@@ -24,11 +25,14 @@ class SkillLoadTool implements ToolCallback {
     private static final int CATALOG_LIMIT = 60;
 
     private final SkillService skillService;
+    private final SkillResourceService resourceService;
     private final ObjectMapper objectMapper;
     private final ToolDefinition definition;
 
-    SkillLoadTool(SkillService skillService, ObjectMapper objectMapper, List<SkillFile> invocable) {
+    SkillLoadTool(SkillService skillService, SkillResourceService resourceService,
+                  ObjectMapper objectMapper, List<SkillFile> invocable) {
         this.skillService = skillService;
+        this.resourceService = resourceService;
         this.objectMapper = objectMapper;
         this.definition = DefaultToolDefinition.builder()
                 .name("skill")
@@ -80,7 +84,7 @@ class SkillLoadTool implements ToolCallback {
         if (skill == null) {
             return "技能不存在或不可自动触发: " + name + "。可用技能见本工具描述中的目录。";
         }
-        return "<skill_instructions name=\"%s\">\n%s\n</skill_instructions>\n请立即遵循以上技能指令继续完成用户的任务。"
-                .formatted(skill.name(), skill.content());
+        return "<skill_instructions name=\"%s\">\n%s\n</skill_instructions>%s\n请立即遵循以上技能指令继续完成用户的任务。"
+                .formatted(skill.name(), skill.content(), resourceService.resourcesNote(skill.name()));
     }
 }

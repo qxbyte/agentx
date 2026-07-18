@@ -1,6 +1,7 @@
 package com.agentx.plugin;
 
 import com.agentx.agent.service.PluginAgentRegistry;
+import com.agentx.mcp.service.PluginMcpRegistry;
 import com.agentx.plugin.service.GitFetcher;
 import com.agentx.plugin.service.ManifestReader;
 import com.agentx.plugin.service.MarketplaceService;
@@ -29,6 +30,7 @@ class PluginFlowTest {
     private PluginService plugins;
     private PluginSkillProvider provider;
     private PluginAgentRegistry agentRegistry;
+    private PluginMcpRegistry mcpRegistry;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -47,6 +49,9 @@ class PluginFlowTest {
                 和用户一起头脑风暴：$ARGUMENTS""");
         write(marketplaceDir.resolve("plugins/demo/commands/ship.md"), "发布流程：$1");
         write(marketplaceDir.resolve("plugins/demo/hooks/hooks.json"), "{}");
+        write(marketplaceDir.resolve("plugins/demo/.mcp.json"), """
+                {"mcpServers":{"docs":{"command":"node","args":["server.js"]},
+                               "api":{"url":"https://example.com/mcp"}}}""");
         write(marketplaceDir.resolve("plugins/demo/agents/reviewer.md"), """
                 ---
                 name: reviewer
@@ -59,8 +64,10 @@ class PluginFlowTest {
         PluginRegistry registry = new PluginRegistry(pluginsRoot.toString(), om);
         ManifestReader manifests = new ManifestReader(om);
         agentRegistry = org.mockito.Mockito.mock(PluginAgentRegistry.class);
+        mcpRegistry = org.mockito.Mockito.mock(PluginMcpRegistry.class);
         marketplaces = new MarketplaceService(registry, new GitFetcher(), manifests);
-        plugins = new PluginService(registry, marketplaces, manifests, new GitFetcher(), agentRegistry);
+        plugins = new PluginService(registry, marketplaces, manifests, new GitFetcher(),
+                agentRegistry, mcpRegistry, om);
         provider = new PluginSkillProvider(registry);
     }
 
@@ -88,7 +95,16 @@ class PluginFlowTest {
         var caps = plugins.capabilities(installed);
         assertThat(caps.skillCount()).isEqualTo(2);
         assertThat(caps.agentCount()).isEqualTo(1);
+        assertThat(caps.mcpCount()).isEqualTo(2);
         assertThat(caps.unsupported()).containsExactly("hooks");
+        // MCP 同步联动:STDIO 与 HTTP 两种 transport 均被识别
+        @SuppressWarnings("unchecked")
+        var mcpCaptor = org.mockito.ArgumentCaptor.forClass(
+                (Class<java.util.List<PluginMcpRegistry.PluginMcpSpec>>) (Class<?>) java.util.List.class);
+        org.mockito.Mockito.verify(mcpRegistry)
+                .sync(org.mockito.Mockito.eq("demo@local-mp"), mcpCaptor.capture());
+        assertThat(mcpCaptor.getValue()).extracting(PluginMcpRegistry.PluginMcpSpec::name)
+                .containsExactlyInAnyOrder("demo:docs", "demo:api");
         // agents 同步联动:安装时以命名空间名 + body 即 system prompt 同步
         @SuppressWarnings("unchecked")
         var specCaptor = org.mockito.ArgumentCaptor.forClass(

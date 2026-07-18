@@ -20,10 +20,13 @@ class SkillExpansionServiceTest {
     private SkillFileStore store;
     private SkillExpansionService service;
 
+    private SkillResourceService resources;
+
     @BeforeEach
     void setUp() {
         store = new SkillFileStore(root.toString());
-        service = new SkillExpansionService(store, java.util.List.of(new StubProvider()));
+        resources = new SkillResourceService(root.toString(), java.util.List.of(new StubProvider()));
+        service = new SkillExpansionService(store, java.util.List.of(new StubProvider()), resources);
     }
 
     /** 模拟 plugin 命名空间来源:提供 demo:echo 一个 skill。 */
@@ -150,6 +153,35 @@ class SkillExpansionServiceTest {
         // 回写保留标志
         store.write(deploy);
         assertThat(store.find("deploy").orElseThrow().modelInvocable()).isFalse();
+    }
+
+    /* ---------- L3 资源(references/ scripts/) ---------- */
+
+    @Test
+    void expansionAnnouncesResourceListForDirLayoutSkill() throws IOException {
+        Files.createDirectories(root.resolve("guide/references"));
+        Files.writeString(root.resolve("guide/SKILL.md"),
+                "---\ndescription: 带资源的技能\n---\n\n按 references/patterns.md 的模式执行:$ARGUMENTS");
+        Files.writeString(root.resolve("guide/references/patterns.md"), "# 模式甲\n先分析再动手");
+        String result = service.expand("/guide 做个登录页");
+        assertThat(result)
+                .contains("readSkillFile")
+                .contains("references/patterns.md");
+        // 平铺技能无资源目录 → 不附清单
+        givenSkill("plain", "无资源:$ARGUMENTS");
+        assertThat(service.expand("/plain x")).doesNotContain("readSkillFile");
+    }
+
+    @Test
+    void resourceReadIsSandboxed() throws IOException {
+        Files.createDirectories(root.resolve("guide/references"));
+        Files.writeString(root.resolve("guide/SKILL.md"), "body");
+        Files.writeString(root.resolve("guide/references/a.md"), "资源内容");
+        Files.writeString(root.resolve("secret.md"), "越界目标");
+        assertThat(resources.read("guide", "references/a.md")).isEqualTo("资源内容");
+        assertThat(resources.read("guide", "../secret.md")).contains("非法路径");
+        assertThat(resources.read("guide", "references/none.md")).contains("文件不存在");
+        assertThat(resources.listResources("guide")).containsExactly("references/a.md");
     }
 
     /* ---------- 文件存储行为（目录化配置的核心特性） ---------- */
