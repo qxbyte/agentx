@@ -46,6 +46,7 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
     private final CodingApprovalDecorator approvalDecorator;
     private final CodingToolPreviewProvider previewProvider;
     private final CodingModeRegistry modeRegistry;
+    private final LocalToolsSettings localToolsSettings;
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
@@ -81,11 +82,16 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
             spec.toolCallbacks(tools);
         }
 
-        // 工作区上下文注入 ToolContext（工具经此拿沙箱）
-        spec.toolContext(Map.of(
-                WorkspaceContext.WORKSPACE_ROOT, ws.getRootPath(),
-                WorkspaceContext.WORKSPACE_ID, ws.getId().toString(),
-                WorkspaceContext.MODE, mode.name()));
+        // 工作区上下文注入 ToolContext（工具经此拿沙箱）;
+        // 只读工具带家目录第二根:编码会话也能读工作区外的本机文件（本地 app 语义）
+        Map<String, Object> toolContext = new java.util.LinkedHashMap<>();
+        toolContext.put(WorkspaceContext.WORKSPACE_ROOT, ws.getRootPath());
+        toolContext.put(WorkspaceContext.WORKSPACE_ID, ws.getId().toString());
+        toolContext.put(WorkspaceContext.MODE, mode.name());
+        if (localToolsSettings.isEnabled()) {
+            toolContext.put(WorkspaceContext.LOCAL_READ_ROOT, localToolsSettings.getRoot());
+        }
+        spec.toolContext(toolContext);
 
         spec.system(systemPrompt(ws, mode));
         log.debug("coding 定制生效: workspace={} mode={} tools={}", ws.getName(), mode, tools.size());

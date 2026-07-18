@@ -34,7 +34,7 @@ public class WorkspaceReadTools {
             @ToolParam(description = "相对工作区根的目录路径，根目录传空串或 .") String path,
             @ToolParam(description = "递归深度，1 表示只列当前层，建议 1-3", required = false) Integer depth,
             ToolContext toolContext) {
-        PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
+        PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Path dir = sandbox.resolve(path == null || path.isBlank() ? "." : path);
         if (!Files.isDirectory(dir)) {
             return "不是目录: " + path;
@@ -58,7 +58,7 @@ public class WorkspaceReadTools {
             @ToolParam(description = "起始行（1 起，含），不传从头", required = false) Integer fromLine,
             @ToolParam(description = "结束行（含），不传到尾", required = false) Integer toLine,
             ToolContext toolContext) {
-        PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
+        PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Path file = sandbox.resolve(path);
         if (!Files.isRegularFile(file)) {
             return "文件不存在: " + path;
@@ -88,7 +88,7 @@ public class WorkspaceReadTools {
             @ToolParam(description = "正则表达式（Java 语法）") String pattern,
             @ToolParam(description = "文件名后缀过滤，如 .java；不传搜全部文本文件", required = false) String suffix,
             ToolContext toolContext) {
-        PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
+        PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Pattern regex;
         try {
             regex = Pattern.compile(pattern);
@@ -116,7 +116,7 @@ public class WorkspaceReadTools {
     public String findFiles(
             @ToolParam(description = "glob，如 **/*.java 或 *Controller.java") String glob,
             ToolContext toolContext) {
-        PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
+        PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         var matcher = sandbox.root().getFileSystem().getPathMatcher("glob:" + glob);
         List<String> found = new ArrayList<>();
         try (Stream<Path> walk = Files.walk(sandbox.root())) {

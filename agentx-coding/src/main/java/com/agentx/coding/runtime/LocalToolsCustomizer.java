@@ -9,7 +9,6 @@ import com.agentx.tools.registry.ToolRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.ToolCallback;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import java.util.List;
@@ -42,26 +41,23 @@ public class LocalToolsCustomizer implements ChatStreamCustomizer {
     private final CodingApprovalDecorator approvalDecorator;
     private final CodingToolPreviewProvider previewProvider;
     private final CodingModeRegistry modeRegistry;
-    private final boolean enabled;
-    private final String root;
+    private final LocalToolsSettings settings;
 
     public LocalToolsCustomizer(ToolRegistry toolRegistry,
                                 CodingApprovalDecorator approvalDecorator,
                                 CodingToolPreviewProvider previewProvider,
                                 CodingModeRegistry modeRegistry,
-                                @Value("${agentx.local-tools.enabled:true}") boolean enabled,
-                                @Value("${agentx.local-tools.root:${user.home}}") String root) {
+                                LocalToolsSettings settings) {
         this.toolRegistry = toolRegistry;
         this.approvalDecorator = approvalDecorator;
         this.previewProvider = previewProvider;
         this.modeRegistry = modeRegistry;
-        this.enabled = enabled;
-        this.root = root;
+        this.settings = settings;
     }
 
     @Override
     public void customize(ChatStreamContext context, ChatClient.ChatClientRequestSpec spec) {
-        if (!enabled || context.workspaceId() != null) {
+        if (!settings.isEnabled() || context.workspaceId() != null) {
             return;
         }
         CodingMode mode = CodingMode.parseOrDefault(context.codingMode());
@@ -87,8 +83,8 @@ public class LocalToolsCustomizer implements ChatStreamCustomizer {
         spec.toolCallbacks(tools);
         // 沙箱根 = 家目录:相对路径按家目录解析,越界访问被 PathSandbox 拦截
         spec.toolContext(Map.of(
-                WorkspaceContext.WORKSPACE_ROOT, root,
+                WorkspaceContext.WORKSPACE_ROOT, settings.getRoot(),
                 WorkspaceContext.MODE, mode.name()));
-        log.debug("本地工具已注入(普通对话): root={} mode={} tools={}", root, mode, tools.size());
+        log.debug("本地工具已注入(普通对话): root={} mode={} tools={}", settings.getRoot(), mode, tools.size());
     }
 }

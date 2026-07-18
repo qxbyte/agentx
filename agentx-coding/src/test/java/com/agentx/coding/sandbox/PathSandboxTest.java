@@ -54,6 +54,34 @@ class PathSandboxTest {
         assertThat(resolved).exists();
     }
 
+    /* ---------- 双根(只读第二根,如家目录) ---------- */
+
+    @Test
+    void dualRootAcceptsTildeAndAbsoluteInSecondary() throws IOException {
+        Path home = Files.createTempDirectory("fake-home");
+        Files.createDirectories(home.resolve("docs"));
+        Files.writeString(home.resolve("docs/note.md"), "笔记");
+        PathSandbox dual = PathSandbox.of(root.toString(), home.toString());
+
+        // 相对路径仍解析到主根(工作区)
+        assertThat(dual.resolve("src/App.java")).exists();
+        // ~/ 指第二根
+        assertThat(dual.resolve("~/docs/note.md")).exists();
+        // 第二根内的绝对路径直接接受
+        assertThat(dual.resolve(home.resolve("docs/note.md").toString())).exists();
+        // 第二根外仍拒绝
+        assertThatThrownBy(() -> dual.resolve("~/../outside.txt"))
+                .isInstanceOf(BizException.class);
+        // 展示路径:第二根内 → ~/ 前缀
+        assertThat(dual.relativize(dual.resolve("~/docs/note.md"))).isEqualTo("~/docs/note.md");
+    }
+
+    @Test
+    void singleRootTildeFallsBackToRoot() {
+        // 无第二根时 ~ 退化为主根相对(本地工具场景根即家目录)
+        assertThat(sandbox.resolve("~/src/App.java")).exists();
+    }
+
     @Test
     void rejectsSymlinkEscape() throws IOException {
         Path outside = Files.createTempDirectory("outside-secret");
