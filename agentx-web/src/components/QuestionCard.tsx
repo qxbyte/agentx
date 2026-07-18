@@ -170,6 +170,10 @@ export default function QuestionCard({ item }: QuestionCardProps) {
                   : 'bg-[var(--ax-chip-bg,var(--ax-hover-weak))] hover:bg-[var(--ax-hover)]',
               )}
             >
+              {/* 序号在前;选中态在尾部画一个裸勾(无框无底),单选时勾随新选择移动 */}
+              {!spec.multiSelect && (
+                <span className="w-4 shrink-0 text-sm text-[var(--ax-text-faint)]">{i + 1}</span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-medium text-foreground">{opt.label}</span>
                 {opt.description && (
@@ -178,20 +182,13 @@ export default function QuestionCard({ item }: QuestionCardProps) {
                   </span>
                 )}
               </span>
-              {spec.multiSelect ? (
-                <span
-                  className={cn(
-                    'flex size-4.5 shrink-0 items-center justify-center rounded border',
-                    checked
-                      ? 'border-[var(--ax-accent)] bg-[var(--ax-accent)] text-white'
-                      : 'border-[var(--ax-border-strong)]',
-                  )}
-                >
-                  {checked && <Check className="size-3" />}
-                </span>
-              ) : (
-                <span className="shrink-0 text-sm text-[var(--ax-text-faint)]">{i + 1}</span>
-              )}
+              <Check
+                strokeWidth={2.5}
+                className={cn(
+                  'size-4 shrink-0 text-foreground transition-opacity',
+                  checked ? 'opacity-100' : 'opacity-0',
+                )}
+              />
             </button>
           )
         })}
