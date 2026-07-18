@@ -539,6 +539,21 @@ body {
   overflow-y: auto;
 }
 
+/* 空会话开场态：欢迎语 + 输入框在内容区垂直居中（略偏上，视觉重心与 ChatGPT 一致），
+   首条消息发出后切回「消息流 + 底部输入框」布局 */
+.ax-chat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding-bottom: 8vh;
+}
+.ax-chat-empty .ax-welcome {
+  height: auto;
+  padding-bottom: 12px;
+}
+
 .ax-message-list {
   max-width: 780px;
   margin: 0 auto;

@@ -114,12 +114,9 @@ export default function ChatPage() {
           <span className="ax-topbar-title">{activeTitle}</span>
         </div>
 
-        <div className="ax-chat-scroll ax-scroll" ref={scrollRef} onScroll={handleScroll}>
-          {messagesLoading ? (
-            <div className="flex justify-center p-12">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : isEmpty ? (
+        {isEmpty ? (
+          /* 空会话开场态：欢迎语 + 输入框整体居中（ChatGPT 式），首条消息后回到底部 */
+          <div className="ax-chat-empty ax-scroll">
             <div className="ax-welcome">
               <Logo size={56} />
               <h1 className="ax-welcome-title">你好，这里是 AgentX</h1>
@@ -129,28 +126,45 @@ export default function ChatPage() {
                 在下方输入你的问题，开始第一段对话。
               </p>
             </div>
-          ) : (
-            <div className="ax-message-list">
-              {messagesError && (
-                <div className="ax-msg-error mb-4 flex items-center gap-2" role="alert">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <span>{messagesError}</span>
+            <div className="ax-composer-wrap w-full">
+              {plan && <PlanPanel plan={plan} onDismiss={clearPlan} />}
+              <ChatInput streaming={streaming} onSend={handleSend} onStop={stopStreaming} />
+              <div className="ax-composer-hint">
+                Enter 发送 · Shift + Enter 换行 · 内容由 AI 生成，请注意甄别
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="ax-chat-scroll ax-scroll" ref={scrollRef} onScroll={handleScroll}>
+              {messagesLoading ? (
+                <div className="flex justify-center p-12">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="ax-message-list">
+                  {messagesError && (
+                    <div className="ax-msg-error mb-4 flex items-center gap-2" role="alert">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{messagesError}</span>
+                    </div>
+                  )}
+                  {messages.map((message) => (
+                    <MessageItem key={message.id} message={message} />
+                  ))}
                 </div>
               )}
-              {messages.map((message) => (
-                <MessageItem key={message.id} message={message} />
-              ))}
             </div>
-          )}
-        </div>
 
-        <div className="ax-composer-wrap">
-          {plan && <PlanPanel plan={plan} onDismiss={clearPlan} />}
-          <ChatInput streaming={streaming} onSend={handleSend} onStop={stopStreaming} />
-          <div className="ax-composer-hint">
-            Enter 发送 · Shift + Enter 换行 · 内容由 AI 生成，请注意甄别
-          </div>
-        </div>
+            <div className="ax-composer-wrap">
+              {plan && <PlanPanel plan={plan} onDismiss={clearPlan} />}
+              <ChatInput streaming={streaming} onSend={handleSend} onStop={stopStreaming} />
+              <div className="ax-composer-hint">
+                Enter 发送 · Shift + Enter 换行 · 内容由 AI 生成，请注意甄别
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   )

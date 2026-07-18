@@ -284,10 +284,10 @@ export default function AgentsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[240px]">名称</TableHead>
+              <TableHead className="w-[240px] min-w-[170px]">名称</TableHead>
               <TableHead className="w-[150px]">工作流</TableHead>
-              <TableHead>工具</TableHead>
-              <TableHead>知识库</TableHead>
+              <TableHead className="min-w-[190px]">工具</TableHead>
+              <TableHead className="min-w-[120px]">知识库</TableHead>
               <TableHead className="w-[90px] text-right">最大迭代</TableHead>
               <TableHead className="w-[80px]">启用</TableHead>
               <TableHead className="w-[100px]">操作</TableHead>
