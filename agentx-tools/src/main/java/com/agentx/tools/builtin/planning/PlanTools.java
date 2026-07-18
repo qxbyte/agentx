@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 任务清单工具（移植 Claude Code TodoWrite，工具名保持 updatePlan 以兼容既有链路）：
- * 模型把确定要执行的任务拆成 content/activeForm 双形态清单，边执行边翻状态。
+ * 任务清单工具：逐字移植 Claude Code TodoWrite（工具名保持 updatePlan 以兼容既有链路，
+ * 描述/校验/返回值均与 CC 2.1.177 原文对齐——描述含全部正反示例，校验仅查
+ * content/activeForm 非空与状态合法，不硬拦 in_progress 数量，交由描述约束）。
  * 工具本体只做校验——清单数据经由 SSE tool-call 帧的 args 直达前端渲染，
  * 并由 ChatStreamService 在 onToolCall 时回写会话 plan_state 持久化。
- * 触发时机与管理规则写在 @Tool description 里（system prompt 是覆盖语义，不能追加）。
  */
 @AgentTool(group = "planning")
 public class PlanTools {
@@ -19,71 +19,212 @@ public class PlanTools {
     private static final Set<String> STATUSES = Set.of("pending", "in_progress", "completed");
 
     public record TodoItem(
-            @ToolParam(description = "任务内容（祈使形，描述要做什么）：如「运行测试」「重构登录模块」")
+            @ToolParam(description = "The imperative form describing what needs to be done "
+                    + "(e.g., \"Run tests\", \"Build the project\")")
             String content,
-            @ToolParam(description = "进行时形态（该任务执行中对用户展示）：如「正在运行测试」「正在重构登录模块」")
+            @ToolParam(description = "The present continuous form shown during execution "
+                    + "(e.g., \"Running tests\", \"Building the project\")")
             String activeForm,
-            @ToolParam(description = "状态：pending（未开始）/ in_progress（进行中）/ completed（已完成）")
+            @ToolParam(description = "Task state: pending / in_progress / completed")
             String status) {}
 
     @Tool(description = """
-            创建并管理当前会话的结构化任务清单，前端固定展示在输入框上方并实时更新——\
-            帮助你跟踪进度、组织复杂任务，也让用户随时看到任务进展。
+            Use this tool to create and manage a structured task list for your current session. \
+            This helps you track progress, organize complex tasks, and demonstrate thoroughness \
+            to the user. It also helps the user understand the progress of the task and overall \
+            progress of their requests.
 
-            【何时使用——主动地用】
-            1. 复杂多步任务：需要 3 个及以上不同步骤/操作才能完成；
-            2. 需要谨慎规划或多项操作的非平凡任务；
-            3. 用户明确要求使用任务清单；
-            4. 用户一次给出多件要做的事（编号或逗号分隔的列表）；
-            5. 开始执行某项任务之前，先把它置为 in_progress（同一时刻只允许一个进行中）；
-            6. 完成某项后立即置 completed，并把执行中新发现的后续任务补进清单。
+            ## When to Use This Tool
+            Use this tool proactively in these scenarios:
 
-            【何时不用】只有一件直白的事、任务琐碎到记录毫无组织收益、不足 3 个实质步骤、\
-            纯对话或信息型回复——这些情况直接做即可。另外（本产品约定）：执行路径尚未确定时\
-            不要提前建清单——尤其禁止把 skill 文档的工作流程或含用户决策分支的方案照抄成\
-            清单（用户可能选不同岔路，清单无法反映真实进度）；先完成提问/审批等交互，\
-            路径确定后再为「确定要执行的那部分」建清单。
+            1. Complex multi-step tasks - When a task requires 3 or more distinct steps or actions
+            2. Non-trivial and complex tasks - Tasks that require careful planning or multiple operations
+            3. User explicitly requests todo list - When the user directly asks you to use the todo list
+            4. User provides multiple tasks - When users provide a list of things to be done (numbered or comma-separated)
+            5. After receiving new instructions - Immediately capture user requirements as todos
+            6. When you start working on a task - Mark it as in_progress BEFORE beginning work. \
+            Ideally you should only have one todo as in_progress at a time
+            7. After completing a task - Mark it as completed and add any new follow-up tasks \
+            discovered during implementation
 
-            【任务的双形态】每条任务必须同时提供两种描述：\
-            content 用祈使形说明要做什么（如「修复认证 bug」）；\
-            activeForm 用进行时形态供执行中展示（如「正在修复认证 bug」）。
+            ## When NOT to Use This Tool
+            Skip using this tool when:
+            1. There is only a single, straightforward task
+            2. The task is trivial and tracking it provides no organizational benefit
+            3. The task can be completed in less than 3 trivial steps
+            4. The task is purely conversational or informational
 
-            【状态与管理】
-            - 三种状态：pending（未开始）/ in_progress（进行中，严格恰好一个）/ completed（已完成）；
-            - 边执行边实时更新；完成一项立即标记，不要攒到最后一起标；
-            - 先完成当前任务再开始新的；不再相关的任务从清单整条移除；
-            - 每次调用传全量清单（覆盖式更新，不是增量）。
+            NOTE that you should not use this tool if there is only one trivial task to do. \
+            In this case you are better off just doing the task directly.
 
-            【完成的门槛】只有完全做成才能置 completed：测试失败、实现不完整、存在未解决\
-            报错、找不到必需文件或依赖时，一律保持 in_progress，并新建一条任务描述需要\
-            解决的阻塞项。
+            ## Examples of When to Use the Todo List
 
-            拿不准要不要用时，倾向于用：主动管理任务清单体现严谨，也确保用户的所有要求\
-            都被完成。""")
+            <example>
+            User: I want to add a dark mode toggle to the application settings. Make sure you run the tests and build when you're done!
+            Assistant: *Creates todo list with the following items:*
+            1. Creating dark mode toggle component in Settings page
+            2. Adding dark mode state management (context/store)
+            3. Implementing CSS-in-JS styles for dark theme
+            4. Updating existing components to support theme switching
+            5. Running tests and build process, addressing any failures or errors that occur
+            *Begins working on the first task*
+
+            <reasoning>
+            The assistant used the todo list because:
+            1. Adding dark mode is a multi-step feature requiring UI, state management, and styling changes
+            2. The user explicitly requested tests and build be run afterward
+            3. The assistant inferred that tests and build need to pass by adding "Ensure tests and build succeed" as the final task
+            </reasoning>
+            </example>
+
+            <example>
+            User: Help me rename the function getCwd to getCurrentWorkingDirectory across my project
+            Assistant: *Uses grep or search tools to locate all instances of getCwd in the codebase*
+            I've found 15 instances of 'getCwd' across 8 different files.
+            *Creates todo list with specific items for each file that needs updating*
+
+            <reasoning>
+            The assistant used the todo list because:
+            1. First, the assistant searched to understand the scope of the task
+            2. Upon finding multiple occurrences across different files, it determined this was a complex task with multiple steps
+            3. The todo list helps ensure every instance is tracked and updated systematically
+            4. This approach prevents missing any occurrences and maintains code consistency
+            </reasoning>
+            </example>
+
+            <example>
+            User: I need to implement these features for my e-commerce site: user registration, product catalog, shopping cart, and checkout flow.
+            Assistant: *Creates a todo list breaking down each feature into specific tasks based on the project architecture*
+            Let's start with user registration. This will involve creating database models, API endpoints, and frontend forms that integrate with your existing authentication system.
+
+            <reasoning>
+            The assistant used the todo list because:
+            1. The user provided multiple complex features to implement in a comma separated list
+            2. The todo list helps organize these large features into manageable tasks
+            3. This approach allows for tracking progress across the entire implementation
+            </reasoning>
+            </example>
+
+            <example>
+            User: Can you help optimize my React application? It's rendering slowly and has performance issues.
+            Assistant: *Reviews component structure, render patterns, state management, and data fetching*
+            After analyzing your codebase, I've identified several performance issues.
+            *Creates todo list with items like: 1) Implementing memoization for expensive calculations in ProductList, 2) Adding virtualization for long lists in Dashboard, 3) Optimizing image loading in Gallery component, 4) Fixing state update loops in ShoppingCart, 5) Reviewing bundle size and implementing code splitting*
+            Let's start by implementing memoization for the expensive calculations in your ProductList component.
+
+            <reasoning>
+            The assistant used the todo list because:
+            1. First, the assistant examined the codebase to identify specific performance issues
+            2. Based on this analysis, it identified multiple optimization opportunities
+            3. Performance optimization is a non-trivial task requiring multiple steps
+            4. The todo list helps methodically track improvements across different components
+            5. This systematic approach ensures all performance bottlenecks are addressed
+            </reasoning>
+            </example>
+
+            ## Examples of When NOT to Use the Todo List
+
+            <example>
+            User: How do I print 'Hello World' in Python?
+            Assistant: In Python, you can print "Hello World" with this simple code:
+
+            python
+            print("Hello World")
+
+            This will output the text "Hello World" to the console when executed.
+
+            <reasoning>
+            The assistant did not use the todo list because this is a single, trivial task that can be completed in one step. There's no need to track multiple tasks or steps for such a straightforward request.
+            </reasoning>
+            </example>
+
+            <example>
+            User: What does the git status command do?
+            Assistant: The git status command shows the current state of your working directory and staging area. It displays which changes have been staged, which haven't, and which files aren't being tracked by Git. This is a fundamental command for understanding the current state of your repository before making commits.
+
+            <reasoning>
+            The assistant did not use the todo list because this is an informational request with no actual coding task to complete. The user is simply asking for an explanation, not for the assistant to perform multiple steps or tasks.
+            </reasoning>
+            </example>
+
+            <example>
+            User: Can you add a comment to the calculateTotal function to explain what it does?
+            Assistant: Sure, let me add a comment to the calculateTotal function to explain what it does.
+            *Uses the edit tool to add a comment to the calculateTotal function*
+
+            <reasoning>
+            The assistant did not use the todo list because this is a single, straightforward task confined to one location in the code. Adding a comment doesn't require tracking multiple steps or systematic organization.
+            </reasoning>
+            </example>
+
+            <example>
+            User: Run npm install for me and tell me what happens.
+            Assistant: I'll run the npm install command for you.
+            *Executes: npm install*
+            The command completed successfully. Here's the output:
+            [Output of npm install command]
+            All dependencies have been installed according to your package.json file.
+
+            <reasoning>
+            The assistant did not use the todo list because this is a single command execution with immediate results. There are no multiple steps to track or organize, making the todo list unnecessary for this straightforward task.
+            </reasoning>
+            </example>
+
+            ## Task States and Management
+
+            1. **Task States**: Use these states to track progress:
+               - pending: Task not yet started
+               - in_progress: Currently working on (limit to ONE task at a time)
+               - completed: Task finished successfully
+
+               **IMPORTANT**: Task descriptions must have two forms:
+               - content: The imperative form describing what needs to be done (e.g., "Run tests", "Build the project")
+               - activeForm: The present continuous form shown during execution (e.g., "Running tests", "Building the project")
+
+            2. **Task Management**:
+               - Update task status in real-time as you work
+               - Mark tasks complete IMMEDIATELY after finishing (don't batch completions)
+               - Exactly ONE task must be in_progress at any time (not less, not more)
+               - Complete current tasks before starting new ones
+               - Remove tasks that are no longer relevant from the list entirely
+
+            3. **Task Completion Requirements**:
+               - ONLY mark a task as completed when you have FULLY accomplished it
+               - If you encounter errors, blockers, or cannot finish, keep the task as in_progress
+               - When blocked, create a new task describing what needs to be resolved
+               - Never mark a task as completed if:
+                 - Tests are failing
+                 - Implementation is partial
+                 - You encountered unresolved errors
+                 - You couldn't find necessary files or dependencies
+
+            4. **Task Breakdown**:
+               - Create specific, actionable items
+               - Break complex tasks into smaller, manageable steps
+               - Use clear, descriptive task names
+               - Always provide both forms:
+                 - content: "Fix authentication bug"
+                 - activeForm: "Fixing authentication bug"
+
+            When in doubt, use this tool. Being proactive with task management demonstrates \
+            attentiveness and ensures you complete all requirements successfully.""")
     public String updatePlan(
-            @ToolParam(description = "全量任务清单（覆盖式更新，不是增量）") List<TodoItem> todos) {
-        if (todos == null || todos.isEmpty()) {
-            return "任务清单不能为空：请传入完整的任务列表。";
+            @ToolParam(description = "The updated todo list") List<TodoItem> todos) {
+        if (todos == null) {
+            return "The todo list is required.";
         }
         for (TodoItem t : todos) {
             if (t.content() == null || t.content().isBlank()) {
-                return "存在 content 为空的任务：每条任务必须有祈使形描述。";
+                return "Content cannot be empty";
             }
             if (t.activeForm() == null || t.activeForm().isBlank()) {
-                return "存在 activeForm 为空的任务：每条任务必须有进行时形态描述。";
+                return "Active form cannot be empty";
             }
             if (t.status() == null || !STATUSES.contains(t.status())) {
-                return "存在非法状态值：status 只能是 pending / in_progress / completed。";
+                return "Invalid status: must be one of pending / in_progress / completed";
             }
         }
-        long inProgress = todos.stream().filter(t -> "in_progress".equals(t.status())).count();
-        boolean allDone = todos.stream().allMatch(t -> "completed".equals(t.status()));
-        if (!allDone && inProgress != 1) {
-            return "清单已记录，但请保持恰好一个任务为 in_progress（当前 " + inProgress + " 个），请修正后重新调用。";
-        }
-        if (allDone) {
-            return "任务清单已全部完成。";
-        }
-        return "清单已更新。请继续使用任务清单跟踪进度，推进当前 in_progress 任务。";
+        return "Todos have been modified successfully. Ensure that you continue to use the todo list "
+                + "to track your progress. Please proceed with the current tasks if applicable";
     }
 }

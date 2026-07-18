@@ -93,7 +93,12 @@ public class AskUserQuestionTools {
             return "{\"status\":\"expired\",\"note\":\"用户未作答（会话已结束），请按你的最佳判断继续\"}";
         }
         context.toolEventSink().onQuestionResult(questionId.toString(), "answered", answersJson);
-        return "{\"status\":\"answered\",\"answers\":" + answersJson + "}";
+        // 对标 Claude Code 的 system-reminder 注入:交互是打断模型任务心流的断点,
+        // 在结果里附带清单提醒,避免模型作答后忘记推进/更新 todo 清单
+        return "{\"status\":\"answered\",\"answers\":" + answersJson
+                + ",\"reminder\":\"If you are tracking this task with a todo list, update it now"
+                + " (mark finished items completed, set the next task in_progress) and proceed"
+                + " with the remaining tasks.\"}";
     }
 
     /** 问题清单 → SSE 帧的结构化 payload（前端渲染契约）。 */
