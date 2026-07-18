@@ -18,7 +18,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class ApprovalGate implements ToolCallback {
 
-    private static final long DEFAULT_TIMEOUT_MILLIS = 10 * 60 * 1000L;
+    /** 默认不设超时（对标 Claude Code 权限提示可无限等待）：阻塞的是虚拟线程，
+     *  挂起近乎零成本；终止条件只有用户批复或会话流终止（断流时 cancelConversation 收尾）。
+     *  正数超时仅供单测注入短等待。 */
+    private static final long DEFAULT_TIMEOUT_MILLIS = 0L;
 
     private final ToolCallback delegate;
     private final ChatStreamContext context;
@@ -73,12 +76,14 @@ public class ApprovalGate implements ToolCallback {
 
         boolean approved;
         try {
-            approved = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            approved = timeoutMillis > 0
+                    ? future.get(timeoutMillis, TimeUnit.MILLISECONDS)
+                    : future.get();
         } catch (Exception e) {
             registry.forget(conversationId, approvalId);
-            // 权威终态帧：超时/会话结束也要翻转前端审批卡，避免卡片停在 pending 可点
+            // 权威终态帧：会话结束（或单测限时）未批复也要翻转前端审批卡，避免停在 pending 可点
             context.toolEventSink().onApprovalResult(approvalId.toString(), "expired");
-            return "操作未获批准（审批超时或会话结束），已跳过：" + toolName;
+            return "操作未获批准（会话结束未批复），已跳过：" + toolName;
         }
         registry.forget(conversationId, approvalId);
         // 权威终态帧：无论批准/拒绝都下发，前端卡片终态以此为准（不依赖回传请求的响应）

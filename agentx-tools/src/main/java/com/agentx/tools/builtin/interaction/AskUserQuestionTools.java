@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 向用户提问工具（对标 Claude Code AskUserQuestion）：模型在需要用户做选择时调用，
@@ -25,8 +24,6 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class AskUserQuestionTools {
 
-    /** 等待用户作答上限：10 分钟（同审批），超时视同未作答。 */
-    private static final long TIMEOUT_MILLIS = 10 * 60 * 1000L;
     /** ChatStreamService 放入 toolContext 的会话上下文键。 */
     public static final String CONTEXT_KEY = "chatStreamContext";
 
@@ -54,8 +51,8 @@ public class AskUserQuestionTools {
             【选择器形态】默认单选；multiSelect=true 为多选（选项可叠加时用）；选项可带 preview
             （代码片段/UI 示意/配置样例等需要视觉对照的具体产物，仅单选支持，前端切换为并排预览布局）——
             普通偏好问题不要加预览。有明确推荐时把推荐项放首位并在 label 末尾加「（推荐）」。
-            【行为】调用后会阻塞等待用户在界面上作答；返回值为用户的选择（JSON）。用户可能跳过某些问题或超时未答——
-            此时按你的最佳判断继续。""")
+            【行为】调用后会一直等待用户在界面上作答（不设超时）；返回值为用户的选择（JSON）。
+            用户可能跳过某些问题，或会话结束仍未作答——此时按你的最佳判断继续。""")
     public String askUserQuestion(
             @ToolParam(description = "问题列表（1-4 个），多个问题将以分步卡片依次呈现") List<Question> questions,
             ToolContext toolContext) {
@@ -80,17 +77,20 @@ public class AskUserQuestionTools {
                 registry.register(context.userId(), conversationId, questionId);
         context.toolEventSink().onQuestionRequest(questionId.toString(), toPayload(questions));
 
+        // 无限期等待(对标 Claude Code:提问不设超时):阻塞的是虚拟线程,挂起成本
+        // 仅几 KB 堆内存,且等待期间不占用任何模型连接。唯一的终止条件是用户作答
+        // 或会话流终止(关页面/停止/服务重启)——断流时 cancelConversation 以 null 收尾
         String answersJson;
         try {
-            answersJson = future.get(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            answersJson = future.get();
         } catch (Exception e) {
             answersJson = null;
         }
         registry.forget(conversationId, questionId);
         if (answersJson == null) {
-            // 权威终态帧：超时/会话结束也要翻转前端卡片，避免停在可点状态
+            // 权威终态帧：会话结束未作答也要翻转前端卡片，避免停在可点状态
             context.toolEventSink().onQuestionResult(questionId.toString(), "expired", null);
-            return "{\"status\":\"expired\",\"note\":\"用户未作答（超时或会话结束），请按你的最佳判断继续\"}";
+            return "{\"status\":\"expired\",\"note\":\"用户未作答（会话已结束），请按你的最佳判断继续\"}";
         }
         context.toolEventSink().onQuestionResult(questionId.toString(), "answered", answersJson);
         return "{\"status\":\"answered\",\"answers\":" + answersJson + "}";
