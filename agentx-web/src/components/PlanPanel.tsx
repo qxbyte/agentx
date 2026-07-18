@@ -35,7 +35,7 @@ export default function PlanPanel({ plan, onDismiss }: PlanPanelProps) {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        <ListTodo className="size-3.5 shrink-0" />
+        <ListTodo className="size-3 shrink-0" />
         <span className="ax-plan-title">{plan.title ?? '计划'}</span>
         <span className="ax-plan-count">
           {done}/{total}
@@ -69,7 +69,7 @@ export default function PlanPanel({ plan, onDismiss }: PlanPanelProps) {
             <li key={i} className={`ax-plan-step ax-plan-step--${s.status}`}>
               <span className="ax-plan-mark">
                 {s.status === 'completed' ? (
-                  <Check className="size-3" strokeWidth={3} />
+                  <Check className="size-2.5" strokeWidth={3} />
                 ) : s.status === 'in_progress' ? (
                   <span className="ax-plan-dot" />
                 ) : null}

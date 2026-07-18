@@ -1131,14 +1131,14 @@ body {
 .ax-plan-header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border: none;
   background: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ax-text);
 }
@@ -1188,32 +1188,32 @@ body {
 }
 .ax-plan-steps {
   margin: 0;
-  padding: 2px 12px 10px;
+  padding: 0 10px 6px;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 168px;
+  gap: 0;
+  max-height: 132px;
   overflow-y: auto;
 }
 .ax-plan-step {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 12.5px;
-  line-height: 1.5;
+  gap: 7px;
+  padding: 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--ax-text-secondary);
 }
 .ax-plan-mark {
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--ax-border-strong);
+  border: 1.25px solid var(--ax-border-strong);
   border-radius: 50%;
 }
 .ax-plan-step--completed .ax-plan-mark {
@@ -1233,8 +1233,8 @@ body {
   border-color: var(--ax-primary);
 }
 .ax-plan-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--ax-primary);
   animation: ax-plan-pulse 1.2s ease-in-out infinite;
