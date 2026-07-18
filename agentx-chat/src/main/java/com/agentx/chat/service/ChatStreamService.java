@@ -43,7 +43,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChatStreamService {
 
-    private static final long SSE_TIMEOUT_MS = 300_000L;
+    /** SSE 不设超时（0 = 无限）：长 agent 轮次 + askUserQuestion/审批等人机阻塞随时可能
+     *  超过任何固定时长——5 分钟超时曾把等待作答中的流掐断（AsyncRequestTimeout），
+     *  提问注册随之取消，用户提交时已无处投递。客户端断开由 onError/onCompletion 兜底。 */
+    private static final long SSE_TIMEOUT_MS = 0L;
     /** delta 合帧：最多 8 个 token 或 50ms 一帧，避免前端渲染风暴。 */
     private static final int FRAME_MAX_ITEMS = 8;
     private static final Duration FRAME_MAX_WAIT = Duration.ofMillis(50);

@@ -125,13 +125,15 @@ function MessageItem({ message }: MessageItemProps) {
         {fileCalls.map((c) => (
           <FileCard key={c.id} call={c} />
         ))}
+        {message.content ? <MarkdownRenderer content={message.content} /> : null}
+        {/* 审批/提问卡渲染在已生成内容之后:等待用户操作的卡片始终在消息末尾
+            (即视口底部附近),不会被前文顶到上方要求用户回翻查找 */}
         {message.approvals?.map((item) => (
           <ApprovalCard key={item.approvalId} item={item} />
         ))}
         {questionItems.map((item) => (
           <QuestionCard key={item.questionId} item={item} />
         ))}
-        {message.content ? <MarkdownRenderer content={message.content} /> : null}
         {showActivity && <ActivityIndicator label={activityLabel(message)} />}
         {message.error ? (
           <div className="ax-msg-error" role="alert">

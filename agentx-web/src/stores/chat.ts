@@ -715,14 +715,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }))
       }
     } finally {
-      // 流已终止：仍 pending 的审批卡一律置失效（后端断流时会取消未决审批，
-      // 注册项已不存在，留着可点的按钮只会 404）
+      // 流已终止：仍 pending 的审批卡/提问卡一律置失效（后端断流时会取消未决注册项，
+      // 留着可交互的卡片只会 404，用户还以为选择没生效）
       patchAssistant((m) => ({
         ...m,
         streaming: false,
         approvals:
           m.approvals?.map((a) => (a.status === 'pending' ? { ...a, status: 'expired' } : a)) ??
           m.approvals,
+        questions:
+          m.questions?.map((q) => (q.status === 'pending' ? { ...q, status: 'expired' } : q)) ??
+          m.questions,
       }))
       session.done = true
       if (pendingNewSession === session) pendingNewSession = null

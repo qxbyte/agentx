@@ -1,6 +1,8 @@
 import { Check, CircleHelp } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { extractErrorMessage } from '../api/http'
 import { useChatStore } from '../stores/chat'
 import type { QuestionAnswer, QuestionItem } from '../types'
 
@@ -81,7 +83,16 @@ export default function QuestionCard({ item }: QuestionCardProps) {
           : [...draft.selected, label],
       })
     } else {
-      patchDraft({ selected: [label], otherText: '' })
+      // 单选点击即提交(对标 Claude Code):末题直接提交,多问链自动进入下一题
+      const next = drafts.map((d, i) =>
+        i === step ? { ...d, selected: [label], otherText: '', skipped: false } : d,
+      )
+      setDrafts(next)
+      if (isLast) {
+        void submit(next)
+      } else {
+        setStep(step + 1)
+      }
     }
   }
 
@@ -106,8 +117,9 @@ export default function QuestionCard({ item }: QuestionCardProps) {
     setSubmitting(true)
     try {
       await resolveQuestion(item.questionId, buildAnswers(all))
-    } catch {
-      /* 失败已回滚 pending，可重试 */
+    } catch (error) {
+      // 404 = 提问已随流终止被取消(卡片已翻过期);其余错误回滚 pending 可重试
+      toast.error(extractErrorMessage(error, '提交回答失败，请重试'))
     } finally {
       setSubmitting(false)
     }
@@ -237,14 +249,17 @@ export default function QuestionCard({ item }: QuestionCardProps) {
           >
             跳过
           </button>
-          <button
-            type="button"
-            className="rounded-full bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-            disabled={!hasAnswer || submitting}
-            onClick={() => advance(false)}
-          >
-            {isLast ? '提交' : '下一题'}
-          </button>
+          {/* 纯单选点击选项即提交,无需按钮;多选或「其他」有输入时才需要显式提交 */}
+          {(spec.multiSelect || draft.otherText.trim() !== '') && (
+            <button
+              type="button"
+              className="rounded-full bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+              disabled={!hasAnswer || submitting}
+              onClick={() => advance(false)}
+            >
+              {isLast ? '提交' : '下一题'}
+            </button>
+          )}
         </div>
       </div>
     </div>
