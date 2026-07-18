@@ -2136,15 +2136,23 @@ button:focus-visible,
   background: var(--ax-tip-bg);
   color: var(--ax-tip-text);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  transition:
-    left 0.45s cubic-bezier(0.34, 1.4, 0.5, 1),
-    bottom 0.45s cubic-bezier(0.34, 1.4, 0.5, 1),
-    opacity 0.2s ease,
-    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.15s ease;
 }
 .ax-bar-tip.is-shown {
   opacity: 1;
   transform: translate(-50%, 0) scale(1);
+  /* 每次悬停新柱子该节点都会重挂载,弹出动画从自己柱子上原地重放 */
+  animation: ax-tip-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes ax-tip-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 /* 卡片下方小尖角，指向柱子 */
 .ax-bar-tip::after {

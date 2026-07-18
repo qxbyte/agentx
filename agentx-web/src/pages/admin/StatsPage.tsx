@@ -190,8 +190,10 @@ export default function StatsPage() {
                       </div>
                     )
                   })}
-                  {/* 单张卡片跟随悬停柱子滑动（弹性 back-ease），不为每根柱子各建一个 tooltip */}
+                  {/* 卡片从各自柱子原地弹出:按 hoveredDay 重挂载,弹出动画每根柱子重放
+                      (不做跨柱滑动——隐藏态停靠位会让卡片看起来从别的柱子飞来) */}
                   <div
+                    key={hoveredDay ?? 'none'}
                     className={`ax-bar-tip${active ? ' is-shown' : ''}`}
                     style={{
                       left: `${((Math.max(0, hoveredDay ?? 0) + 0.5) / n) * 100}%`,
