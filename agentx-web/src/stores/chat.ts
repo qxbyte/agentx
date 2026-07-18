@@ -32,6 +32,43 @@ function nextLocalId(): string {
 /** 审批回传在途集合：同步防重入（busy state 是异步的，同一帧连点会发两个请求） */
 const approvalInFlight = new Set<string>()
 
+/* 编码模式按会话记忆（localStorage）：模式是会话属性而非全局偏好——
+   否则一个会话切到 Bypass 会泄漏到所有会话。新会话默认 ASK（最安全）。 */
+const MODES_KEY = 'agentx.conversationModes'
+
+function loadModeMap(): Record<string, CodingMode> {
+  try {
+    return JSON.parse(localStorage.getItem(MODES_KEY) ?? '{}') as Record<string, CodingMode>
+  } catch {
+    return {}
+  }
+}
+
+function rememberMode(conversationId: string, mode: CodingMode) {
+  const map = loadModeMap()
+  map[conversationId] = mode
+  try {
+    localStorage.setItem(MODES_KEY, JSON.stringify(map))
+  } catch {
+    /* 存储不可用时静默：仅影响刷新后的模式回填 */
+  }
+}
+
+function forgetMode(conversationId: string) {
+  const map = loadModeMap()
+  if (!(conversationId in map)) return
+  delete map[conversationId]
+  try {
+    localStorage.setItem(MODES_KEY, JSON.stringify(map))
+  } catch {
+    /* 同上 */
+  }
+}
+
+function modeOf(conversationId: string): CodingMode {
+  return loadModeMap()[conversationId] ?? 'ASK'
+}
+
 /**
  * 后台流式会话：切走会话不再断流——SSE 连接与实时快照由此持有，按会话隔离。
  * 切回时在服务端历史上叠加在途的助手消息快照（该轮用户提问开流即落库，无需叠加）。
@@ -282,10 +319,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setWorkspaceId: (id) => set({ workspaceId: id }),
   setCodingMode: (mode) => {
     set({ codingMode: mode })
+    const { activeConversationId, workspaceId } = get()
+    // 模式是会话属性:立即写入按会话记忆,切会话/刷新后各自回填,互不串扰
+    if (activeConversationId) {
+      rememberMode(activeConversationId, mode)
+    }
     // 编码会话内切模式立即回传后端：在跑轮次按新模式放行/拦截，
     // 切 AUTO 时未决审批被一次性批准（卡片经 approval-result 帧翻转）。
     // 失败静默：下一轮请求仍会携带最新模式，不影响最终一致
-    const { activeConversationId, workspaceId } = get()
     if (activeConversationId && workspaceId) {
       void codingApi.updateCodingMode(activeConversationId, mode).catch(() => {})
     }
@@ -367,6 +408,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         attachments: [],
         modelConfigId: null,
         modelChoiceTouched: false,
+        // 新对话回到最安全的默认模式,不继承上一个会话的选择
+        codingMode: 'ASK',
       })
       return
     }
@@ -387,6 +430,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // 会话记住上次选择的模型：重开/刷新后选择器回填；切会话即清除手动切换标记
       modelConfigId: conv?.modelConfigId ?? null,
       modelChoiceTouched: false,
+      // 恢复该会话自己的编码模式(按会话记忆,未记录则回默认 ASK)
+      codingMode: modeOf(id),
       // 恢复会话持久化的计划面板（列表未就位时由 loadConversations 补回填）
       plan: parsePlanState(conv?.planState),
       planDismissed: false,
@@ -495,6 +540,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             // 新会话就位：注册到按会话索引的后台流表
             session.conversationId = event.conversationId
             liveStreams.set(event.conversationId, session)
+            // 首条消息携带的模式固化为该会话的模式记忆
+            rememberMode(event.conversationId, codingMode)
             if (pendingNewSession === session) pendingNewSession = null
             // 仅当用户仍停留在新对话视图才接管路由（已切走则任务静默后台跑）
             if (!get().activeConversationId) {
@@ -767,6 +814,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       liveStreams.delete(id)
     }
     await chatApi.deleteConversation(id)
+    forgetMode(id)
     const wasActive = get().activeConversationId === id
     set((state) => ({
       conversations: state.conversations.filter((c) => c.id !== id),

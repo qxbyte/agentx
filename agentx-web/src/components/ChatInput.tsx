@@ -111,6 +111,12 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`
   }, [value])
 
+  // 新建/切换会话时光标自动落入输入框(移动端不抢焦点,避免弹出软键盘)
+  useEffect(() => {
+    if (window.matchMedia('(pointer: coarse)').matches) return
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }, [activeConversationId])
+
   const submit = () => {
     const content = value.trim()
     if (!content || streaming || disabled || uploadingCount > 0) return
