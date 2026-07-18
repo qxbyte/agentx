@@ -27,7 +27,8 @@ public class ToolState {
     @Column(nullable = false)
     private String source;
 
-    @Column(nullable = false)
+    /** text 列（V18）：内置工具描述可达数 KB（如 updatePlan 的 TodoWrite 原文含全部示例） */
+    @Column(nullable = false, columnDefinition = "text")
     private String description;
 
     @Column(name = "params_schema")
