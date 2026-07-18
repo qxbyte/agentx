@@ -1,5 +1,6 @@
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -115,6 +116,8 @@ export default function AgentsPage() {
   const [form, setForm] = useState<AgentForm>(EMPTY_FORM)
   const [nameError, setNameError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AgentView | null>(null)
+  /** 展开的插件分组(默认全部收起) */
+  const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(new Set())
 
   const patch = (p: Partial<AgentForm>) => setForm((prev) => ({ ...prev, ...p }))
 
@@ -138,6 +141,31 @@ export default function AgentsPage() {
   }, [])
 
   const kbNameById = new Map(kbs.map((kb) => [kb.id, kb.name]))
+
+  /* 插件贡献的子代理按归属插件折叠成目录层级;用户自建 Agent 平铺在前 */
+  const userAgents = agents.filter((a) => a.source !== 'PLUGIN')
+  const pluginGroups = new Map<string, AgentView[]>()
+  for (const a of agents) {
+    if (a.source !== 'PLUGIN') continue
+    const key = a.pluginId ?? a.name.split(':')[0] ?? a.name
+    const group = pluginGroups.get(key)
+    if (group) group.push(a)
+    else pluginGroups.set(key, [a])
+  }
+
+  const togglePlugin = (key: string) =>
+    setExpandedPlugins((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  /** 子代理在分组内的展示名:去掉「插件名:」前缀(归属已由分组表达),悬停看全名 */
+  const shortName = (a: AgentView) => {
+    const i = a.name.indexOf(':')
+    return i > 0 ? a.name.slice(i + 1) : a.name
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -256,7 +284,7 @@ export default function AgentsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>名称</TableHead>
+              <TableHead className="min-w-[240px]">名称</TableHead>
               <TableHead className="w-[150px]">工作流</TableHead>
               <TableHead>工具</TableHead>
               <TableHead>知识库</TableHead>
@@ -266,26 +294,59 @@ export default function AgentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {agents.map((agent) => {
+            {[
+              ...userAgents.map((agent) => ({ agent, child: false })),
+              ...[...pluginGroups.entries()].flatMap(([key, group]) => [
+                { groupKey: key, group },
+                ...(expandedPlugins.has(key)
+                  ? group.map((agent) => ({ agent, child: true }))
+                  : []),
+              ]),
+            ].map((row) => {
+              /* 插件分组头:完整插件名 + 子代理数,点击展开/收起 */
+              if ('groupKey' in row) {
+                const expanded = expandedPlugins.has(row.groupKey)
+                return (
+                  <TableRow
+                    key={`plugin:${row.groupKey}`}
+                    className="cursor-pointer select-none bg-muted/40 hover:bg-muted/60"
+                    onClick={() => togglePlugin(row.groupKey)}
+                  >
+                    <TableCell colSpan={7}>
+                      <div className="flex items-center gap-2">
+                        <ChevronRight
+                          className={cn(
+                            'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                            expanded && 'rotate-90',
+                          )}
+                        />
+                        <span className="font-medium">{row.groupKey}</span>
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 cursor-help text-[10px] text-muted-foreground"
+                          title="插件贡献的子代理:定义只读,随插件启停/卸载联动(在插件页管理);可被 dispatchAgent 派遣或建会话时选用"
+                        >
+                          插件·只读
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {row.group.length} 个子代理
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+              const { agent, child } = row
               const toolNames = parseJsonArray(agent.toolNames)
               const kbIds = parseJsonArray(agent.kbIds)
               return (
                 <TableRow key={agent.id}>
                   <TableCell className="max-w-0">
                     <div
-                      className="flex items-center gap-1.5"
-                      title={
-                        agent.source === 'PLUGIN'
-                          ? '插件贡献的子代理:定义只读,随插件启停/卸载联动(在插件页管理);可被 dispatchAgent 派遣或建会话时选用'
-                          : undefined
-                      }
+                      className={cn('flex items-center gap-1.5', child && 'pl-7')}
+                      title={child ? agent.name : undefined}
                     >
-                      <span className="truncate">{agent.name}</span>
-                      {agent.source === 'PLUGIN' && (
-                        <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
-                          插件·只读
-                        </Badge>
-                      )}
+                      <span className="truncate">{child ? shortName(agent) : agent.name}</span>
                     </div>
                   </TableCell>
                   <TableCell>

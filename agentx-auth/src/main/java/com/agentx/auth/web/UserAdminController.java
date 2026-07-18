@@ -2,7 +2,6 @@ package com.agentx.auth.web;
 
 import com.agentx.auth.domain.SysUser;
 import com.agentx.auth.domain.SysUserRepository;
-import com.agentx.auth.web.dto.AuthDtos.UserView;
 import com.agentx.common.api.ApiResponse;
 import com.agentx.common.api.ErrorCode;
 import com.agentx.common.exception.BizException;
@@ -34,15 +33,24 @@ public class UserAdminController {
     public record CreateUserRequest(@NotBlank String username, @NotBlank String password,
                                     String nickname, String role) {}
 
+    /** 管理页专用视图:比登录态的 UserView 多带 status/createdAt(缺了会导致前端状态回显永远是"停用")。 */
+    public record AdminUserView(UUID id, String username, String nickname, String role,
+                                String status, java.time.Instant createdAt) {
+        static AdminUserView of(SysUser u) {
+            return new AdminUserView(u.getId(), u.getUsername(), u.getNickname(), u.getRole(),
+                    u.getStatus(), u.getCreatedAt());
+        }
+    }
+
     @GetMapping
-    public ApiResponse<List<UserView>> list() {
+    public ApiResponse<List<AdminUserView>> list() {
         return ApiResponse.ok(userRepository.findAll().stream()
-                .map(u -> new UserView(u.getId(), u.getUsername(), u.getNickname(), u.getRole()))
+                .map(AdminUserView::of)
                 .toList());
     }
 
     @PostMapping
-    public ApiResponse<UserView> create(@Valid @RequestBody CreateUserRequest req) {
+    public ApiResponse<AdminUserView> create(@Valid @RequestBody CreateUserRequest req) {
         userRepository.findByUsername(req.username()).ifPresent(u -> {
             throw new BizException(ErrorCode.CONFLICT, "用户名已存在");
         });
@@ -53,8 +61,7 @@ public class UserAdminController {
         user.setNickname(req.nickname());
         user.setRole("ADMIN".equals(req.role()) ? "ADMIN" : "USER");
         userRepository.save(user);
-        return ApiResponse.ok(new UserView(user.getId(), user.getUsername(),
-                user.getNickname(), user.getRole()));
+        return ApiResponse.ok(AdminUserView.of(user));
     }
 
     @PatchMapping("/{id}/status")

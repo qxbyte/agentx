@@ -258,6 +258,8 @@ export interface AgentView {
   enabled: boolean
   /** USER=管理端创建 / PLUGIN=插件贡献(只读) */
   source: string
+  /** 插件贡献时的归属插件 id（如 task-swarm@qxbyte-hub）,USER 来源为 null */
+  pluginId: string | null
 }
 
 export interface AgentPayload {

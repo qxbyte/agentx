@@ -241,7 +241,7 @@ export default function PluginsPage() {
                         </TableCell>
                         <TableCell>
                           {inst ? (
-                            <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
+                            <div className="flex w-full flex-nowrap items-center gap-2 whitespace-nowrap">
                               <Switch
                                 checked={inst.enabled}
                                 onCheckedChange={(checked) => void handleToggle(inst, checked)}
@@ -254,35 +254,38 @@ export default function PluginsPage() {
                                 {inst.agentCount > 0 ? ` · ${inst.agentCount} 子代理` : ''}
                                 {inst.mcpCount > 0 ? ` · ${inst.mcpCount} MCP` : ''}
                               </span>
-                              {inst.unsupported.length > 0 && (
-                                <Badge
-                                  variant="outline"
-                                  className="shrink-0 cursor-help whitespace-nowrap text-[10px] text-muted-foreground"
-                                  title={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力,AgentX 暂不加载这部分(技能/子代理不受影响)`}
+                              {/* 徽章与操作按钮统一靠右,列间纵向对齐 */}
+                              <div className="ml-auto flex shrink-0 items-center gap-2">
+                                {inst.unsupported.length > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 cursor-help whitespace-nowrap text-[10px] text-muted-foreground"
+                                    title={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力,AgentX 暂不加载这部分(技能/子代理不受影响)`}
+                                  >
+                                    {inst.unsupported.join('/')} 未启用
+                                  </Badge>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7"
+                                  title="更新插件（重新拉取并安装最新版本）"
+                                  disabled={updating === id}
+                                  onClick={() => void handleUpdatePlugin(id)}
                                 >
-                                  {inst.unsupported.join('/')} 未启用
-                                </Badge>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-7"
-                                title="更新插件（重新拉取并安装最新版本）"
-                                disabled={updating === id}
-                                onClick={() => void handleUpdatePlugin(id)}
-                              >
-                                <RefreshCw className={`size-4 ${updating === id ? 'animate-spin' : ''}`} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-7 text-destructive hover:text-destructive"
-                                onClick={() =>
-                                  setRemoveTarget({ kind: 'plugin', id, name: p.name })
-                                }
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
+                                  <RefreshCw className={`size-4 ${updating === id ? 'animate-spin' : ''}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    setRemoveTarget({ kind: 'plugin', id, name: p.name })
+                                  }
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
                             </div>
                           ) : (
                             <Button

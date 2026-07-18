@@ -20,11 +20,12 @@ public final class AgentDtos {
     public record View(UUID id, String name, String description, String systemPrompt,
                        WorkflowType workflowType, String toolNames, String kbIds,
                        UUID modelConfigId, int maxIterations, boolean enabled, String source,
-                       Instant createdAt) {
+                       String pluginId, Instant createdAt) {
         public static View of(AgentDefinition a) {
             return new View(a.getId(), a.getName(), a.getDescription(), a.getSystemPrompt(),
                     a.getWorkflowType(), a.getToolNames(), a.getKbIds(), a.getModelConfigId(),
-                    a.getMaxIterations(), a.isEnabled(), a.getSource(), a.getCreatedAt());
+                    a.getMaxIterations(), a.isEnabled(), a.getSource(), a.getPluginId(),
+                    a.getCreatedAt());
         }
     }
 }

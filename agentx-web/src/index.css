@@ -1543,8 +1543,15 @@ button:focus-visible,
     transform: scale(1, 1);
   }
 }
+/* iOS 风格开关球体：位移复用模式滑块的回弹贝塞尔（果冻挤压由内层子元素 .ax-jelly 承担，
+   外层 translate 与内层 scale 分离，动画互不覆盖） */
+.ax-switch-thumb {
+  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.44, 1);
+  will-change: transform;
+}
 @media (prefers-reduced-motion: reduce) {
-  .ax-mode-thumb {
+  .ax-mode-thumb,
+  .ax-switch-thumb {
     transition: none;
   }
   .ax-jelly {
