@@ -106,13 +106,21 @@ public class SkillResourceService {
         }
     }
 
-    /** 资源清单公告文本（附在技能 body 之后;无资源返回空串）。 */
+    /**
+     * 资源清单公告文本（附在技能 body 之后;无资源返回空串）。
+     * 含基准目录绝对路径（对标 Claude Code 的 "Base directory for this skill"）——
+     * AgentX 全本地运行,模型据此可用 runShell 执行技能的 scripts/（走审批）。
+     */
     public String resourcesNote(String name) {
         List<String> resources = listResources(name);
         if (resources.isEmpty()) {
             return "";
         }
-        return "\n\n本技能目录附带以下资源文件,指令中引用到时用 readSkillFile 工具按需读取（skill=\""
-                + name + "\"）:\n- " + String.join("\n- ", resources);
+        Path base = baseDir(name).orElse(null);
+        String baseLine = base == null ? "" : "\n技能基准目录: " + base;
+        return "\n" + baseLine
+                + "\n本技能附带以下资源文件:\n- " + String.join("\n- ", resources)
+                + "\n引用文档用 readSkillFile 工具读取（skill=\"" + name
+                + "\"）;scripts/ 下的脚本用 runShell 以基准目录下的绝对路径执行（会请求用户审批）。";
     }
 }
