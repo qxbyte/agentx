@@ -65,12 +65,16 @@ export type PlanStepStatus = 'pending' | 'in_progress' | 'completed'
 
 export interface PlanStep {
   step: string
+  /** 进行时形态（TodoWrite activeForm）：该步执行中对用户展示，如「正在运行测试」 */
+  activeForm?: string
   status: PlanStepStatus
 }
 
-/** 模型 updatePlan 工具调用的参数结构：输入框上方计划面板的数据源 */
+/** 模型 updatePlan（TodoWrite 形态）调用的归一化结构：输入框上方任务面板的数据源。
+    新 shape 为 todos[{content,activeForm,status}]，旧持久化数据为 {title,steps[{step,status}]}，
+    parsePlanState 统一归一到本结构 */
 export interface PlanState {
-  /** 模型按任务内容起的计划标题；缺失时面板回落「计划」 */
+  /** 旧数据的计划标题；新 shape 无标题，面板回落「任务清单」 */
   title?: string | null
   steps: PlanStep[]
   explanation?: string | null

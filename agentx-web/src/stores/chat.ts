@@ -157,17 +157,47 @@ function parseJsonField<T>(v: unknown): T | null {
 
 const PLAN_STATUSES: ReadonlySet<string> = new Set(['pending', 'in_progress', 'completed'])
 
-/** 解析 updatePlan 的参数（SSE 帧 args 为 JSON 字符串 / 历史恢复为 jsonb 原文）；
-    非法结构或空步骤返回 null，非法状态的步骤被丢弃（模型偶发脏数据不崩面板） */
+/** 解析 updatePlan 的参数（SSE 帧 args 为 JSON 字符串 / 历史恢复为 jsonb 原文）。
+    兼容两种 shape：新 TodoWrite 形态 todos[{content,activeForm,status}] 与
+    旧 {title,steps[{step,status}]}，统一归一为 PlanState；
+    非法结构或空清单返回 null，非法条目被丢弃（模型偶发脏数据不崩面板） */
 function parsePlanState(raw: unknown): PlanState | null {
-  const parsed = typeof raw === 'string' ? parseJsonField<PlanState>(raw) : (raw as PlanState | null)
-  if (!parsed || !Array.isArray(parsed.steps)) return null
-  const steps = parsed.steps.filter(
-    (s): s is PlanStep =>
-      !!s && typeof s.step === 'string' && s.step !== '' && PLAN_STATUSES.has(s.status),
-  )
-  const title = typeof parsed.title === 'string' && parsed.title.trim() !== '' ? parsed.title.trim() : null
-  return steps.length > 0 ? { title, steps, explanation: parsed.explanation ?? null } : null
+  const parsed =
+    typeof raw === 'string'
+      ? parseJsonField<Record<string, unknown>>(raw)
+      : (raw as Record<string, unknown> | null)
+  if (!parsed) return null
+  const list = Array.isArray(parsed.todos)
+    ? (parsed.todos as unknown[])
+    : Array.isArray(parsed.steps)
+      ? (parsed.steps as unknown[])
+      : null
+  if (!list) return null
+  const steps = list.flatMap((item): PlanStep[] => {
+    if (!item || typeof item !== 'object') return []
+    const t = item as { content?: unknown; step?: unknown; activeForm?: unknown; status?: unknown }
+    const text =
+      typeof t.content === 'string' && t.content !== ''
+        ? t.content
+        : typeof t.step === 'string' && t.step !== ''
+          ? t.step
+          : null
+    if (!text || typeof t.status !== 'string' || !PLAN_STATUSES.has(t.status)) return []
+    return [
+      {
+        step: text,
+        status: t.status as PlanStep['status'],
+        ...(typeof t.activeForm === 'string' && t.activeForm !== ''
+          ? { activeForm: t.activeForm }
+          : {}),
+      },
+    ]
+  })
+  const title =
+    typeof parsed.title === 'string' && parsed.title.trim() !== '' ? parsed.title.trim() : null
+  return steps.length > 0
+    ? { title, steps, explanation: (parsed.explanation as string | null | undefined) ?? null }
+    : null
 }
 
 function normalizeMessage(m: ChatMessage): ChatMessage {

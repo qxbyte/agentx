@@ -497,7 +497,7 @@ public class ChatStreamService {
                         .formatted(promptTokens, completionTokens));
             }
             conversationService.saveMessage(assistant);
-            conversationService.touch(conversation);
+            conversationService.touch(conversation.getId());
         }
     }
 }

@@ -36,12 +36,13 @@ export default function PlanPanel({ plan, onDismiss }: PlanPanelProps) {
         aria-expanded={open}
       >
         <ListTodo className="size-3 shrink-0" />
-        <span className="ax-plan-title">{plan.title ?? '计划'}</span>
+        <span className="ax-plan-title">{plan.title ?? '任务清单'}</span>
         <span className="ax-plan-count">
           {done}/{total}
         </span>
+        {/* 折叠单行优先展示进行时形态（TodoWrite activeForm，如「正在运行测试」） */}
         <span className="ax-plan-current">
-          {!open && (allDone ? '已全部完成' : current?.step)}
+          {!open && (allDone ? '已全部完成' : (current?.activeForm ?? current?.step))}
         </span>
         <ChevronDown className={`ax-plan-chevron size-3.5${open ? '' : ' ax-plan-chevron--closed'}`} />
         <span

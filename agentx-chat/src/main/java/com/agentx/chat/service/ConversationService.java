@@ -139,10 +139,14 @@ public class ConversationService {
         return messageRepository.save(message);
     }
 
+    /** 按 id 事务内新读再更新时间戳：不能直接保存流开始时加载的过期实体——
+     *  JPA 全字段合并会把流中途写入的字段（如 updatePlan 回写的 plan_state）抹回旧值。 */
     @Transactional
-    public void touch(ChatConversation c) {
-        c.setUpdatedAt(Instant.now());
-        conversationRepository.save(c);
+    public void touch(UUID conversationId) {
+        conversationRepository.findById(conversationId).ifPresent(c -> {
+            c.setUpdatedAt(Instant.now());
+            conversationRepository.save(c);
+        });
     }
 
     /** 重新生成的准备结果：目标会话 + 待复用的用户提问 + 会话工作区（供 coding 续接）。 */
