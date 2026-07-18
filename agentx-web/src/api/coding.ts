@@ -54,3 +54,19 @@ export function updateCodingMode(conversationId: string, mode: string): Promise<
     data: { mode },
   })
 }
+
+/* ---------- 本机目录浏览(项目目录选择器) ---------- */
+
+export interface DirListing {
+  path: string
+  parent: string | null
+  dirs: { name: string; path: string }[]
+}
+
+export function browseDirs(path?: string): Promise<DirListing> {
+  return request<DirListing>({
+    url: '/v1/coding/fs/dirs',
+    method: 'GET',
+    ...(path ? { params: { path } } : {}),
+  })
+}

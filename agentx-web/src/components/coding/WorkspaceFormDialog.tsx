@@ -1,4 +1,4 @@
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { CheckCircle2, FolderSearch, Loader2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import {
 import { extractErrorMessage } from '../../api/http'
 import * as codingApi from '../../api/coding'
 import type { Workspace, WorkspaceValidation } from '../../types'
+import DirectoryPicker from './DirectoryPicker'
 import { useKbOptions } from './useKbOptions'
 
 const NONE = '__none__'
@@ -49,6 +50,7 @@ export default function WorkspaceFormDialog({
   const [validation, setValidation] = useState<WorkspaceValidation | null>(null)
   const [validating, setValidating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -121,7 +123,7 @@ export default function WorkspaceFormDialog({
             {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="wf-path">本地目录（后端服务器上的绝对路径）</Label>
+            <Label htmlFor="wf-path">本地目录</Label>
             <div className="flex gap-2">
               <Input
                 id="wf-path"
@@ -133,6 +135,15 @@ export default function WorkspaceFormDialog({
                   setValidation(null)
                 }}
               />
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                title="浏览本机目录"
+                onClick={() => setPickerOpen(true)}
+              >
+                <FolderSearch className="size-4" />
+              </Button>
               <Button variant="outline" disabled={validating} onClick={() => void doValidate()}>
                 {validating ? <Loader2 className="size-4 animate-spin" /> : null}
                 校验
@@ -176,6 +187,15 @@ export default function WorkspaceFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <DirectoryPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        initialPath={rootPath.trim() || undefined}
+        onSelect={(path) => {
+          setRootPath(path)
+          setValidation(null)
+        }}
+      />
     </Dialog>
   )
 }

@@ -415,7 +415,23 @@ public class ChatStreamService {
                 }
             }
             ChatResponse response = clientResponse.chatResponse();
-            if (response == null || response.getResult() == null) {
+            if (response == null) {
+                return;
+            }
+            // usage/model 必须在 result 判空**之前**提取:OpenAI 协议 include_usage 的
+            // usage 随最后一块下发,而该块 choices 为空(getResult()==null)——
+            // 放在后面会被提前 return 吞掉,兼容供应商 token 统计恒 0
+            if (response.getMetadata() != null) {
+                Usage usage = response.getMetadata().getUsage();
+                if (usage != null && usage.getTotalTokens() != null && usage.getTotalTokens() > 0) {
+                    promptTokens = usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
+                    completionTokens = usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens();
+                }
+                if (response.getMetadata().getModel() != null && !response.getMetadata().getModel().isBlank()) {
+                    modelName = response.getMetadata().getModel();
+                }
+            }
+            if (response.getResult() == null) {
                 return;
             }
             var output = response.getResult().getOutput();
@@ -428,16 +444,6 @@ public class ChatStreamService {
             if (delta != null && !delta.isEmpty()) {
                 content.append(delta);
                 sender.send(SseEvent.textDelta(delta));
-            }
-            if (response.getMetadata() != null) {
-                Usage usage = response.getMetadata().getUsage();
-                if (usage != null && usage.getTotalTokens() != null && usage.getTotalTokens() > 0) {
-                    promptTokens = usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
-                    completionTokens = usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens();
-                }
-                if (response.getMetadata().getModel() != null) {
-                    modelName = response.getMetadata().getModel();
-                }
             }
         }
 
