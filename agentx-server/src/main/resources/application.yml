@@ -73,3 +73,8 @@ agentx:
     # 插件目录（对齐 Claude Code ~/.claude/plugins 布局）：
     # marketplaces/ + cache/<marketplace>/<plugin>/<version>/ + 两个注册 json
     root: ${AGENTX_PLUGINS_ROOT:${user.home}/.agentx/plugins}
+  local-tools:
+    # 普通对话的本地"天然工具"(文件读写/命令执行,沙箱根默认家目录):
+    # AgentX 是本地 app,模型拥有本地手对标 Claude Code / Codex;危险操作走审批
+    enabled: ${AGENTX_LOCAL_TOOLS_ENABLED:true}
+    root: ${AGENTX_LOCAL_TOOLS_ROOT:${user.home}}

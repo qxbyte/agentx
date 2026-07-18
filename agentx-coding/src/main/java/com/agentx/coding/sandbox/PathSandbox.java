@@ -45,11 +45,24 @@ public final class PathSandbox {
      */
     public Path resolve(String relative) {
         String cleaned = relative == null ? "" : relative.strip();
-        // 绝对路径按"相对根"处理：去掉前导分隔符，禁止直接跳到文件系统根
-        while (cleaned.startsWith("/")) {
-            cleaned = cleaned.substring(1);
+        // ~ 指沙箱根（本地工具场景根即家目录,模型习惯用 ~ 表达）
+        if (cleaned.equals("~")) {
+            cleaned = "";
+        } else if (cleaned.startsWith("~/")) {
+            cleaned = cleaned.substring(2);
         }
-        Path candidate = root.resolve(cleaned).normalize();
+        Path candidate;
+        Path given = Path.of(cleaned);
+        if (given.isAbsolute() && given.normalize().startsWith(root)) {
+            // 根内的绝对路径直接接受（模型常回传完整路径）
+            candidate = given.normalize();
+        } else {
+            // 其余绝对路径按"相对根"降级处理：去掉前导分隔符，禁止直接跳到文件系统根
+            while (cleaned.startsWith("/")) {
+                cleaned = cleaned.substring(1);
+            }
+            candidate = root.resolve(cleaned).normalize();
+        }
         if (!candidate.startsWith(root)) {
             throw new BizException(ErrorCode.FORBIDDEN, "路径越界，拒绝访问: " + relative);
         }

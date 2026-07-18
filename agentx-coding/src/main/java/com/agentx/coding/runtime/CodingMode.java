@@ -7,5 +7,17 @@ public enum CodingMode {
     /** 逐操作审批：危险工具执行前需人工确认。 */
     ASK,
     /** 无需审批：全套工具直接执行。 */
-    AUTO
+    AUTO;
+
+    /** 宽容解析：空/非法一律回退 ASK（最安全的默认）。 */
+    public static CodingMode parseOrDefault(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return ASK;
+        }
+        try {
+            return valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ASK;
+        }
+    }
 }

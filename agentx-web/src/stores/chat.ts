@@ -650,7 +650,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // 用户显式切回「默认模型」：告知后端清除会话固化的模型选择
         ...(modelConfigId === null && modelChoiceTouched ? { useDefaultModel: true } : {}),
         // workspaceId 非空才进入 coding 模式
-        ...(workspaceId ? { workspaceId, mode: codingMode } : {}),
+        ...(workspaceId ? { workspaceId } : {}),
+        // 模式对普通对话同样生效(本地工具的 Plan/Ask/Auto)
+        mode: codingMode,
         // 知识库是会话创建期属性：仅新会话首条消息携带，随会话固化；续聊后端一律沿用
         ...(!conversationId && kbIds.length > 0 ? { kbIds } : {}),
         ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
