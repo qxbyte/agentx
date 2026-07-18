@@ -20,9 +20,14 @@ public final class WorkspaceContext {
     private WorkspaceContext() {}
 
     public static PathSandbox sandboxOf(ToolContext toolContext) {
-        Object root = context(toolContext).get(WORKSPACE_ROOT);
+        var ctx = context(toolContext);
+        Object root = ctx.get(WORKSPACE_ROOT);
         if (root == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前会话未绑定编码工作区");
+        }
+        // BYPASS 模式:无边界沙箱,root 仅作相对路径基准（等同用户本人在终端操作）
+        if (isBypass(ctx)) {
+            return PathSandbox.unrestricted(root.toString());
         }
         return PathSandbox.of(root.toString());
     }
@@ -34,8 +39,20 @@ public final class WorkspaceContext {
         if (root == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前会话未绑定编码工作区");
         }
+        if (isBypass(ctx)) {
+            return PathSandbox.unrestricted(root.toString());
+        }
         Object secondary = ctx.get(LOCAL_READ_ROOT);
         return PathSandbox.of(root.toString(), secondary == null ? null : secondary.toString());
+    }
+
+    /** 当前轮是否 BYPASS 模式（ShellTools 据此切换黑名单档位）。 */
+    public static boolean isBypass(ToolContext toolContext) {
+        return isBypass(context(toolContext));
+    }
+
+    private static boolean isBypass(java.util.Map<String, Object> ctx) {
+        return "BYPASS".equals(ctx.get(MODE));
     }
 
     private static java.util.Map<String, Object> context(ToolContext toolContext) {

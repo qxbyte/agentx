@@ -13,11 +13,13 @@ import type { CodingMode, ModelOption } from '../../types'
 
 const DEFAULT_MODEL = '__default__'
 
-/** 三模式颜色语义：Plan 蓝（只读安全）/ Ask 黑白（默认审批）/ Auto 琥珀（自动执行需留意） */
+/** 模式颜色语义：Plan 蓝（只读安全）/ Ask 黑白（默认审批）/ Auto 琥珀（自动执行需留意）
+    / Bypass 红（完全放行，等同 Claude Code bypassPermissions） */
 const MODES: { value: CodingMode; label: string; hint: string; activeClass: string }[] = [
   { value: 'PLAN', label: 'Plan', hint: '只读规划，不改动', activeClass: 'text-[var(--ax-accent)]' },
   { value: 'ASK', label: 'Ask', hint: '逐操作审批', activeClass: 'text-foreground' },
-  { value: 'AUTO', label: 'Auto', hint: '无需审批，自动执行', activeClass: 'text-[var(--ax-warning)]' },
+  { value: 'AUTO', label: 'Auto', hint: '无需审批，自动执行（限工作区内）', activeClass: 'text-[var(--ax-warning)]' },
+  { value: 'BYPASS', label: 'Bypass', hint: '完全放行：可读写本机任意文件、执行任意命令', activeClass: 'text-[var(--ax-danger)]' },
 ]
 
 /**

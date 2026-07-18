@@ -271,13 +271,22 @@ export default function AgentsPage() {
               const kbIds = parseJsonArray(agent.kbIds)
               return (
                 <TableRow key={agent.id}>
-                  <TableCell className="max-w-0 truncate">
-                    {agent.name}
-                    {agent.source === 'PLUGIN' && (
-                      <Badge variant="outline" className="ml-1.5 text-[10px] text-muted-foreground">
-                        插件
-                      </Badge>
-                    )}
+                  <TableCell className="max-w-0">
+                    <div
+                      className="flex items-center gap-1.5"
+                      title={
+                        agent.source === 'PLUGIN'
+                          ? '插件贡献的子代理:定义只读,随插件启停/卸载联动(在插件页管理);可被 dispatchAgent 派遣或建会话时选用'
+                          : undefined
+                      }
+                    >
+                      <span className="truncate">{agent.name}</span>
+                      {agent.source === 'PLUGIN' && (
+                        <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground">
+                          插件·只读
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="info">{agent.workflowType}</Badge>

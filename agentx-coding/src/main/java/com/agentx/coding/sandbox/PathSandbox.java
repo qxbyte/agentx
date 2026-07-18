@@ -21,10 +21,13 @@ public final class PathSandbox {
     private final Path root;
     /** 只读第二根;null 表示严格单根。 */
     private final Path secondary;
+    /** BYPASS 模式:不做任何边界校验,root 仅作相对路径基准与 shell cwd。 */
+    private final boolean unrestricted;
 
-    private PathSandbox(Path root, Path secondary) {
+    private PathSandbox(Path root, Path secondary, boolean unrestricted) {
         this.root = root;
         this.secondary = secondary;
+        this.unrestricted = unrestricted;
     }
 
     /** 严格单根：根必须存在且为目录。 */
@@ -54,7 +57,21 @@ public final class PathSandbox {
                 // 第二根不可用:退化为严格单根,不阻塞主流程
             }
         }
-        return new PathSandbox(root, secondary);
+        return new PathSandbox(root, secondary, false);
+    }
+
+    /**
+     * BYPASS 模式的无边界沙箱：root 仅作相对路径基准（与 shell cwd），
+     * 绝对路径、~/、越界路径一律放行——等同用户本人在终端里操作。
+     */
+    public static PathSandbox unrestricted(String rootPath) {
+        Path root;
+        try {
+            root = Path.of(rootPath).toRealPath();
+        } catch (IOException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, "工作区目录不存在: " + rootPath);
+        }
+        return new PathSandbox(root, null, true);
     }
 
     public Path root() {
@@ -68,6 +85,9 @@ public final class PathSandbox {
      */
     public Path resolve(String relative) {
         String cleaned = relative == null ? "" : relative.strip();
+        if (unrestricted) {
+            return resolveUnrestricted(cleaned);
+        }
         Path candidate;
         Path boundary;
         if (cleaned.equals("~") || cleaned.startsWith("~/")) {
@@ -127,6 +147,26 @@ public final class PathSandbox {
                 return real;
             } catch (IOException e) {
                 throw new BizException(ErrorCode.INTERNAL_ERROR, "路径解析失败: " + relative);
+            }
+        }
+        return candidate;
+    }
+
+    /** 无边界解析：~/ → 用户家目录,绝对路径原样,相对路径基于工作区根。 */
+    private Path resolveUnrestricted(String cleaned) {
+        Path candidate;
+        if (cleaned.equals("~") || cleaned.startsWith("~/")) {
+            String rest = cleaned.equals("~") ? "" : cleaned.substring(2);
+            candidate = Path.of(System.getProperty("user.home")).resolve(rest).normalize();
+        } else {
+            Path given = Path.of(cleaned);
+            candidate = given.isAbsolute() ? given.normalize() : root.resolve(cleaned).normalize();
+        }
+        if (Files.exists(candidate)) {
+            try {
+                return candidate.toRealPath();
+            } catch (IOException e) {
+                return candidate;
             }
         }
         return candidate;

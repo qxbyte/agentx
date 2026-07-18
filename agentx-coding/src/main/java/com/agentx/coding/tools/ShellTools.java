@@ -25,18 +25,21 @@ public class ShellTools {
     private static final int MAX_OUTPUT_LINES = 200;
     private static final int MAX_OUTPUT_BYTES = 20_000;
 
-    /** 命令黑名单（大小写不敏感，命中即拒绝）。 */
-    private static final List<Pattern> BLACKLIST = List.of(
+    /** 毁机级保护（任何模式下都拦，含 BYPASS）：系统级不可逆破坏。 */
+    private static final List<Pattern> FATAL_BLACKLIST = List.of(
             Pattern.compile("\\brm\\s+-[a-z]*r[a-z]*f?\\s+/"),   // rm -rf /
-            Pattern.compile("\\bsudo\\b"),
-            Pattern.compile("\\bsu\\b\\s"),
             Pattern.compile(":\\(\\)\\s*\\{"),                     // fork bomb
             Pattern.compile("\\bmkfs\\b"),
             Pattern.compile(">\\s*/dev/(sd|disk|null/)"),
+            Pattern.compile("\\bshutdown\\b|\\breboot\\b|\\bhalt\\b"),
+            Pattern.compile("\\bdd\\b\\s+if="));
+
+    /** 常规黑名单（BYPASS 模式解除）：提权/远程执行/系统目录写入。 */
+    private static final List<Pattern> STRICT_BLACKLIST = List.of(
+            Pattern.compile("\\bsudo\\b"),
+            Pattern.compile("\\bsu\\b\\s"),
             Pattern.compile("\\b(curl|wget)\\b.*\\|\\s*(ba)?sh"), // curl … | sh
             Pattern.compile("\\bchmod\\s+-R\\s+777\\s+/"),
-            Pattern.compile("\\bshutdown\\b|\\breboot\\b|\\bhalt\\b"),
-            Pattern.compile("\\bdd\\b\\s+if="),
             Pattern.compile(">\\s*/etc/"));
 
     @Tool(description = "在工作区根目录执行 shell 命令（如构建、测试、git），返回 exit code 与输出。危险操作，可能需要审批")
@@ -48,9 +51,17 @@ public class ShellTools {
             return "命令为空";
         }
         String lower = command.toLowerCase();
-        for (Pattern p : BLACKLIST) {
+        for (Pattern p : FATAL_BLACKLIST) {
             if (p.matcher(lower).find()) {
                 return "拒绝执行：命令命中安全黑名单（" + p.pattern() + "）";
+            }
+        }
+        // BYPASS 模式解除常规黑名单（sudo/curl|sh 等），毁机级保护仍在上方兜底
+        if (!WorkspaceContext.isBypass(toolContext)) {
+            for (Pattern p : STRICT_BLACKLIST) {
+                if (p.matcher(lower).find()) {
+                    return "拒绝执行：命令命中安全黑名单（" + p.pattern() + "）";
+                }
             }
         }
         return execute(sandbox, command);

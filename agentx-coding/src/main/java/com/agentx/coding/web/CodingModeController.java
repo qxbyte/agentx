@@ -39,10 +39,10 @@ public class CodingModeController {
                                     @RequestBody ModeUpdate body) {
         CodingMode mode = parse(body.mode());
         boolean hit = modeRegistry.update(conversationId, user.id(), mode);
-        if (mode == CodingMode.AUTO) {
+        if (mode == CodingMode.AUTO || mode == CodingMode.BYPASS) {
             int approved = approvalRegistry.approveConversation(conversationId, user.id());
             if (approved > 0) {
-                log.info("模式切换 AUTO 即时生效：会话 {} 自动批准 {} 条未决审批", conversationId, approved);
+                log.info("模式切换 {} 即时生效：会话 {} 自动批准 {} 条未决审批", mode, conversationId, approved);
             }
         }
         log.debug("编码模式切换: conversation={} mode={} liveHit={}", conversationId, mode, hit);

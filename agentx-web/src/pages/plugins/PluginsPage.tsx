@@ -221,7 +221,7 @@ export default function PluginsPage() {
                     <TableHead className="w-[180px]">插件</TableHead>
                     <TableHead>描述</TableHead>
                     <TableHead className="w-[90px]">版本</TableHead>
-                    <TableHead className="w-[220px]">状态 / 操作</TableHead>
+                    <TableHead className="w-[300px]">状态 / 操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -241,23 +241,26 @@ export default function PluginsPage() {
                         </TableCell>
                         <TableCell>
                           {inst ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                               <Switch
                                 checked={inst.enabled}
                                 onCheckedChange={(checked) => void handleToggle(inst, checked)}
                               />
-                              <span className="shrink-0 text-xs text-muted-foreground">
+                              <span
+                                className="shrink-0 text-xs text-muted-foreground"
+                                title={inst.mcpCount > 0 ? 'MCP 服务器默认停用,在 MCP 管理页显式启用' : undefined}
+                              >
                                 {inst.skillCount} 技能
                                 {inst.agentCount > 0 ? ` · ${inst.agentCount} 子代理` : ''}
-                                {inst.mcpCount > 0 ? ` · ${inst.mcpCount} MCP(默认停用)` : ''}
+                                {inst.mcpCount > 0 ? ` · ${inst.mcpCount} MCP` : ''}
                               </span>
                               {inst.unsupported.length > 0 && (
                                 <Badge
                                   variant="outline"
-                                  className="cursor-help text-[10px] text-muted-foreground"
-                                  title={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力，AgentX 暂不加载这部分（技能不受影响）`}
+                                  className="shrink-0 cursor-help whitespace-nowrap text-[10px] text-muted-foreground"
+                                  title={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力,AgentX 暂不加载这部分(技能/子代理不受影响)`}
                                 >
-                                  含 {inst.unsupported.join('/')}（暂不支持）
+                                  {inst.unsupported.join('/')} 未启用
                                 </Badge>
                               )}
                               <Button

@@ -30,8 +30,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class LocalToolsCustomizer implements ChatStreamCustomizer {
 
+    /** 网络工具一并注入:否则模型会绕道 runShell+curl(次次审批还啰嗦)。 */
     private static final List<String> READONLY_TOOLS =
-            List.of("listDir", "readFile", "grepFiles", "findFiles");
+            List.of("listDir", "readFile", "grepFiles", "findFiles", "webFetch", "webSearch");
     private static final List<String> WRITE_TOOLS =
             List.of("writeFile", "applyPatch", "runShell");
     /** 普通对话的本地工具调用上限（低于编码会话:闲聊场景不该有超长工具循环）。 */

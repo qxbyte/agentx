@@ -59,8 +59,9 @@ public class ApprovalGate implements ToolCallback {
         UUID approvalId = UUID.randomUUID();
         UUID conversationId = context.conversationId();
 
-        // 轮内实时模式（模式切换立即生效）：本轮虽以 ASK 开局，用户已切 AUTO 则直接放行
-        if (modeRegistry.currentOr(conversationId, CodingMode.ASK) == CodingMode.AUTO) {
+        // 轮内实时模式（模式切换立即生效）：本轮虽以 ASK 开局，用户已切 AUTO/BYPASS 则直接放行
+        CodingMode live = modeRegistry.currentOr(conversationId, CodingMode.ASK);
+        if (live == CodingMode.AUTO || live == CodingMode.BYPASS) {
             return toolContext == null ? delegate.call(toolInput) : delegate.call(toolInput, toolContext);
         }
 

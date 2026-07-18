@@ -83,6 +83,20 @@ class PathSandboxTest {
     }
 
     @Test
+    void unrestrictedAllowsEscapeAndAbsolutePaths() throws IOException {
+        // BYPASS 模式沙箱：越界/绝对路径/~ 一律放行，root 仅作相对基准
+        PathSandbox bypass = PathSandbox.unrestricted(root.toString());
+        Path outside = Files.createTempDirectory("bypass-outside");
+        Files.writeString(outside.resolve("note.txt"), "hi");
+
+        assertThat(bypass.resolve(outside.resolve("note.txt").toString())).exists();
+        assertThat(bypass.resolve("../..")).isNotNull(); // .. 逃逸不再拒绝
+        assertThat(bypass.resolve("~").toString())
+                .isEqualTo(Path.of(System.getProperty("user.home")).toString());
+        assertThat(bypass.resolve("src/App.java")).exists(); // 相对路径仍基于工作区根
+    }
+
+    @Test
     void rejectsSymlinkEscape() throws IOException {
         Path outside = Files.createTempDirectory("outside-secret");
         Files.writeString(outside.resolve("secret.txt"), "top secret");

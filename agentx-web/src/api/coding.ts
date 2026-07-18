@@ -55,18 +55,13 @@ export function updateCodingMode(conversationId: string, mode: string): Promise<
   })
 }
 
-/* ---------- 本机目录浏览(项目目录选择器) ---------- */
+/* ---------- 系统原生目录选择器(本地 app:后端 osascript 调起 Finder) ---------- */
 
-export interface DirListing {
-  path: string
-  parent: string | null
-  dirs: { name: string; path: string }[]
-}
-
-export function browseDirs(path?: string): Promise<DirListing> {
-  return request<DirListing>({
-    url: '/v1/coding/fs/dirs',
-    method: 'GET',
-    ...(path ? { params: { path } } : {}),
+export function pickNativeDir(): Promise<{ cancelled: boolean; path?: string }> {
+  return request<{ cancelled: boolean; path?: string }>({
+    url: '/v1/coding/fs/pick-native',
+    method: 'POST',
+    // 等待用户在系统对话框里操作
+    timeout: 190_000,
   })
 }

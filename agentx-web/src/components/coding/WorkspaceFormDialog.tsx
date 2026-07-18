@@ -21,7 +21,6 @@ import {
 import { extractErrorMessage } from '../../api/http'
 import * as codingApi from '../../api/coding'
 import type { Workspace, WorkspaceValidation } from '../../types'
-import DirectoryPicker from './DirectoryPicker'
 import { useKbOptions } from './useKbOptions'
 
 const NONE = '__none__'
@@ -50,7 +49,7 @@ export default function WorkspaceFormDialog({
   const [validation, setValidation] = useState<WorkspaceValidation | null>(null)
   const [validating, setValidating] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [picking, setPicking] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -139,10 +138,23 @@ export default function WorkspaceFormDialog({
                 variant="outline"
                 size="icon"
                 className="shrink-0"
-                title="浏览本机目录"
-                onClick={() => setPickerOpen(true)}
+                title="打开系统目录选择器"
+                disabled={picking}
+                onClick={() => {
+                  setPicking(true)
+                  codingApi
+                    .pickNativeDir()
+                    .then((r) => {
+                      if (!r.cancelled && r.path) {
+                        setRootPath(r.path)
+                        setValidation(null)
+                      }
+                    })
+                    .catch((error) => toast.error(extractErrorMessage(error, '目录选择失败')))
+                    .finally(() => setPicking(false))
+                }}
               >
-                <FolderSearch className="size-4" />
+                {picking ? <Loader2 className="size-4 animate-spin" /> : <FolderSearch className="size-4" />}
               </Button>
               <Button variant="outline" disabled={validating} onClick={() => void doValidate()}>
                 {validating ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -187,15 +199,6 @@ export default function WorkspaceFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-      <DirectoryPicker
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        initialPath={rootPath.trim() || undefined}
-        onSelect={(path) => {
-          setRootPath(path)
-          setValidation(null)
-        }}
-      />
     </Dialog>
   )
 }

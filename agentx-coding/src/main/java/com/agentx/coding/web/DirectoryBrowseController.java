@@ -31,6 +31,37 @@ public class DirectoryBrowseController {
 
     public record DirListing(String path, String parent, List<DirEntry> dirs) {}
 
+    /**
+     * 调起系统原生目录选择器（macOS Finder）:本地 app 后端与用户同机,
+     * osascript 弹出 choose folder,返回用户选择的绝对路径;取消返回 cancelled。
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/coding/fs/pick-native")
+    public ApiResponse<java.util.Map<String, Object>> pickNative() {
+        try {
+            Process process = new ProcessBuilder("osascript",
+                    "-e", "tell application \"System Events\" to activate",
+                    "-e", "POSIX path of (choose folder with prompt \"\u4e3a AgentX \u9009\u62e9\u9879\u76ee\u76ee\u5f55\")")
+                    .redirectErrorStream(false)
+                    .start();
+            String out = new String(process.getInputStream().readAllBytes()).strip();
+            if (!process.waitFor(180, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return ApiResponse.ok(java.util.Map.of("cancelled", true));
+            }
+            if (process.exitValue() != 0 || out.isEmpty()) {
+                // exit 1 = 用户点了取消(osascript -128)
+                return ApiResponse.ok(java.util.Map.of("cancelled", true));
+            }
+            String path = out.endsWith("/") && out.length() > 1 ? out.substring(0, out.length() - 1) : out;
+            return ApiResponse.ok(java.util.Map.of("cancelled", false, "path", path));
+        } catch (IOException e) {
+            throw new BizException(ErrorCode.INTERNAL_ERROR, "调起系统目录选择器失败: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BizException(ErrorCode.INTERNAL_ERROR, "目录选择被中断");
+        }
+    }
+
     /** 列出某目录的子目录;path 缺省为沙箱根(家目录)。 */
     @GetMapping("/api/v1/coding/fs/dirs")
     public ApiResponse<DirListing> list(@RequestParam(required = false) String path) {

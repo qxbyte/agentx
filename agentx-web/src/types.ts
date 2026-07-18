@@ -366,7 +366,7 @@ export interface QuestionItem {
 /* ============================================================
    CodeAgent（编码智能体）
    ============================================================ */
-export type CodingMode = 'PLAN' | 'ASK' | 'AUTO'
+export type CodingMode = 'PLAN' | 'ASK' | 'AUTO' | 'BYPASS'
 
 export interface Workspace {
   id: string
