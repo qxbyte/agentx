@@ -1,5 +1,6 @@
 import { RotateCcw, Zap } from 'lucide-react'
 import { memo } from 'react'
+import type { ReactNode } from 'react'
 import { useChatStore } from '../stores/chat'
 import type {
   ChatMessage,
@@ -125,15 +126,10 @@ function MessageItem({ message }: MessageItemProps) {
         {fileCalls.map((c) => (
           <FileCard key={c.id} call={c} />
         ))}
-        {message.content ? <MarkdownRenderer content={message.content} /> : null}
-        {/* 审批/提问卡渲染在已生成内容之后:等待用户操作的卡片始终在消息末尾
-            (即视口底部附近),不会被前文顶到上方要求用户回翻查找 */}
-        {message.approvals?.map((item) => (
-          <ApprovalCard key={item.approvalId} item={item} />
-        ))}
-        {questionItems.map((item) => (
-          <QuestionCard key={item.questionId} item={item} />
-        ))}
+        {/* 审批/提问卡按请求时刻的内容锚点嵌入正文流:等待作答时锚点即当时的
+            内容末尾(卡片天然在最底部);作答后模型继续生成,新内容长在卡片下方,
+            卡片随文融入不再钉底。历史重建无锚点的卡片渲染在正文之后。 */}
+        {renderContentWithCards(message, questionItems)}
         {showActivity && <ActivityIndicator label={activityLabel(message)} />}
         {message.error ? (
           <div className="ax-msg-error" role="alert">
@@ -166,6 +162,45 @@ function MessageItem({ message }: MessageItemProps) {
       </div>
     </div>
   )
+}
+
+/** 正文与审批/提问卡的交错渲染：有 contentOffset 的卡片按锚点切分正文嵌入原位，
+    无锚点（历史重建）的卡片统一排在正文之后。同一锚点的多张卡片按原顺序连排。 */
+function renderContentWithCards(message: ChatMessage, questionItems: QuestionItem[]) {
+  const content = message.content ?? ''
+  type Card = { key: string; offset: number | undefined; node: ReactNode }
+  const cards: Card[] = [
+    ...(message.approvals ?? []).map((item) => ({
+      key: item.approvalId,
+      offset: item.contentOffset,
+      node: <ApprovalCard key={item.approvalId} item={item} />,
+    })),
+    ...questionItems.map((item) => ({
+      key: item.questionId,
+      offset: item.contentOffset,
+      node: <QuestionCard key={item.questionId} item={item} />,
+    })),
+  ]
+  const anchored = cards
+    .filter((c): c is Card & { offset: number } => typeof c.offset === 'number')
+    .sort((a, b) => a.offset - b.offset)
+  const trailing = cards.filter((c) => typeof c.offset !== 'number')
+
+  const nodes: ReactNode[] = []
+  let cursor = 0
+  for (const card of anchored) {
+    const cut = Math.min(Math.max(card.offset, cursor), content.length)
+    if (cut > cursor) {
+      nodes.push(<MarkdownRenderer key={`seg-${cursor}`} content={content.slice(cursor, cut)} />)
+      cursor = cut
+    }
+    nodes.push(card.node)
+  }
+  if (cursor < content.length) {
+    nodes.push(<MarkdownRenderer key={`seg-${cursor}`} content={content.slice(cursor)} />)
+  }
+  nodes.push(...trailing.map((c) => c.node))
+  return nodes
 }
 
 /** 历史消息的 askUserQuestion toolCall 记录 → 终态提问卡数据（解析失败返回 null 静默跳过） */

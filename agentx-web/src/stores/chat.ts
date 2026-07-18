@@ -349,15 +349,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setWorkspaceId: (id) => set({ workspaceId: id }),
   setCodingMode: (mode) => {
     set({ codingMode: mode })
-    const { activeConversationId, workspaceId } = get()
+    const { activeConversationId } = get()
     // 模式是会话属性:立即写入按会话记忆,切会话/刷新后各自回填,互不串扰
     if (activeConversationId) {
       rememberMode(activeConversationId, mode)
     }
-    // 编码会话内切模式立即回传后端：在跑轮次按新模式放行/拦截，
-    // 切 AUTO 时未决审批被一次性批准（卡片经 approval-result 帧翻转）。
-    // 失败静默：下一轮请求仍会携带最新模式，不影响最终一致
-    if (activeConversationId && workspaceId) {
+    // 会话内切模式立即回传后端(编码会话与带本地工具的普通对话同样适用):
+    // 在跑轮次按新模式放行/拦截,切 AUTO/BYPASS 时未决审批被一次性批准
+    // (卡片经 approval-result 帧翻转)。失败静默:下一轮请求仍携带最新模式
+    if (activeConversationId) {
       void codingApi.updateCodingMode(activeConversationId, mode).catch(() => {})
     }
   },
@@ -652,6 +652,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             kind: event.kind,
             preview: event.preview,
             status: 'pending',
+            // 锚定在请求时刻的正文位置:等待时天然在消息末尾,批复后新内容长在卡片下方
+            contentOffset: session.assistant.content.length,
           }
           patchAssistant((m) => ({ ...m, approvals: [...(m.approvals ?? []), item] }))
           break
@@ -673,6 +675,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             questionId: event.questionId,
             questions: event.questions,
             status: 'pending',
+            // 同审批卡:按提问时刻的正文长度锚定,答后内容在卡片下方续写
+            contentOffset: session.assistant.content.length,
           }
           patchAssistant((m) => ({ ...m, questions: [...(m.questions ?? []), item] }))
           break

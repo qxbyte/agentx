@@ -83,21 +83,22 @@ export default function QuestionCard({ item }: QuestionCardProps) {
           : [...draft.selected, label],
       })
     } else {
-      // 单选点击即提交(对标 Claude Code):末题直接提交,多问链自动进入下一题
-      const next = drafts.map((d, i) =>
-        i === step ? { ...d, selected: [label], otherText: '', skipped: false } : d,
-      )
-      setDrafts(next)
-      if (isLast) {
-        void submit(next)
-      } else {
-        setStep(step + 1)
-      }
+      // 单选:点击仅选中(高亮),提交由显式按钮触发——避免误触直接提交
+      patchDraft({ selected: [label], otherText: '' })
     }
   }
 
   const hasAnswer = draft.selected.length > 0 || draft.otherText.trim() !== ''
   const isLast = step === total - 1
+
+  /* 预览型选择器(对标 Claude Code):单选且任一选项带 preview 时,
+     切换为「左选项列表 + 右预览面板」并排布局,预览随选中项切换 */
+  const hasPreview = !spec.multiSelect && spec.options.some((o) => o.preview)
+  const previewText = hasPreview
+    ? (spec.options.find((o) => draft.selected.includes(o.label))?.preview ??
+      spec.options.find((o) => o.preview)?.preview ??
+      '')
+    : ''
 
   const buildAnswers = (all: Draft[]): QuestionAnswer[] =>
     item.questions.map((q, i) => {
@@ -152,8 +153,9 @@ export default function QuestionCard({ item }: QuestionCardProps) {
         <span className="text-[15px] font-semibold text-foreground">{spec.question}</span>
       </div>
 
-      {/* 选项 */}
-      <div className="flex flex-col gap-2">
+      {/* 选项（预览型选择器时左右并排） */}
+      <div className={cn(hasPreview && 'flex items-start gap-3')}>
+      <div className={cn('flex flex-col gap-2', hasPreview && 'min-w-0 flex-[1.1]')}>
         {spec.options.map((opt, i) => {
           const checked = draft.selected.includes(opt.label)
           return (
@@ -228,6 +230,13 @@ export default function QuestionCard({ item }: QuestionCardProps) {
           />
         </div>
       </div>
+      {/* 右侧预览面板：展示选中项（未选中则首个带预览项）的多行预览内容 */}
+      {hasPreview && (
+        <pre className="ax-scroll max-h-[280px] min-w-0 flex-1 overflow-auto whitespace-pre-wrap rounded-xl border border-[var(--ax-border)] bg-[var(--ax-chip-bg,var(--ax-hover-weak))] p-3 font-mono text-[12px] leading-relaxed text-[var(--ax-text-secondary)]">
+          {previewText}
+        </pre>
+      )}
+      </div>
 
       {/* 底部操作 */}
       <div className="mt-3 flex items-center gap-2">
@@ -249,17 +258,14 @@ export default function QuestionCard({ item }: QuestionCardProps) {
           >
             跳过
           </button>
-          {/* 纯单选点击选项即提交,无需按钮;多选或「其他」有输入时才需要显式提交 */}
-          {(spec.multiSelect || draft.otherText.trim() !== '') && (
-            <button
-              type="button"
-              className="rounded-full bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-              disabled={!hasAnswer || submitting}
-              onClick={() => advance(false)}
-            >
-              {isLast ? '提交' : '下一题'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="rounded-full bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+            disabled={!hasAnswer || submitting}
+            onClick={() => advance(false)}
+          >
+            {isLast ? '提交' : '下一题'}
+          </button>
         </div>
       </div>
     </div>

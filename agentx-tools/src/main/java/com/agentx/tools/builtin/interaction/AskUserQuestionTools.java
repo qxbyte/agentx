@@ -34,19 +34,26 @@ public class AskUserQuestionTools {
     private final ObjectMapper objectMapper;
 
     public record QuestionOption(
-            @ToolParam(description = "选项标题：简短明确（1-8 个词）") String label,
-            @ToolParam(required = false, description = "选项说明：该选择意味着什么、有何取舍") String description) {}
+            @ToolParam(description = "选项标题：简短明确（1-5 个词）；推荐项放在首位并在末尾加「（推荐）」") String label,
+            @ToolParam(required = false, description = "选项说明：该选择意味着什么、有何取舍") String description,
+            @ToolParam(required = false, description = "预览内容（多行文本，等宽渲染）：代码片段、UI 示意、配置样例等"
+                    + "需要用户对照比较的具体产物；仅单选问题支持——任一选项带预览时卡片切换为"
+                    + "「左选项列表 + 右预览面板」并排布局，预览随选中项切换。"
+                    + "普通偏好类问题不要加预览") String preview) {}
 
     public record Question(
             @ToolParam(description = "完整的问题文本，以问号结尾") String question,
             @ToolParam(required = false, description = "问题短标签（如「认证方式」「技术选型」，≤12 字）") String header,
             @ToolParam(description = "候选项 2-4 个，互斥且具体；无需提供「其他」——前端自带自由输入") List<QuestionOption> options,
-            @ToolParam(required = false, description = "true 允许多选；默认单选") Boolean multiSelect) {}
+            @ToolParam(required = false, description = "true 允许多选（选项可叠加不互斥时用）；默认单选") Boolean multiSelect) {}
 
     @Tool(name = "askUserQuestion", description = """
             当你需要用户在若干方案/偏好间做决定才能继续时，用本工具向用户提问，把选择显式呈现为可点选的选项。
             【何时使用】需求有歧义需要澄清、存在多个合理技术方案需用户拍板、涉及用户偏好（风格/范围/优先级）时。
             【何时禁用】问题可以从上下文或惯例合理推断时不要打断用户；一次交互最多 4 个问题，不要连续多轮调用轰炸。
+            【选择器形态】默认单选；multiSelect=true 为多选（选项可叠加时用）；选项可带 preview
+            （代码片段/UI 示意/配置样例等需要视觉对照的具体产物，仅单选支持，前端切换为并排预览布局）——
+            普通偏好问题不要加预览。有明确推荐时把推荐项放首位并在 label 末尾加「（推荐）」。
             【行为】调用后会阻塞等待用户在界面上作答；返回值为用户的选择（JSON）。用户可能跳过某些问题或超时未答——
             此时按你的最佳判断继续。""")
     public String askUserQuestion(
@@ -100,6 +107,10 @@ public class AskUserQuestionTools {
                 om.put("label", o.label());
                 if (o.description() != null && !o.description().isBlank()) {
                     om.put("description", o.description());
+                }
+                if (o.preview() != null && !o.preview().isBlank()
+                        && !Boolean.TRUE.equals(q.multiSelect())) {
+                    om.put("preview", o.preview());
                 }
                 return om;
             }).toList());

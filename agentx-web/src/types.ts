@@ -345,6 +345,8 @@ export interface ChatMessage {
 export interface QuestionOption {
   label: string
   description?: string | null
+  /** 预览内容（代码/配置/示意等多行文本）：任一选项带预览时卡片切换为左选项右预览布局（仅单选） */
+  preview?: string | null
 }
 
 export interface QuestionSpec {
@@ -367,6 +369,9 @@ export interface QuestionItem {
   questions: QuestionSpec[]
   status: 'pending' | 'answered' | 'expired'
   answers?: QuestionAnswer[] | null
+  /** 提问时刻的消息内容长度：卡片按此锚点嵌入正文流（等待时天然在末尾,答后新内容长在卡片下方）；
+      历史重建无锚点时渲染在正文之后 */
+  contentOffset?: number
 }
 
 /* ============================================================
@@ -448,6 +453,8 @@ export interface ApprovalItem {
   kind: ApprovalKind | string
   preview: ApprovalPreview
   status: ApprovalStatus
+  /** 同 QuestionItem.contentOffset：审批卡按请求时刻的内容长度锚定在正文流中 */
+  contentOffset?: number
 }
 
 /* ---------- Skill 斜杠命令 ---------- */
