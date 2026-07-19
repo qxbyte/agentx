@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ApprovalGate implements ToolCallback {
 
-    /** 默认不设超时（对标 Claude Code 权限提示可无限等待）：阻塞的是虚拟线程，
+    /** 默认不设超时（审批可无限等待）：阻塞的是虚拟线程，
      *  挂起近乎零成本；终止条件只有用户批复或会话流终止（断流时 cancelConversation 收尾）。
      *  正数超时仅供单测注入短等待。 */
     private static final long DEFAULT_TIMEOUT_MILLIS = 0L;

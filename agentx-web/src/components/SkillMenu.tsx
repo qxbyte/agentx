@@ -18,7 +18,7 @@ export function filterSkills(skills: SkillMeta[], query: string): SkillMeta[] {
 }
 
 /**
- * / 斜杠命令补全菜单（对标 Claude Code）：composer 上方浮层。
+ * / 斜杠命令补全菜单：composer 上方浮层。
  * 纯展示组件——过滤与键盘导航（↑↓/Tab/Enter/Esc）由 ChatInput 持有。
  */
 export default function SkillMenu({ items, activeIndex, onSelect, onHover }: SkillMenuProps) {

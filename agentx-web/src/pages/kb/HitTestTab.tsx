@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import Hint from '@/components/ui/hint'
 import {
   Dialog,
   DialogContent,
@@ -140,12 +141,11 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
         ) : (
           <div className="ax-hit-list">
             {hits.map((hit, index) => (
+              <Hint key={hit.segmentId} text="点击编辑该分段">
               <div
-                key={hit.segmentId}
                 className="ax-hit-card"
                 role="button"
                 tabIndex={0}
-                title="点击编辑该分段"
                 onClick={() => openEdit(hit)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') openEdit(hit)
@@ -176,6 +176,7 @@ export default function HitTestTab({ kb }: { kb: KnowledgeBase }) {
                 </div>
                 <p className="ax-hit-card-content">{hit.content}</p>
               </div>
+              </Hint>
             ))}
           </div>
         ))}

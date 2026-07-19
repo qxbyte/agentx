@@ -46,7 +46,7 @@ export default function KbPicker() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="选择检索用的知识库（发送首条消息后随会话固化）"
+          aria-label="选择检索用的知识库"
           className={cn(
             'flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors hover:bg-[var(--ax-hover)]',
             active ? 'font-medium text-foreground' : 'text-[var(--ax-text-secondary)]',
@@ -62,6 +62,10 @@ export default function KbPicker() {
         </button>
       </PopoverTrigger>
       <PopoverContent side="top" align="start" className="w-60 p-1">
+        {/* 说明放弹层内（触发器包 Tooltip 会在关闭回焦时误弹提示） */}
+        <div className="px-2 pb-1 pt-1.5 text-[11px] text-[var(--ax-text-faint)]">
+          选择检索用的知识库（发送首条消息后随会话固化）
+        </div>
         {options.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-muted-foreground">
             暂无可用知识库（本地在「知识库」页创建，外部在设置里接入）

@@ -4,9 +4,9 @@ import java.time.Instant;
 
 /**
  * 一个已解析的 skill 文件（SKILL.md frontmatter + body）。
- * name 以文件名为准（frontmatter 里的 name 忽略），与 Claude Code 的 /name 语义对齐。
+ * name 以文件名为准（frontmatter 里的 name 忽略），/name 即命令名。
  * <p>
- * 调用路径双开关（对标 Claude Code frontmatter）：
+ * 调用路径双开关（frontmatter）：
  * <li>userInvocable（user-invocable，默认 true）：false 时不进 / 菜单、用户敲命令不展开，
  *     仅供模型自动触发（M2）——典型如 specode 的 intake 这类被其它 skill 编排调用的内部件；
  * <li>modelInvocable（!disable-model-invocation，默认 true）：false 时模型不可自动触发，

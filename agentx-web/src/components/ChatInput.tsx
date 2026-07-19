@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import Hint from '@/components/ui/hint'
 import {
   collectFromDataTransfer,
   collectFromFileList,
@@ -17,8 +18,12 @@ import {
   MAX_ATTACHMENT_FILES,
 } from '../lib/attachments'
 import type { AttachmentEntry } from '../lib/attachments'
+import { compactConversation } from '../api/chat'
+import { extractErrorMessage } from '../api/http'
+import type { SkillMeta } from '../types'
 import { useChatStore } from '../stores/chat'
 import AttachmentCard from './AttachmentCard'
+import ContextRing from './ContextRing'
 import SkillMenu, { filterSkills } from './SkillMenu'
 import AttachmentThumb from './AttachmentThumb'
 import InputToolbar from './coding/InputToolbar'
@@ -35,6 +40,16 @@ interface ChatInputProps {
 
 const MAX_HEIGHT = 200
 
+/** 前端内置命令（非后端 skill）：发送时拦截执行，不进入对话 */
+const BUILTIN_COMMANDS: SkillMeta[] = [
+  {
+    id: '__builtin_compact',
+    name: 'compact',
+    description: '压缩本会话早期上下文为摘要，释放模型窗口空间',
+    argumentHint: null,
+  },
+]
+
 /** 底部输入区：加高多行 + 模型/模式/工作区工具条；Enter 发送 / Shift+Enter 换行 */
 export default function ChatInput({ streaming, disabled = false, onSend, onStop }: ChatInputProps) {
   const [value, setValue] = useState('')
@@ -50,7 +65,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
   const removeAttachment = useChatStore((s) => s.removeAttachment)
   const uploadingCount = attachments.filter((a) => a.status === 'uploading').length
 
-  /* ---------- / 斜杠命令补全（对标 Claude Code） ---------- */
+  /* ---------- / 斜杠命令补全 ---------- */
   const skills = useChatStore((s) => s.skills)
   const loadSkills = useChatStore((s) => s.loadSkills)
   const [menuIndex, setMenuIndex] = useState(0)
@@ -60,7 +75,10 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
   }, [loadSkills])
   /** 正在敲命令名阶段（行首 / 且未出现空格/换行）才展示菜单;支持 plugin:skill 冒号命名空间 */
   const slashQuery = /^\/([a-z0-9-]*(?::[a-z0-9-]*)?)$/.exec(value)?.[1] ?? null
-  const menuItems = slashQuery !== null && !menuDismissed ? filterSkills(skills, slashQuery) : []
+  const menuItems =
+    slashQuery !== null && !menuDismissed
+      ? filterSkills([...BUILTIN_COMMANDS, ...skills], slashQuery)
+      : []
   const menuOpen = menuItems.length > 0
   useEffect(() => {
     setMenuIndex(0)
@@ -88,6 +106,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
 
   const workspaceId = useChatStore((s) => s.workspaceId)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
+  const contextUsage = useChatStore((s) => s.contextUsage)
   const projectLocked = useChatStore((s) => s.projectLocked)
   const projectName = useChatStore(
     (s) => s.projects.find((p) => p.id === s.workspaceId)?.name ?? null,
@@ -117,9 +136,32 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
     requestAnimationFrame(() => textareaRef.current?.focus())
   }, [activeConversationId])
 
+  /** /compact 内置命令：调压缩接口，不进入对话 */
+  const runCompact = () => {
+    const conversationId = useChatStore.getState().activeConversationId
+    if (!conversationId) {
+      toast.info('当前还没有会话内容，无需压缩')
+      return
+    }
+    setValue('')
+    const pending = compactConversation(conversationId)
+    toast.promise(pending, {
+      loading: '正在压缩早期上下文…',
+      success: (r) => {
+        void useChatStore.getState().refreshContextUsage()
+        return `已压缩 ${r.compactedMessages} 条早期消息为摘要（约 ${r.tokensBefore} → ${r.tokensAfter} tokens）`
+      },
+      error: (e) => extractErrorMessage(e, '压缩失败'),
+    })
+  }
+
   const submit = () => {
     const content = value.trim()
     if (!content || streaming || disabled || uploadingCount > 0) return
+    if (content === '/compact') {
+      runCompact()
+      return
+    }
     onSend(content)
     setValue('')
     requestAnimationFrame(() => textareaRef.current?.focus())
@@ -184,15 +226,13 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
 
   return (
     <div className="mx-auto max-w-[780px]">
-      {/* 开场芯片托层（Codex 式）：仅新对话阶段显示，发送首条消息后消失。
+      {/* 开场芯片托层：仅新对话阶段显示，发送首条消息后消失。
           项目入口进入的对话为锁定态：只读展示归属与知识库，不可更改 */}
       {isNewConversation && (
         <div className="-mb-4 mx-4 flex items-center gap-1 rounded-t-[18px] bg-[var(--ax-chip-bg)] px-3 pb-6 pt-1.5">
           {projectLocked ? (
-            <span
-              className="flex h-7 items-center gap-1.5 px-2 text-xs text-[var(--ax-text-secondary)]"
-              title="此对话属于该项目：归属与知识库沿用项目，不可更改"
-            >
+            <Hint text="此对话属于该项目：归属与知识库沿用项目，不可更改">
+            <span className="flex h-7 items-center gap-1.5 px-2 text-xs text-[var(--ax-text-secondary)]">
               <FolderGit2 className="size-3.5" />
               <span className="max-w-[160px] truncate font-medium text-foreground">
                 {projectName ?? '项目'}
@@ -200,6 +240,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
               <span className="text-[var(--ax-text-faint)]">·</span>
               <span>{lockedKbLabel}</span>
             </span>
+            </Hint>
           ) : (
             <>
               <ProjectPicker />
@@ -253,7 +294,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
         }}
       />
 
-      {/* 附件卡片条（ChatGPT 式）：textarea 上方 flex-wrap */}
+      {/* 附件卡片条：textarea 上方 flex-wrap */}
       {attachments.length > 0 && (
         <div className="ax-attach-bar">
           {attachments.map((a) =>
@@ -331,7 +372,11 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
           </DropdownMenuContent>
         </DropdownMenu>
         <InputToolbar />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2.5">
+          {/* 上下文余量指示环：有会话且已加载用量才显示 */}
+          {activeConversationId && contextUsage && contextUsage.tokens > 0 && (
+            <ContextRing usage={contextUsage} />
+          )}
           {streaming ? (
             <Tooltip>
               <TooltipTrigger asChild>

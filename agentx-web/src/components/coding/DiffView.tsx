@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { parseUnifiedDiff, type DiffFile } from '@/lib/parseDiff'
 
-/** unified diff 渲染（对标 Codex 桌面版）：多文件分标签、逐行绿/红/灰、双列行号、+N/-M 统计。 */
+/** unified diff 渲染：多文件分标签、逐行绿/红/灰、双列行号、+N/-M 统计。 */
 export default function DiffView({ diff }: { diff: string }) {
   const files = parseUnifiedDiff(diff)
   const [active, setActive] = useState(0)

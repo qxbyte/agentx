@@ -2,6 +2,7 @@ import { CheckCircle2, FolderSearch, Loader2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import Hint from '@/components/ui/hint'
 import {
   Dialog,
   DialogContent,
@@ -134,11 +135,11 @@ export default function WorkspaceFormDialog({
                   setValidation(null)
                 }}
               />
+              <Hint text="打开系统目录选择器">
               <Button
                 variant="outline"
                 size="icon"
                 className="shrink-0"
-                title="打开系统目录选择器"
                 disabled={picking}
                 onClick={() => {
                   setPicking(true)
@@ -156,6 +157,7 @@ export default function WorkspaceFormDialog({
               >
                 {picking ? <Loader2 className="size-4 animate-spin" /> : <FolderSearch className="size-4" />}
               </Button>
+              </Hint>
               <Button variant="outline" disabled={validating} onClick={() => void doValidate()}>
                 {validating ? <Loader2 className="size-4 animate-spin" /> : null}
                 校验

@@ -31,7 +31,7 @@ function MessageItem({ message }: MessageItemProps) {
   const skills = useChatStore((s) => s.skills)
 
   if (message.role === 'USER') {
-    // /name 开头且命中已知 skill → 渲染命令徽章（对标 Claude Code 的命令展示）
+    // /name 开头且命中已知 skill → 渲染命令徽章
     const command = /^\/([a-z0-9-]+(?::[a-z0-9-]+)?)(?:\s+([\s\S]*))?$/.exec(message.content.trim())
     const skillName = command && skills.some((s) => s.name === command[1]) ? command[1] : null
     return (

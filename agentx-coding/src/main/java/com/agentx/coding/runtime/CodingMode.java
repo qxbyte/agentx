@@ -9,7 +9,7 @@ public enum CodingMode {
     /** 无需审批：全套工具直接执行（工作区边界与命令黑名单仍生效）。 */
     AUTO,
     /**
-     * 完全放行（对标 Claude Code bypassPermissions）：无审批、无工作区路径边界、
+     * 完全放行：无审批、无工作区路径边界、
      * 命令黑名单仅保留毁机级保护（rm -rf / 、fork bomb、mkfs、dd 写盘、shutdown）。
      */
     BYPASS;

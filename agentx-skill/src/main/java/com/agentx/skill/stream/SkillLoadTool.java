@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * 动态 skill 工具（每请求构建）：description 即技能目录（渐进式披露 L1）,
- * call 按 name 加载技能全文（L2）返回给模型。名称对齐 Claude Code 的 Skill 工具。
+ * call 按 name 加载技能全文（L2）返回给模型。
  */
 class SkillLoadTool implements ToolCallback {
 

@@ -24,6 +24,11 @@
       <groupId>com.agentx</groupId>
       <artifactId>agentx-auth</artifactId>
     </dependency>
+    <!-- 工具注册（@AgentTool）：readAttachment/saveMemory 定义在本模块并注册为全局工具 -->
+    <dependency>
+      <groupId>com.agentx</groupId>
+      <artifactId>agentx-tools</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>

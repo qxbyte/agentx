@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 文件生成工具（对标 Codex/Code Interpreter 的文档产出能力，走结构化落盘而非代码沙箱）。
+ * 文件生成工具：结构化渲染落盘产出文档（不经代码沙箱）。
  * 交付三段式：渲染字节 → 注册 generated_file 实体（受管存储）→ 结果只回引用（fileId），
  * 前端识别工具名渲染文件卡片，经 /api/v1/files/{id}/download 鉴权下载。
- * 编码会话可用 savePath 直接写入项目工作区（Codex workspace-write 边界：越界忽略并说明）。
+ * 编码会话可用 savePath 直接写入项目工作区（工作区写边界：越界忽略并说明）。
  */
 @Slf4j
 @AgentTool(group = "files")
@@ -129,7 +129,7 @@ public class FileTools {
                 savedPath == null ? "null" : "\"" + escapeJson(savedPath) + "\"") + saveNote;
     }
 
-    /** 工作区内落盘：路径规范化 + 边界校验（学 Codex workspace-write），返回工作区相对路径。 */
+    /** 工作区内落盘：路径规范化 + 边界校验，返回工作区相对路径。 */
     private String writeToWorkspace(Path root, String savePath, String fallbackName, byte[] bytes) {
         Path normalizedRoot = root.toAbsolutePath().normalize();
         String cleaned = savePath.strip();

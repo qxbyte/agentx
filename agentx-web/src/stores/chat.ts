@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as chatApi from '../api/chat'
 import * as codingApi from '../api/coding'
 import { extractErrorMessage, isNotFoundError } from '../api/http'
+import type { ContextUsage } from '../api/chat'
 import type { SseEvent } from '../sse/events'
 import { streamChat } from '../sse/streamChat'
 import { uploadAttachments } from '../api/attachments'
@@ -158,7 +159,7 @@ function parseJsonField<T>(v: unknown): T | null {
 const PLAN_STATUSES: ReadonlySet<string> = new Set(['pending', 'in_progress', 'completed'])
 
 /** 解析 updatePlan 的参数（SSE 帧 args 为 JSON 字符串 / 历史恢复为 jsonb 原文）。
-    兼容两种 shape：新 TodoWrite 形态 todos[{content,activeForm,status}] 与
+    兼容两种 shape：新形态 todos[{content,activeForm,status}] 与
     旧 {title,steps[{step,status}]}，统一归一为 PlanState；
     非法结构或空清单返回 null，非法条目被丢弃（模型偶发脏数据不崩面板） */
 function parsePlanState(raw: unknown): PlanState | null {
@@ -231,6 +232,11 @@ interface ChatState {
   /** 用户手动关闭过面板：阻止 loadConversations 回填复活已关闭的计划 */
   planDismissed: boolean
   clearPlan: () => void
+
+  /** 当前会话上下文用量（余量指示环数据源）；null 未加载/新会话 */
+  contextUsage: ContextUsage | null
+  /** 拉取当前会话上下文用量（开会话/轮次结束/压缩后调用） */
+  refreshContextUsage: () => Promise<void>
 
   /** CodeAgent 会话设置（输入框工具条驱动）。workspaceId 非空即进入 coding 模式。 */
   modelConfigId: string | null
@@ -340,6 +346,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
   planDismissed: false,
   clearPlan: () => set({ plan: null, planDismissed: true }),
 
+  contextUsage: null,
+  async refreshContextUsage() {
+    const id = get().activeConversationId
+    if (!id) return
+    try {
+      const usage = await chatApi.getContextUsage(id)
+      // 竞态防护：期间切走会话则丢弃
+      if (get().activeConversationId === id) set({ contextUsage: usage })
+    } catch {
+      /* 用量指示是增强项，失败静默 */
+    }
+  },
+
   modelConfigId: null,
   modelChoiceTouched: false,
   workspaceId: null,
@@ -438,6 +457,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         attachments: [],
         modelConfigId: null,
         modelChoiceTouched: false,
+        contextUsage: null,
         // 新对话回到最安全的默认模式,不继承上一个会话的选择
         codingMode: 'ASK',
       })
@@ -466,7 +486,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       plan: parsePlanState(conv?.planState),
       planDismissed: false,
       attachments: [],
+      contextUsage: null,
     })
+    void get().refreshContextUsage()
     try {
       const fetched = (await chatApi.listMessages(id)).map(normalizeMessage)
       if (get().activeConversationId === id) {
@@ -773,6 +795,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       )
       // 刷新列表：拿到自动生成的标题 / 最新 updatedAt 排序
       void get().loadConversations()
+      // 轮次结束记忆已回写：刷新上下文余量指示
+      void get().refreshContextUsage()
     }
   },
 
@@ -856,7 +880,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => ({
       conversations: state.conversations.filter((c) => c.id !== id),
       ...(wasActive
-        ? { activeConversationId: null, messages: [], messagesError: null, plan: null, planDismissed: false }
+        ? { activeConversationId: null, messages: [], messagesError: null, plan: null, planDismissed: false, contextUsage: null }
         : {}),
     }))
     return wasActive
@@ -874,6 +898,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       conversationsLoading: false,
       activeConversationId: null,
       messages: [],
+      contextUsage: null,
       messagesLoading: false,
       messagesError: null,
       streaming: false,

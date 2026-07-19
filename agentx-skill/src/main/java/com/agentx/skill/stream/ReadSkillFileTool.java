@@ -10,7 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * readSkillFile 工具（L3 资源按需读取）：读取某技能目录内的资源文件
- * （references/ scripts/ assets/…）。等价于 Claude Code 里模型用 Read 读
+ * （references/ scripts/ assets/…）。等价于模型用通用文件读取工具读
  * skill 基准目录——但路径沙箱锁死在技能自己的目录内。
  */
 class ReadSkillFileTool implements ToolCallback {

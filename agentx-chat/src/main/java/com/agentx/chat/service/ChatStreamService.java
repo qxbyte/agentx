@@ -18,9 +18,12 @@ import com.agentx.infra.ai.stream.ToolEventSink;
 import com.agentx.infra.ai.stream.UserPromptTransformer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.agentx.chat.service.memory.MemoryFileService;
+import com.agentx.chat.service.memory.ModelMemoryService;
+import com.agentx.chat.service.memory.ToolTraceSummary;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.deepseek.DeepSeekAssistantMessage;
@@ -54,7 +57,8 @@ public class ChatStreamService {
     private final ConversationService conversationService;
     private final AttachmentService attachmentService;
     private final ChatClientFactory chatClientFactory;
-    private final ChatMemory chatMemory;
+    private final ModelMemoryService modelMemoryService;
+    private final MemoryFileService memoryFileService;
     private final AiCallAuditor auditor;
     private final ObjectMapper objectMapper;
     private final List<ChatStreamCustomizer> customizers;
@@ -142,14 +146,22 @@ public class ChatStreamService {
             promptContent = transformer.transform(transformContext, promptContent);
         }
 
-        // 附件：绑定本条消息 → 元数据落业务轨（气泡芯片）→ 全文 XML 注入模型轨
-        // （业务轨 content 保持用户原文，注入文本只进 prompt/记忆，避免历史接口膨胀）
+        // 附件：绑定本条消息 → 元数据落业务轨（气泡芯片）→ 全文 XML 注入本轮 prompt。
+        // 记忆版（memoryText）用占位符替代全文——历史轮次不再重复回放附件，
+        // 模型需要细节时凭占位符里的 attachmentId 调 readAttachment 重读
         var attachments = attachmentService.bindToMessage(
                 req.attachmentIds(), user.id(), conversation.getId(), userMessage.getId());
+        String memoryText = attachmentService.wrapForMemory(attachments, promptContent);
         if (!attachments.isEmpty()) {
             userMessage.setAttachments(attachmentService.metadataJson(attachments));
-            conversationService.saveMessage(userMessage);
             promptContent = attachmentService.wrapForPrompt(attachments, promptContent);
+        }
+        // regenerate 保真：记忆版文本 ≠ 用户原文时落业务轨，模型轨重建按此回放
+        if (!memoryText.equals(req.content())) {
+            userMessage.setModelContent(memoryText);
+        }
+        if (!attachments.isEmpty() || userMessage.getModelContent() != null) {
+            conversationService.saveMessage(userMessage);
         }
         conversationService.applyDefaultTitle(conversation, req.content());
 
@@ -195,7 +207,8 @@ public class ChatStreamService {
             log.info("本轮消息携带图片 {} 张，走多模态客户端 modelConfigId={}（null=平台默认）",
                     imageAttachments.size(), visionConfigId);
         }
-        StreamAggregator aggregator = new StreamAggregator(user, conversation, assistantMessageId, req.content());
+        StreamAggregator aggregator = new StreamAggregator(
+                user, conversation, assistantMessageId, req.content(), memoryText);
 
         ToolEventSink toolEventSink =
                 new SseToolEventSink(sender, aggregator, conversation.getId(), conversationService);
@@ -217,8 +230,9 @@ public class ChatStreamService {
                 })
                 // 敏感词/prompt 注入基线防护（命中即拦截返回失败话术，不进模型）
                 .advisors(safeGuardAdvisor)
-                .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversation.getId().toString()))
+                // 记忆管线自管注入/回写（取代 MessageChatMemoryAdvisor）：
+                // 读=用户级 md 记忆 + 预算裁剪后的会话历史；写=流结束 recordRound
+                .messages(promptMessages(conversation))
                 .toolContext(Map.of(
                         "userId", user.id().toString(),
                         "conversationId", conversation.getId().toString(),
@@ -236,6 +250,30 @@ public class ChatStreamService {
                         error -> aggregator.onError(error, sender),
                         () -> aggregator.onComplete(sender));
         return emitter;
+    }
+
+    /**
+     * 平台身份锚定：所有会话注入。没有它，模型会从上下文风格「推断」自己的身份——
+     * 无锚定时模型可能据上下文行文风格误判自己的身份。
+     */
+    private static final String IDENTITY_PROMPT = """
+            你是 AgentX 平台的 AI 助手，具备工具调用、知识库检索、附件解析与长期记忆能力。
+            当被问及身份或底层模型时：如实说明你是 AgentX 的 AI 助手，由用户在平台配置的\
+            大语言模型驱动（具体型号以界面模型选择器为准）；不要臆测或自称为任何其他 AI 产品——\
+            上下文中工具说明的行文风格与你的身份无关。""";
+
+    /** prompt 前部消息：身份锚定 + 用户级 md 记忆（合并为单条 system，稳定前缀保 KV-cache）+ 预算裁剪后的会话历史。 */
+    private List<Message> promptMessages(ChatConversation conversation) {
+        List<Message> result = new java.util.ArrayList<>();
+        StringBuilder system = new StringBuilder(IDENTITY_PROMPT);
+        String userMemory = memoryFileService.readUserMemory();
+        if (!userMemory.isEmpty()) {
+            system.append("\n\n# 用户长期记忆（来自 ~/.agentx/AGENTX.md，跨会话的偏好与事实）\n")
+                    .append(userMemory);
+        }
+        result.add(new SystemMessage(system.toString()));
+        result.addAll(modelMemoryService.loadHistory(conversation.getId()));
+        return result;
     }
 
     private static org.springframework.util.MimeType imageMimeType(String filename) {
@@ -343,6 +381,8 @@ public class ChatStreamService {
         private final ChatConversation conversation;
         private final UUID assistantMessageId;
         private final String userContent;
+        /** 入忆版用户文本（附件占位/skill 展开后）：与业务轨 content 双轨并存 */
+        private final String memoryUserText;
         private final StringBuilder content = new StringBuilder();
         private final StringBuilder reasoning = new StringBuilder();
         private final long startedAt = System.currentTimeMillis();
@@ -368,11 +408,12 @@ public class ChatStreamService {
         }
 
         StreamAggregator(AuthPrincipal user, ChatConversation conversation, UUID assistantMessageId,
-                         String userContent) {
+                         String userContent, String memoryUserText) {
             this.user = user;
             this.conversation = conversation;
             this.assistantMessageId = assistantMessageId;
             this.userContent = userContent;
+            this.memoryUserText = memoryUserText;
         }
 
         void recordToolCall(String callId, String toolName, String argsJson) {
@@ -453,6 +494,7 @@ public class ChatStreamService {
         void onComplete(SseEmitterSender sender) {
             try {
                 persistAssistantMessage(null);
+                recordMemory();
                 auditor.record(user.id(), conversation.getId(), modelName,
                         promptTokens, completionTokens,
                         System.currentTimeMillis() - startedAt, AiCallAuditor.CallStatus.OK);
@@ -469,6 +511,8 @@ public class ChatStreamService {
             try {
                 if (!content.isEmpty()) {
                     persistAssistantMessage(error.getMessage());
+                    // 有部分产出的失败轮次照记（与业务轨一致）：重试时上下文不缺前情
+                    recordMemory();
                 }
                 auditor.record(user.id(), conversation.getId(), modelName,
                         promptTokens, completionTokens,
@@ -476,6 +520,26 @@ public class ChatStreamService {
                 sender.send(SseEvent.error("50000", "模型调用失败：" + error.getMessage()));
             } finally {
                 sender.complete();
+            }
+        }
+
+        /**
+         * 模型轨回写（原 MessageChatMemoryAdvisor 的 after 职责）：
+         * 入忆 user 用占位版、assistant 尾部附工具轨迹摘要；随后按阈值触发滚动压缩。
+         * 记忆失败只降级不影响 SSE 收尾。
+         */
+        private void recordMemory() {
+            try {
+                List<Map<String, Object>> records;
+                synchronized (toolCallRecords) {
+                    records = List.copyOf(toolCallRecords);
+                }
+                modelMemoryService.recordRound(conversation.getId(), memoryUserText,
+                        content.toString(), ToolTraceSummary.of(records));
+                modelMemoryService.maybeCompactAsync(conversation.getId(),
+                        conversationService.latestPlanState(conversation.getId()));
+            } catch (RuntimeException e) {
+                log.warn("记忆回写失败 conversation={}: {}", conversation.getId(), e.getMessage());
             }
         }
 

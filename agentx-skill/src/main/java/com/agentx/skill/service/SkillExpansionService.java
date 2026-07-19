@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 斜杠命令展开（对标 Claude Code Slash Commands）：
+ * 斜杠命令展开：
  * 整条消息形如 "/name args" 时读取用户 skill 目录展开为 body（$ARGUMENTS / $1..$9 参数替换），
  * 以 skill_instructions 标签包裹（数据边界防注入，同附件 documents XML 思路）。
  * 未命中一律原样透传，零打扰。

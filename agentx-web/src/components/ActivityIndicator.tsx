@@ -33,7 +33,7 @@ export function activityLabel(message: ChatMessage): string {
 }
 
 /**
- * 流式活动指示器（Codex 风格）：动态四角星 + 文字扫描微光。
+ * 流式活动指示器：动态四角星 + 文字扫描微光。
  * 替代原来的闪烁黑方块光标——图标呼吸旋转，文案上有一道左→右的高光扫过。
  */
 export default function ActivityIndicator({ label }: { label: string }) {

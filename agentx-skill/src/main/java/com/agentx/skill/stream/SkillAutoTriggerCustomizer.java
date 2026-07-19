@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Skill 模型自动触发（M2,对标 Claude Code 的 Skill tool + 渐进式披露）：
+ * Skill 模型自动触发（M2,渐进式披露）：
  * 每次会话动态构建 skill 工具——工具 description 携带全部可自动触发技能的
  * L1 元数据目录（name + description）,模型判断任务匹配某技能时调用工具按需
  * 加载其完整指令(L2)。目录放工具描述而非 system prompt:system 是覆盖语义

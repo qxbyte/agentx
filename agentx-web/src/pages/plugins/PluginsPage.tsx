@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import Hint from '@/components/ui/hint'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -29,7 +30,7 @@ import AppShell from '../../components/AppShell'
 import { useChatStore } from '../../stores/chat'
 import type { InstalledPluginView, MarketplaceView } from '../../types'
 
-/** 插件管理:marketplace 添加 + 安装/启停/卸载(本机目录化,对齐 Claude Code) */
+/** 插件管理:marketplace 添加 + 安装/启停/卸载(本机目录化) */
 export default function PluginsPage() {
   const [marketplaces, setMarketplaces] = useState<MarketplaceView[]>([])
   const [installed, setInstalled] = useState<InstalledPluginView[]>([])
@@ -196,16 +197,17 @@ export default function PluginsPage() {
                 <Badge variant="outline" className="ml-auto shrink-0">
                   {mp.plugins.length} 个插件
                 </Badge>
+                <Hint text="更新 marketplace（git 拉取最新清单）">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-7 shrink-0"
-                  title="更新 marketplace（git 拉取最新清单）"
                   disabled={updating === `mp:${mp.name}`}
                   onClick={() => void handleUpdateMarketplace(mp.name)}
                 >
                   <RefreshCw className={`size-4 ${updating === `mp:${mp.name}` ? 'animate-spin' : ''}`} />
                 </Button>
+                </Hint>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -246,35 +248,36 @@ export default function PluginsPage() {
                                 checked={inst.enabled}
                                 onCheckedChange={(checked) => void handleToggle(inst, checked)}
                               />
-                              <span
-                                className="shrink-0 text-xs text-muted-foreground"
-                                title={inst.mcpCount > 0 ? 'MCP 服务器默认停用,在 MCP 管理页显式启用' : undefined}
-                              >
+                              <Hint text={inst.mcpCount > 0 ? 'MCP 服务器默认停用,在 MCP 管理页显式启用' : undefined}>
+                              <span className="shrink-0 text-xs text-muted-foreground">
                                 {inst.skillCount} 技能
                                 {inst.agentCount > 0 ? ` · ${inst.agentCount} 子代理` : ''}
                                 {inst.mcpCount > 0 ? ` · ${inst.mcpCount} MCP` : ''}
                               </span>
+                              </Hint>
                               {/* 徽章与操作按钮统一靠右,列间纵向对齐 */}
                               <div className="ml-auto flex shrink-0 items-center gap-2">
                                 {inst.unsupported.length > 0 && (
+                                  <Hint text={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力,AgentX 暂不加载这部分(技能/子代理不受影响)`}>
                                   <Badge
                                     variant="outline"
                                     className="shrink-0 cursor-help whitespace-nowrap text-[10px] text-muted-foreground"
-                                    title={`该插件还捆绑了 ${inst.unsupported.join('、')} 能力,AgentX 暂不加载这部分(技能/子代理不受影响)`}
                                   >
                                     {inst.unsupported.join('/')} 未启用
                                   </Badge>
+                                  </Hint>
                                 )}
+                                <Hint text="更新插件（重新拉取并安装最新版本）">
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="size-7"
-                                  title="更新插件（重新拉取并安装最新版本）"
                                   disabled={updating === id}
                                   onClick={() => void handleUpdatePlugin(id)}
                                 >
                                   <RefreshCw className={`size-4 ${updating === id ? 'animate-spin' : ''}`} />
                                 </Button>
+                                </Hint>
                                 <Button
                                   variant="ghost"
                                   size="icon"

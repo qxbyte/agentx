@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 网络工具（对标 Claude Code 的 WebFetch / WebSearch）：
+ * 网络工具（webFetch / webSearch）：
  * webFetch 抓取网页提取正文，webSearch 联网搜索返回结果列表。
  * 只读操作，不需要审批；SSRF 防护见 {@link SafeUrls}。
  */

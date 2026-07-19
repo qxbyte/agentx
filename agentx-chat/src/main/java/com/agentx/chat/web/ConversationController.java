@@ -26,6 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ConversationController {
     private final ConversationService conversationService;
+    private final com.agentx.chat.service.memory.ModelMemoryService modelMemoryService;
 
     @GetMapping
     public ApiResponse<List<ConversationView>> list(@CurrentUser AuthPrincipal user) {
@@ -62,5 +63,26 @@ public class ConversationController {
                                                    @PathVariable UUID id) {
         return ApiResponse.ok(conversationService.messages(id, user.id()).stream()
                 .map(MessageView::of).toList());
+    }
+
+    /** 上下文用量（约数）：输入框余量指示环轮询数据源。 */
+    @GetMapping("/{id}/context")
+    public ApiResponse<com.agentx.chat.service.memory.ModelMemoryService.ContextUsage> context(
+            @CurrentUser AuthPrincipal user, @PathVariable UUID id) {
+        conversationService.getOwned(id, user.id());
+        return ApiResponse.ok(modelMemoryService.usage(id));
+    }
+
+    public record CompactResult(int compactedMessages, int summaryChars,
+                                int tokensBefore, int tokensAfter) {}
+
+    /** 手动压缩（/compact）：把早期对话压成摘要，释放模型上下文窗口。 */
+    @PostMapping("/{id}/compact")
+    public ApiResponse<CompactResult> compact(@CurrentUser AuthPrincipal user,
+                                              @PathVariable UUID id) {
+        conversationService.getOwned(id, user.id());
+        var result = modelMemoryService.compact(id, conversationService.latestPlanState(id));
+        return ApiResponse.ok(new CompactResult(result.compactedMessages(),
+                result.summaryChars(), result.tokensBefore(), result.tokensAfter()));
     }
 }

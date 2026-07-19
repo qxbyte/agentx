@@ -2,6 +2,7 @@ import { ImageOff, Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { http } from '../api/http'
+import Hint from '@/components/ui/hint'
 
 /** 已取回的缩略图 blob URL 缓存（会话级，切消息列表不重复拉取） */
 const thumbCache = new Map<string, string>()
@@ -43,7 +44,7 @@ function Lightbox({ url, filename, onClose }: { url: string; filename: string; o
 }
 
 /**
- * 图片附件缩略图（ChatGPT 式方块 + 角标 ×），点击放大预览。
+ * 图片附件缩略图（方块 + 角标 ×），点击放大预览。
  * 待发送态用本地 previewUrl；历史态经鉴权接口取原图 blob（<img> 无法带 Bearer）。
  */
 interface AttachmentThumbProps {
@@ -94,9 +95,9 @@ export default function AttachmentThumb({
   const canPreview = !!url && !failed && !uploading
 
   return (
+    <Hint text={filename}>
     <div
       className={`ax-thumb${canPreview ? ' cursor-zoom-in' : ''}`}
-      title={filename}
       onClick={() => canPreview && setPreviewOpen(true)}
       role={canPreview ? 'button' : undefined}
       tabIndex={canPreview ? 0 : undefined}
@@ -133,5 +134,6 @@ export default function AttachmentThumb({
         <Lightbox url={url} filename={filename} onClose={() => setPreviewOpen(false)} />
       )}
     </div>
+    </Hint>
   )
 }

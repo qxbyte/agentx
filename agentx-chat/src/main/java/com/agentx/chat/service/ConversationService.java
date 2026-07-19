@@ -30,6 +30,7 @@ public class ConversationService {
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final ChatMemory chatMemory;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public List<ChatConversation> list(UUID userId) {
         return conversationRepository.findByUserIdOrderByUpdatedAtDesc(userId);
@@ -186,7 +187,7 @@ public class ConversationService {
         // 模型轨：清空后按保留的历史重建，回滚到该轮之前的上下文
         chatMemory.clear(conversation.getId().toString());
         List<Message> history = all.subList(0, userIdx).stream()
-                .map(ConversationService::toMemoryMessage)
+                .map(this::toMemoryMessage)
                 .filter(Objects::nonNull)
                 .toList();
         if (!history.isEmpty()) {
@@ -204,13 +205,46 @@ public class ConversationService {
         throw new BizException(ErrorCode.NOT_FOUND, "消息不在会话中");
     }
 
-    /** 业务消息 → 模型轨记忆消息（仅取正文，工具/系统消息不入记忆重建）。 */
-    private static Message toMemoryMessage(ChatMessage m) {
+    /**
+     * 业务消息 → 模型轨记忆消息（工具/系统消息不入记忆重建）。
+     * 保真重建：USER 优先取 modelContent（附件占位/skill 展开的当轮真实入忆文本）；
+     * ASSISTANT 按 toolCalls JSON 重算工具轨迹摘要——与首次入忆的版本一致。
+     */
+    private Message toMemoryMessage(ChatMessage m) {
         return switch (m.getRole()) {
-            case USER -> new UserMessage(m.getContent());
-            case ASSISTANT -> m.getContent() == null || m.getContent().isBlank()
-                    ? null : new AssistantMessage(m.getContent());
+            case USER -> new UserMessage(
+                    m.getModelContent() != null ? m.getModelContent() : m.getContent());
+            case ASSISTANT -> {
+                String text = m.getContent() == null ? "" : m.getContent().strip();
+                String summary = toolSummaryOf(m.getToolCalls());
+                if (text.isEmpty() && summary.isEmpty()) {
+                    yield null;
+                }
+                yield new AssistantMessage(summary.isEmpty() ? text
+                        : text.isEmpty() ? summary : text + "\n\n" + summary);
+            }
             default -> null;
         };
+    }
+
+    /** toolCalls JSON → 一行摘要；解析失败按无摘要处理（旧数据/脏数据不阻塞重建）。 */
+    private String toolSummaryOf(String toolCallsJson) {
+        if (toolCallsJson == null || toolCallsJson.isBlank()) {
+            return "";
+        }
+        try {
+            List<java.util.Map<String, Object>> records = objectMapper.readValue(toolCallsJson,
+                    new tools.jackson.core.type.TypeReference<List<java.util.Map<String, Object>>>() {});
+            return com.agentx.chat.service.memory.ToolTraceSummary.of(records);
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    /** 会话最新任务清单原文（压缩恢复锚点用）；无计划返回 null。 */
+    public String latestPlanState(UUID conversationId) {
+        return conversationRepository.findById(conversationId)
+                .map(ChatConversation::getPlanState)
+                .orElse(null);
     }
 }

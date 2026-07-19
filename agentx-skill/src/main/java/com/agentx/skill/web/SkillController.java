@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Skill 斜杠命令管理。skill 是本机目录化配置（~/.agentx/skills/，Codex 语义：
+ * Skill 斜杠命令管理。skill 是本机目录化配置（~/.agentx/skills/：
  * 不随账号走），登录用户即可读写；name 即资源标识。
  */
 @RestController

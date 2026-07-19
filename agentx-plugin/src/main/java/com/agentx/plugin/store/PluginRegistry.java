@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * 插件注册表：~/.agentx/plugins/ 下两个 JSON 文件的读写
- * （布局对齐 Claude Code 的 ~/.claude/plugins/,enabled 状态内嵌 installed_plugins.json）。
+ * （~/.agentx/plugins/ 目录,enabled 状态内嵌 installed_plugins.json）。
  * 文件即事实源:每次读盘,外部手动编辑即时生效;写操作 synchronized 防并发覆写。
  */
 @Slf4j

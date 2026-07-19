@@ -13,7 +13,7 @@ import type { Workspace } from '../../types'
 import BlankProjectDialog from './BlankProjectDialog'
 import WorkspaceFormDialog from './WorkspaceFormDialog'
 
-/** 项目选择器（对标 Codex「选择项目」）：下拉列已有项目 + 内联「新建项目」。 */
+/** 项目选择器：下拉列已有项目 + 内联「新建项目」。 */
 export default function ProjectPicker() {
   const workspaceId = useChatStore((s) => s.workspaceId)
   const setWorkspaceId = useChatStore((s) => s.setWorkspaceId)

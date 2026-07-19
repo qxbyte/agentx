@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 普通对话的本地"天然工具"（AgentX 是本地 app,模型应有本地文件手——对标
- * Claude Code / Codex 桌面版）：非编码会话注入同一套文件/命令工具,
+ * 普通对话的本地"天然工具"（AgentX 是本地 app,模型应有本地文件手）：
+ * 非编码会话注入同一套文件/命令工具,
  * 沙箱根为本机家目录（可配）,Plan/Ask/Auto 模式语义与审批网关全部复用
  * coding 模块既有机制。编码会话(workspaceId 非空)由 CodingStreamCustomizer 接管,
  * 此处不激活,互斥不重复绑定。

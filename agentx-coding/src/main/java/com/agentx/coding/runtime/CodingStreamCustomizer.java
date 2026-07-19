@@ -105,6 +105,11 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
                 如果绑定了知识库，优先检索其中的规范与背景知识辅助定位问题。
                 遇到不熟悉的报错、依赖或 API 时，可用 webSearch 联网搜索、webFetch 打开文档链接查证。
                 """.formatted(ws.getName());
+        // 项目级长期记忆（<工作区根>/AGENTX.md）：项目约定随代码库走
+        String memory = readProjectMemory(ws.getRootPath());
+        if (!memory.isEmpty()) {
+            base += "\n# 项目记忆（AGENTX.md，跨会话的项目约定与决策）\n" + memory + "\n\n";
+        }
         return base + switch (mode) {
             case PLAN -> "当前是【规划模式】：你只能读取与分析，禁止修改文件或执行命令。产出清晰的修复方案供人工审阅。";
             case ASK -> "当前是【审批模式】：修改文件与执行命令前会请求人工确认。请把每一步改动讲清楚，改动尽量小而聚焦。";
@@ -112,6 +117,25 @@ public class CodingStreamCustomizer implements ChatStreamCustomizer {
             case BYPASS -> "当前是【完全放行模式】：无审批、无路径边界，可读写本机任意文件、执行任意命令（等同用户本人操作）。"
                     + "能力越大责任越大：改动前确认目标路径，破坏性操作（删除、覆盖、强制推送）前先向用户说明。";
         };
+    }
+
+    /** 项目记忆注入上限：防超长 md 挤占上下文（与 chat 侧 MemoryFileService 同限）。 */
+    private static final int MEMORY_INJECT_CHARS = 12_000;
+
+    /** 读工作区根下的 AGENTX.md；不存在/失败返回空串（记忆是增强项，不阻塞会话）。 */
+    private static String readProjectMemory(String rootPath) {
+        java.nio.file.Path file = java.nio.file.Path.of(rootPath, "AGENTX.md");
+        try {
+            if (!java.nio.file.Files.isRegularFile(file)) {
+                return "";
+            }
+            String content = java.nio.file.Files.readString(file).strip();
+            return content.length() <= MEMORY_INJECT_CHARS
+                    ? content : content.substring(0, MEMORY_INJECT_CHARS) + "\n…（已截断）";
+        } catch (java.io.IOException e) {
+            log.warn("项目记忆读取失败（忽略）{}: {}", file, e.getMessage());
+            return "";
+        }
     }
 
     private static List<String> concat(List<String> a, List<String> b) {

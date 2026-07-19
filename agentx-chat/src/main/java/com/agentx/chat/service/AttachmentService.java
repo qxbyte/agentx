@@ -19,7 +19,7 @@ import java.util.UUID;
 
 /**
  * 会话附件：上传即解析（Tika → 文本，保头截断并显式标注），发送时绑定消息，
- * 注入采用 Anthropic 官方推荐的 <documents> XML 包装（含 source 溯源与注入边界）。
+ * 注入采用 <documents> XML 包装（含 source 溯源与注入边界）。
  */
 @Slf4j
 @Service
@@ -36,7 +36,7 @@ public class AttachmentService {
 
     /** 图片扩展名（走视觉模型 Media 通道，不做文本解析）；GIF 仅首帧被模型识别 */
     public static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp", "gif");
-    /** 单图字节硬限（对齐 Claude API 的 10MB；前端已按 1568px 降采样） */
+    /** 单图字节硬限 10MB（前端已按 1568px 降采样） */
     private static final long MAX_IMAGE_BYTES = 10L * 1024 * 1024;
 
     /** 扩展名白名单：常用文档 + 文本/代码；可执行与压缩包拒收 */
@@ -164,7 +164,7 @@ public class AttachmentService {
     }
 
     /**
-     * 注入包装：<documents> XML 前置在用户输入之前（Anthropic 官方推荐结构）。
+     * 注入包装：<documents> XML 前置在用户输入之前。
      * 超出单条消息总量的文件降级为仅文件名条目并显式标注——绝不静默丢内容。
      */
     public String wrapForPrompt(List<ChatAttachment> allAttachments, String userContent) {
@@ -196,6 +196,30 @@ public class AttachmentService {
         }
         sb.append("</documents>\n\n").append(userContent);
         return sb.toString();
+    }
+
+    /**
+     * 记忆占位包装（与 {@link #wrapForPrompt} 成对）：附件全文只在上传当轮注入，
+     * 写入模型轨记忆的版本用占位符替代——历史轮次不再重复回放全文
+     * （150k 字符 × 每轮重发是此前最大的 token 浪费源），
+     * 模型需要细节时凭占位符中的 attachmentId 调 readAttachment 工具重读。
+     */
+    public String wrapForMemory(List<ChatAttachment> allAttachments, String userContent) {
+        if (allAttachments.isEmpty()) {
+            return userContent;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (ChatAttachment a : allAttachments) {
+            String source = a.getRelPath() != null ? a.getRelPath() : a.getFilename();
+            if ("image".equals(a.getKind())) {
+                sb.append("[图片附件 ").append(source).append("（本轮已随消息发送）]\n");
+            } else {
+                sb.append("[附件 ").append(source).append("（约 ").append(a.getCharCount())
+                        .append(" 字符，attachmentId=").append(a.getId())
+                        .append("）——需要引用细节时调用 readAttachment 重读]\n");
+            }
+        }
+        return sb.append('\n').append(userContent).toString();
     }
 
     /** 附件元数据 JSON（落 chat_message.attachments，供历史气泡渲染芯片）。 */

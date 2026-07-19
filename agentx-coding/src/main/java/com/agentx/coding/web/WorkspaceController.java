@@ -57,7 +57,7 @@ public class WorkspaceController {
         return ApiResponse.ok(service.validate(req.rootPath()));
     }
 
-    /** 新建空白项目：后端在受控根下建目录并 git init（Codex「新建空白项目」）。 */
+    /** 新建空白项目：后端在受控根下建目录并 git init。 */
     @PostMapping("/blank")
     public ApiResponse<WorkspaceView> createBlank(@CurrentUser AuthPrincipal user,
                                                   @Valid @RequestBody BlankWorkspaceRequest req) {

@@ -26,8 +26,13 @@ export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ variant }), className)} {...props} />
-}
+/** forwardRef：作为 TooltipTrigger/PopoverTrigger 的 asChild 子元素时必须可接收 ref，
+    否则提示静默失效（无报错、纯不显示） */
+const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ className, variant, ...props }, ref) => (
+    <span ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />
+  ),
+)
+Badge.displayName = 'Badge'
 
 export { Badge, badgeVariants }

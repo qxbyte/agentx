@@ -188,7 +188,7 @@ class SkillExpansionServiceTest {
 
     @Test
     void handWrittenFileWithoutFrontmatterWorks() throws IOException {
-        // 手动扔一个纯 markdown 文件进目录 → 即时可用（Codex 式体验）
+        // 手动扔一个纯 markdown 文件进目录 → 即时可用（免注册）
         Files.writeString(root.resolve("review.md"), "帮我审查以下代码：$ARGUMENTS");
         assertThat(service.expand("/review print(1)")).contains("帮我审查以下代码：print(1)");
         assertThat(store.scan()).extracting(SkillFile::name).contains("review");

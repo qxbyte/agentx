@@ -116,7 +116,7 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-/** 图片上传前预处理：长边压到 1568px（Claude 官方甜点，Codex 同类做法为 2048）、
+/** 图片上传前预处理：长边压到 1568px（主流视觉模型的推荐输入尺寸）、
     JPEG q0.85，canvas 重绘天然烘焙 EXIF 方向；GIF 不重绘（保留动图字节，模型取首帧）。 */
 const IMAGE_MAX_EDGE = 1568
 

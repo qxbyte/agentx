@@ -1,7 +1,8 @@
 import { FileCode, FileSpreadsheet, FileText, Loader2, Presentation, X } from 'lucide-react'
 import { formatBytes } from '../lib/attachments'
+import Hint from '@/components/ui/hint'
 
-/** 格式 → 图标色块（ChatGPT 式：PDF 红 / Word 蓝 / Excel 绿 / PPT 橙 / 其余灰） */
+/** 格式 → 图标色块：PDF 红 / Word 蓝 / Excel 绿 / PPT 橙 / 其余灰 */
 function formatStyle(filename: string): { color: string; Icon: typeof FileText; label: string } {
   const dot = filename.lastIndexOf('.')
   const ext = dot < 0 ? '' : filename.slice(dot + 1).toLowerCase()
@@ -41,7 +42,7 @@ interface AttachmentCardProps {
   compact?: boolean
 }
 
-/** 附件卡片：图标色块 + 文件名 + 格式副标题 + 悬浮 ×（ChatGPT 样式） */
+/** 附件卡片：图标色块 + 文件名 + 格式副标题 + 悬浮 × */
 export default function AttachmentCard({
   filename,
   subtitle,
@@ -57,9 +58,9 @@ export default function AttachmentCard({
         {uploading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
       </span>
       <span className="ax-attach-meta">
-        <span className="ax-attach-name" title={filename}>
-          {filename}
-        </span>
+        <Hint text={filename}>
+          <span className="ax-attach-name">{filename}</span>
+        </Hint>
         <span className="ax-attach-sub">{subtitle ?? label}</span>
       </span>
       {onRemove && (

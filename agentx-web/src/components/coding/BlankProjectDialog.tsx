@@ -32,7 +32,7 @@ interface BlankProjectDialogProps {
   onCreated: (ws: Workspace) => void
 }
 
-/** 新建空白项目（Codex 式）：只填名字，目录由后端在受控根下创建并 git init。 */
+/** 新建空白项目：只填名字，目录由后端在受控根下创建并 git init。 */
 export default function BlankProjectDialog({ open, onOpenChange, onCreated }: BlankProjectDialogProps) {
   const kbs = useKbOptions(open)
   const [name, setName] = useState('')

@@ -19,8 +19,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Skill 文件存储（对标 Claude Code / Codex 的本地目录化配置，Codex 语义：
- * skill 属于本机而非账号——账号只同步对话历史，skill/插件本地目录化）：
+ * Skill 文件存储（本地目录化配置：skill 属于本机而非账号——
+ * 账号只同步对话历史，skill/插件走本地目录）：
  * <pre>
  * &lt;root&gt;/&lt;name&gt;.md            平铺布局（API 创建的默认形态，手动放文件也最顺手）
  * &lt;root&gt;/&lt;name&gt;/SKILL.md      目录布局（预留 scripts/references 等资源，优先级更高）

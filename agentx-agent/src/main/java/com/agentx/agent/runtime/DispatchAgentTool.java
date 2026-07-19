@@ -14,7 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 
 /**
- * dispatchAgent 工具（对标 Claude Code 的子代理派遣）：主模型把一个独立子任务
+ * dispatchAgent 工具（子代理派遣）：主模型把一个独立子任务
  * 交给某个 Agent 定义执行——子代理以自己的 system prompt 与工具集跑一次嵌套
  * 调用（独立上下文,不共享主对话历史）,最终文本作为工具结果回注主对话。
  * 子代理不再携带 dispatchAgent,天然杜绝递归派遣。

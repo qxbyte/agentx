@@ -18,7 +18,7 @@ interface Draft {
 }
 
 /**
- * askUserQuestion 提问卡（对标 Claude Code AskUserQuestion UI）：
+ * askUserQuestion 提问卡：
  * 单选/多选选项 + Other 自由输入，多问分步（Back/Skip/Next/Submit），
  * 提交后由 question-result 权威帧翻转终态。
  */
@@ -91,7 +91,7 @@ export default function QuestionCard({ item }: QuestionCardProps) {
   const hasAnswer = draft.selected.length > 0 || draft.otherText.trim() !== ''
   const isLast = step === total - 1
 
-  /* 预览型选择器(对标 Claude Code):单选且任一选项带 preview 时,
+  /* 预览型选择器:单选且任一选项带 preview 时,
      切换为「左选项列表 + 右预览面板」并排布局,预览随选中项切换 */
   const hasPreview = !spec.multiSelect && spec.options.some((o) => o.preview)
   const previewText = hasPreview

@@ -51,6 +51,13 @@ public class ChatMessage {
     @Column(columnDefinition = "jsonb")
     private String attachments;
 
+    /**
+     * 用户消息的入忆版文本（skill 展开/附件占位后）：与用户原文不同时才存，
+     * 重新生成回滚记忆时按此保真重建。不进历史接口（MessageView 不映射）。
+     */
+    @Column(name = "model_content")
+    private String modelContent;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

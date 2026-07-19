@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 
 /**
  * 把启用插件的 skills 挂进 skill 模块的列表与展开链路（实现 SkillProvider SPI）。
- * 扫描 Claude Code 插件默认布局:skills/&lt;dir&gt;/SKILL.md(dir 名即 skill 名)与
+ * 扫描插件默认布局:skills/&lt;dir&gt;/SKILL.md(dir 名即 skill 名)与
  * commands/&lt;name&gt;.md;全限定名 "&lt;plugin&gt;:&lt;skill&gt;"。skill 名以目录/文件名为准。
  */
 @Slf4j

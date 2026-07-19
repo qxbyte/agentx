@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 解析 Claude Code 同款 manifest：
+ * 解析插件 manifest：
  * <li>&lt;dir&gt;/.claude-plugin/marketplace.json —— marketplace 清单(plugins[].source 支持相对路径/github/url)
  * <li>&lt;dir&gt;/.claude-plugin/plugin.json —— 插件元数据
  * 没有 marketplace.json 但有 plugin.json 的仓库视作「单插件直装仓库」,合成单条目清单。

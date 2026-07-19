@@ -66,15 +66,15 @@ agentx:
     # 「新建空白项目」的落盘根目录：空白项目统一建在此目录下并 git init
     projects-root: ${AGENTX_PROJECTS_ROOT:${user.home}/.agentx/projects}
   skills:
-    # Skill 斜杠命令目录（对标 Claude Code / Codex 本地目录化配置）：
+    # Skill 斜杠命令目录（本地目录化配置）：
     # <root>/<name>.md 或 <root>/<name>/SKILL.md，手动增删改文件即时生效
     root: ${AGENTX_SKILLS_ROOT:${user.home}/.agentx/skills}
   plugins:
-    # 插件目录（对齐 Claude Code ~/.claude/plugins 布局）：
+    # 插件目录：
     # marketplaces/ + cache/<marketplace>/<plugin>/<version>/ + 两个注册 json
     root: ${AGENTX_PLUGINS_ROOT:${user.home}/.agentx/plugins}
   local-tools:
     # 普通对话的本地"天然工具"(文件读写/命令执行,沙箱根默认家目录):
-    # AgentX 是本地 app,模型拥有本地手对标 Claude Code / Codex;危险操作走审批
+    # AgentX 是本地 app,模型应拥有本地文件手;危险操作走审批
     enabled: ${AGENTX_LOCAL_TOOLS_ENABLED:true}
     root: ${AGENTX_LOCAL_TOOLS_ROOT:${user.home}}

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import Hint from '@/components/ui/hint'
 import {
   Dialog,
   DialogContent,
@@ -321,13 +322,14 @@ export default function AgentsPage() {
                           )}
                         />
                         <span className="font-medium">{row.groupKey}</span>
+                        <Hint text="插件贡献的子代理:定义只读,随插件启停/卸载联动(在插件页管理);可被 dispatchAgent 派遣或建会话时选用">
                         <Badge
                           variant="outline"
                           className="shrink-0 cursor-help text-[10px] text-muted-foreground"
-                          title="插件贡献的子代理:定义只读,随插件启停/卸载联动(在插件页管理);可被 dispatchAgent 派遣或建会话时选用"
                         >
                           插件·只读
                         </Badge>
+                        </Hint>
                         <span className="text-xs text-muted-foreground">
                           {row.group.length} 个子代理
                         </span>
@@ -342,12 +344,12 @@ export default function AgentsPage() {
               return (
                 <TableRow key={agent.id}>
                   <TableCell className="max-w-0">
-                    <div
-                      className={cn('flex items-center gap-1.5', child && 'pl-7')}
-                      title={child ? agent.name : undefined}
-                    >
-                      <span className="truncate">{child ? shortName(agent) : agent.name}</span>
-                    </div>
+                    {/* 子代理悬浮显示全限定名（plugin:name） */}
+                    <Hint text={child ? agent.name : undefined}>
+                      <div className={cn('flex items-center gap-1.5', child && 'pl-7')}>
+                        <span className="truncate">{child ? shortName(agent) : agent.name}</span>
+                      </div>
+                    </Hint>
                   </TableCell>
                   <TableCell>
                     <Badge variant="info">{agent.workflowType}</Badge>
@@ -387,16 +389,20 @@ export default function AgentsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        disabled={agent.source === 'PLUGIN'}
-                        title={agent.source === 'PLUGIN' ? '插件贡献的 Agent,由插件管理' : undefined}
-                        onClick={() => openEdit(agent)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
+                      {/* 禁用按钮 pointer-events 为 none：套 span 承接悬浮事件让提示可见 */}
+                      <Hint text={agent.source === 'PLUGIN' ? '插件贡献的 Agent,由插件管理' : undefined}>
+                      <span className="inline-flex">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          disabled={agent.source === 'PLUGIN'}
+                          onClick={() => openEdit(agent)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      </span>
+                      </Hint>
                       <Button
                         variant="ghost"
                         size="icon"

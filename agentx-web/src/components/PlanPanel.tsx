@@ -8,7 +8,7 @@ interface PlanPanelProps {
 }
 
 /**
- * 任务计划面板（Codex update_plan 式）：固定在输入框上方，随 SSE 实时更新。
+ * 任务清单面板：固定在输入框上方，随 SSE 实时更新。
  * 收起时单行显示进度与当前步骤；全部完成后自动收起，可手动关闭。
  */
 export default function PlanPanel({ plan, onDismiss }: PlanPanelProps) {
@@ -40,7 +40,7 @@ export default function PlanPanel({ plan, onDismiss }: PlanPanelProps) {
         <span className="ax-plan-count">
           {done}/{total}
         </span>
-        {/* 折叠单行优先展示进行时形态（TodoWrite activeForm，如「正在运行测试」） */}
+        {/* 折叠单行优先展示进行时形态（activeForm，如「正在运行测试」） */}
         <span className="ax-plan-current">
           {!open && (allDone ? '已全部完成' : (current?.activeForm ?? current?.step))}
         </span>

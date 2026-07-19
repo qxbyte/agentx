@@ -15,7 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 向用户提问工具（对标 Claude Code AskUserQuestion）：模型在需要用户做选择时调用，
+ * 向用户提问工具（askUserQuestion）：模型在需要用户做选择时调用，
  * 前端渲染选项卡片，用户点选提交后工具返回答案。执行机制同审批网关——
  * 发 question-request 帧 → 阻塞等回传 → 权威终态帧收尾。
  */
@@ -77,7 +77,7 @@ public class AskUserQuestionTools {
                 registry.register(context.userId(), conversationId, questionId);
         context.toolEventSink().onQuestionRequest(questionId.toString(), toPayload(questions));
 
-        // 无限期等待(对标 Claude Code:提问不设超时):阻塞的是虚拟线程,挂起成本
+        // 无限期等待(提问不设超时):阻塞的是虚拟线程,挂起成本
         // 仅几 KB 堆内存,且等待期间不占用任何模型连接。唯一的终止条件是用户作答
         // 或会话流终止(关页面/停止/服务重启)——断流时 cancelConversation 以 null 收尾
         String answersJson;
@@ -93,7 +93,7 @@ public class AskUserQuestionTools {
             return "{\"status\":\"expired\",\"note\":\"用户未作答（会话已结束），请按你的最佳判断继续\"}";
         }
         context.toolEventSink().onQuestionResult(questionId.toString(), "answered", answersJson);
-        // 对标 Claude Code 的 system-reminder 注入:交互是打断模型任务心流的断点,
+        // 提醒语注入:交互是打断模型任务心流的断点,
         // 在结果里附带清单提醒,避免模型作答后忘记推进/更新 todo 清单
         return "{\"status\":\"answered\",\"answers\":" + answersJson
                 + ",\"reminder\":\"If you are tracking this task with a todo list, update it now"

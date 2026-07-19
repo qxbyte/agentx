@@ -103,7 +103,7 @@
 }
 
 /* ============================================================
-   暗色主题：html.dark 覆盖同名 token（ChatGPT 暗色系：石墨灰阶 + 提亮状态色）
+   暗色主题：html.dark 覆盖同名 token（石墨灰阶 + 提亮状态色）
    ============================================================ */
 html.dark {
   color-scheme: dark;
@@ -539,7 +539,7 @@ body {
   overflow-y: auto;
 }
 
-/* 空会话开场态：欢迎语 + 输入框在内容区垂直居中（略偏上，视觉重心与 ChatGPT 一致），
+/* 空会话开场态：欢迎语 + 输入框在内容区垂直居中（略偏上，视觉重心更稳），
    首条消息发出后切回「消息流 + 底部输入框」布局 */
 .ax-chat-empty {
   flex: 1;
@@ -622,7 +622,7 @@ body {
   color: var(--ax-text-faint);
 }
 
-/* 流式活动指示器（Codex 风格）：动态四角星 + 文字扫描微光 */
+/* 流式活动指示器：动态四角星 + 文字扫描微光 */
 .ax-activity {
   display: inline-flex;
   align-items: center;
@@ -1118,7 +1118,7 @@ body {
   padding: 8px 20px 18px;
 }
 
-/* 任务计划面板（Codex update_plan 式）：固定输入框上方，随 SSE 实时更新。
+/* 任务清单面板：固定输入框上方，随 SSE 实时更新。
    宽度对齐开场芯片托层：输入框 780px 容器内缩 16px（mx-4） */
 .ax-plan {
   max-width: 748px;
@@ -1256,6 +1256,72 @@ body {
   }
 }
 
+/* 上下文余量卡片：悬浮余量环时右上弹出（卡片而非气泡提示） */
+.ax-ctx-card {
+  position: absolute;
+  right: -8px;
+  bottom: calc(100% + 10px);
+  z-index: 40;
+  width: 230px;
+  padding: 12px 14px;
+  border: 1px solid var(--ax-border);
+  border-radius: 14px;
+  background: var(--ax-surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+  transform-origin: bottom right;
+  animation: ax-ctx-card-in 0.28s cubic-bezier(0.34, 1.45, 0.44, 1);
+}
+@keyframes ax-ctx-card-in {
+  from {
+    opacity: 0;
+    scale: 0.72;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+.ax-ctx-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ax-text);
+}
+.ax-ctx-card-pct {
+  font-variant-numeric: tabular-nums;
+}
+.ax-ctx-bar {
+  margin: 8px 0 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ax-hover);
+  overflow: hidden;
+}
+.ax-ctx-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.ax-ctx-card-row {
+  font-size: 12px;
+  color: var(--ax-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ax-ctx-card-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ax-text-faint);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-ctx-card {
+    animation: none;
+  }
+}
+
 /* 生成文件卡片（消息内）：点击整卡下载 */
 .ax-filecard {
   display: flex;
@@ -1327,7 +1393,7 @@ body {
   color: var(--ax-text);
 }
 
-/* 输入框附件（ChatGPT 式卡片）：图标色块 + 文件名 + 格式副标题 + 悬浮 × */
+/* 输入框附件卡片：图标色块 + 文件名 + 格式副标题 + 悬浮 × */
 .ax-attach-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1574,7 +1640,7 @@ button:focus-visible,
   }
 }
 
-/* 图片附件缩略图（ChatGPT 式方块）：待发送/历史通用 */
+/* 图片附件缩略图（方块）：待发送/历史通用 */
 .ax-thumb {
   position: relative;
   width: 56px;

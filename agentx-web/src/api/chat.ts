@@ -22,6 +22,35 @@ export function createConversation(payload?: {
   })
 }
 
+export interface CompactResult {
+  compactedMessages: number
+  summaryChars: number
+  tokensBefore: number
+  tokensAfter: number
+}
+
+/** 上下文用量（约数）：tokens 当前记忆量 / compactThreshold 自动压缩阈值 */
+export interface ContextUsage {
+  tokens: number
+  compactThreshold: number
+  promptBudget: number
+}
+
+export function getContextUsage(id: string): Promise<ContextUsage> {
+  return request<ContextUsage>({
+    url: `/v1/chat/conversations/${id}/context`,
+    method: 'GET',
+  })
+}
+
+/** 手动压缩（/compact）：早期对话压成摘要，释放模型上下文窗口 */
+export function compactConversation(id: string): Promise<CompactResult> {
+  return request<CompactResult>({
+    url: `/v1/chat/conversations/${id}/compact`,
+    method: 'POST',
+  })
+}
+
 export function renameConversation(id: string, title: string): Promise<Conversation> {
   return request<Conversation>({
     url: `/v1/chat/conversations/${id}`,

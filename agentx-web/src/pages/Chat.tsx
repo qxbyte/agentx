@@ -115,7 +115,7 @@ export default function ChatPage() {
         </div>
 
         {isEmpty ? (
-          /* 空会话开场态：欢迎语 + 输入框整体居中（ChatGPT 式），首条消息后回到底部 */
+          /* 空会话开场态：欢迎语 + 输入框整体居中，首条消息后回到底部 */
           <div className="ax-chat-empty ax-scroll">
             <div className="ax-welcome">
               <Logo size={56} />

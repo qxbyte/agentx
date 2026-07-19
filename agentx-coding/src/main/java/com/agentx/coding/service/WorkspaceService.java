@@ -74,7 +74,7 @@ public class WorkspaceService {
     }
 
     /**
-     * 新建空白项目（Codex「新建空白项目」）：在受控根 projectsRoot 下建目录并 git init。
+     * 新建空白项目：在受控根 projectsRoot 下建目录并 git init。
      * 目录名即项目名——只允许安全字符，物理上杜绝路径逃逸。
      */
     @Transactional

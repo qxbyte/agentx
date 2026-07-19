@@ -16,8 +16,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Configuration
 public class ChatMemoryConfig {
 
-    /** 模型上下文窗口：完整对话轮驱逐，保留 system 消息（Spring AI 默认语义）。 */
-    private static final int MEMORY_WINDOW = 20;
+    /**
+     * 消息数硬上限（兜底护栏，非主策略）：上下文实际由 ModelMemoryService 按
+     * token 预算裁剪 + 滚动压缩管理，此处放大到极端兜底值——若仍触发（约百轮
+     * 无压缩），说明压缩链路故障，按整轮驱逐止损。
+     */
+    private static final int MEMORY_WINDOW = 200;
 
     @Bean
     public ChatMemory chatMemory(JdbcTemplate jdbcTemplate) {

@@ -15,9 +15,8 @@ import java.util.stream.Stream;
 
 /**
  * Skill L3 资源（references/ scripts/ assets/…）：清单公告 + 沙箱读取。
- * 对标 Claude Code 的渐进式披露第三层——Claude Code 靠模型自带的 Read 工具 +
- * 基准目录公告实现;AgentX 的聊天模型没有通用文件读取手,此处提供限定在
- * 技能目录内的等价能力（readSkillFile 工具的实现）。
+ * 渐进式披露第三层：聊天模型没有通用文件读取手,此处提供限定在
+ * 技能目录内的受控读取能力（readSkillFile 工具的实现）。
  */
 @Slf4j
 @Service
@@ -108,7 +107,7 @@ public class SkillResourceService {
 
     /**
      * 资源清单公告文本（附在技能 body 之后;无资源返回空串）。
-     * 含基准目录绝对路径（对标 Claude Code 的 "Base directory for this skill"）——
+     * 含基准目录绝对路径——
      * AgentX 全本地运行,模型据此可用 runShell 执行技能的 scripts/（走审批）。
      */
     public String resourcesNote(String name) {

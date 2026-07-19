@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 任务清单工具：逐字移植 Claude Code TodoWrite（工具名保持 updatePlan 以兼容既有链路，
- * 描述/校验/返回值均与 CC 2.1.177 原文对齐——描述含全部正反示例，校验仅查
- * content/activeForm 非空与状态合法，不硬拦 in_progress 数量，交由描述约束）。
+ * 任务清单工具（updatePlan）：模型把复杂任务拆成结构化清单并随执行推进状态。
+ * 描述内置完整使用指南与正反示例；校验仅查 content/activeForm 非空与状态合法，
+ * 不硬拦 in_progress 数量，交由描述约束。
  * 工具本体只做校验——清单数据经由 SSE tool-call 帧的 args 直达前端渲染，
  * 并由 ChatStreamService 在 onToolCall 时回写会话 plan_state 持久化。
  */

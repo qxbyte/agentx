@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 /**
  * 插件安装/启停/卸载。安装副本落 cache/&lt;marketplace&gt;/&lt;plugin&gt;/&lt;version&gt;/
- * （对齐 Claude Code 三级布局）;拷贝跳过 .git 与符号链接。
+ * ;拷贝跳过 .git 与符号链接。
  */
 @Slf4j
 @Service
@@ -78,7 +78,7 @@ public class PluginService {
             throw new BizException(ErrorCode.BAD_REQUEST, "插件源目录不存在: " + sourceDir);
         }
 
-        // 版本优先级:plugin.json > marketplace 条目 > unknown(对齐 Claude Code 实测)
+        // 版本优先级:plugin.json > marketplace 条目 > unknown
         String version = manifests.readPluginMeta(sourceDir)
                 .map(ManifestReader.PluginMeta::version)
                 .filter(v -> !v.isBlank())
@@ -203,7 +203,7 @@ public class PluginService {
     }
 
     /**
-     * 解析插件 .mcp.json（Claude Code 同款:mcpServers 映射,command/args/env → STDIO,
+     * 解析插件 .mcp.json（mcpServers 映射,command/args/env → STDIO,
      * url/headers → STREAMABLE_HTTP）→ 命名空间化的 MCP 规格。
      */
     private List<PluginMcpRegistry.PluginMcpSpec> parseMcpServers(InstalledPlugin plugin) {
@@ -237,8 +237,8 @@ public class PluginService {
     }
 
     /**
-     * 解析插件 agents/*.md（Claude Code 子代理定义:frontmatter description + body 即
-     * system prompt）→ 命名空间化的 Agent 规格。model/tools 等 Claude 专属字段忽略。
+     * 解析插件 agents/*.md（子代理定义:frontmatter description + body 即
+     * system prompt）→ 命名空间化的 Agent 规格。model/tools 等未使用字段忽略。
      */
     private List<PluginAgentRegistry.PluginAgentSpec> parseAgents(InstalledPlugin plugin) {
         Path dir = Path.of(plugin.installPath()).resolve("agents");

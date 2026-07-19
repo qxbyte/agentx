@@ -4,7 +4,7 @@ interface ShellOutputProps {
   output?: string
 }
 
-/** 终端风格输出块（对标 Codex 桌面版）：命令 + 深色等宽输出区。 */
+/** 终端风格输出块：命令 + 深色等宽输出区。 */
 export default function ShellOutput({ command, output }: ShellOutputProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#2b2b30]">

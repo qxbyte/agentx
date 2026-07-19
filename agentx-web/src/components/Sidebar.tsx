@@ -54,6 +54,7 @@ import { extractErrorMessage } from '../api/http'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
+import Hint from '@/components/ui/hint'
 import type { Conversation, Workspace } from '../types'
 import { useKbOptions } from './coding/useKbOptions'
 import WorkspaceFormDialog from './coding/WorkspaceFormDialog'
@@ -387,13 +388,13 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
       </nav>
 
       <div className="ax-conv-list ax-scroll">
-        {/* 项目分组（ChatGPT Projects 式）：标题行 + 新建；行悬停出「新建对话 / 更多」 */}
+        {/* 项目分组：标题行 + 新建；行悬停出「新建对话 / 更多」 */}
         <div className="ax-conv-section flex items-center justify-between">
           <span>项目</span>
+          <Hint text="新建项目">
           <button
             type="button"
             aria-label="新建项目"
-            title="新建项目"
             className="flex size-5 items-center justify-center rounded-full text-[var(--ax-text-secondary)] transition-colors hover:bg-[var(--ax-sidebar-hover)] hover:text-foreground"
             onClick={() => {
               setEditingProject(null)
@@ -402,6 +403,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
           >
             <Plus className="size-3.5" />
           </button>
+          </Hint>
         </div>
         {projects.length === 0 ? (
           <div className="ax-conv-empty">没有项目</div>
@@ -411,7 +413,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
             const collapsed = collapsedIds.has(p.id)
             return (
               <div key={p.id} className="mb-1">
-                {/* 悬浮项目行 → 右侧信息卡（Codex 式）；点击行 = 展开/收起目录；
+                {/* 悬浮项目行 → 右侧信息卡；点击行 = 展开/收起目录；
                     操作菜单打开时信息卡强制隐藏 */}
                 <Tooltip {...(projMenuOpenId === p.id ? { open: false } : {})}>
                   <TooltipTrigger asChild>
@@ -430,15 +432,16 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
                         className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={stop}
                       >
-                        <button
-                          type="button"
-                          className="ax-icon-btn !h-6 !w-6"
-                          aria-label="在项目中新建对话"
-                          title="在项目中新建对话"
-                          onClick={() => openProject(p)}
-                        >
-                          <SquarePen className="size-3.5" />
-                        </button>
+                        <Hint text="在项目中新建对话">
+                          <button
+                            type="button"
+                            className="ax-icon-btn !h-6 !w-6"
+                            aria-label="在项目中新建对话"
+                            onClick={() => openProject(p)}
+                          >
+                            <SquarePen className="size-3.5" />
+                          </button>
+                        </Hint>
                         <DropdownMenu
                           onOpenChange={(open) => setProjMenuOpenId(open ? p.id : null)}
                         >
@@ -518,7 +521,7 @@ export default function Sidebar({ hidden = false, style, onCollapse, onNavigate 
         {ungrouped.map(renderConv)}
       </div>
 
-      {/* 用户菜单：点击用户弹出（用户信息 / 设置 / 退出登录），ChatGPT 式 */}
+      {/* 用户菜单：点击用户弹出（用户信息 / 设置 / 退出登录） */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" className="ax-sidebar-footer w-full cursor-pointer text-left transition-colors hover:bg-[var(--ax-sidebar-hover)]">
