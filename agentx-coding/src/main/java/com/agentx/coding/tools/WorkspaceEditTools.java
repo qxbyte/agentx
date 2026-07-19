@@ -21,6 +21,9 @@ public class WorkspaceEditTools {
     public String writeFile(
             @ToolParam(description = "相对工作区根的文件路径") String path,
             @ToolParam(description = "文件完整内容") String content,
+            @ToolParam(required = false,
+                    description = "一句话说明本次写入在做什么（中文，呈现给用户，如「新增登录表单组件」）")
+            String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
         Path file = sandbox.resolve(path);
@@ -38,6 +41,9 @@ public class WorkspaceEditTools {
     @Tool(description = "对工作区内文件应用 unified diff 补丁（精确编辑，支持多 hunk）。危险操作，可能需要审批")
     public String applyPatch(
             @ToolParam(description = "unified diff 文本（--- a/ +++ b/ @@ 格式）") String unifiedDiff,
+            @ToolParam(required = false,
+                    description = "一句话说明本次修改在做什么（中文，呈现给用户，如「修复空指针判断」）")
+            String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
         List<UnifiedDiff.FilePatch> patches;

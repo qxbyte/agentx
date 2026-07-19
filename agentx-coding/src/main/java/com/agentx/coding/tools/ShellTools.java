@@ -45,6 +45,9 @@ public class ShellTools {
     @Tool(description = "在工作区根目录执行 shell 命令（如构建、测试、git），返回 exit code 与输出。危险操作，可能需要审批")
     public String runShell(
             @ToolParam(description = "要执行的完整 shell 命令") String command,
+            @ToolParam(required = false,
+                    description = "一句话说明这条命令在做什么（中文，呈现给用户，如「运行测试」「安装依赖」）")
+            String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.sandboxOf(toolContext);
         if (command == null || command.isBlank()) {
