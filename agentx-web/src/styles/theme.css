@@ -18,19 +18,25 @@
   --card-foreground: #0d0d0d;
   --popover: #ffffff;
   --popover-foreground: #0d0d0d;
-  --primary: #0d0d0d;
+  /* iOS 系统色：主按钮蓝 / 危险红 / 次级浅灰填充 / 开关绿 */
+  --primary: #007aff;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f4;
+  --secondary: #e9e9eb;
   --secondary-foreground: #0d0d0d;
   --muted: #f9f9f9;
   --muted-foreground: #6e6e80;
   --accent: #ececec;
   --accent-foreground: #0d0d0d;
-  --destructive: #c14444;
+  --destructive: #ff3b30;
   --destructive-foreground: #ffffff;
   --border: #e5e5e5;
-  --input: #d5d5d5;
-  --ring: #8f8f8f;
+  --input: #e4e4e6;
+  --ring: #007aff;
+  /* 开关开启态（iOS 绿，独立于 primary，避免开关跟着按钮变蓝） */
+  --switch-on: #34c759;
+  /* 提示气泡：独立深色 token（不复用 primary，否则会跟着按钮变蓝） */
+  --tooltip: #1c1c1e;
+  --tooltip-foreground: #f5f5f7;
 
   /* 扩展表面（非 shadcn 标准，供卡片布局/侧栏/代码块复用） */
   --canvas: #ececee;
@@ -59,19 +65,23 @@
   --card-foreground: #ececec;
   --popover: #26262a;
   --popover-foreground: #ececec;
-  --primary: #ececec;
-  --primary-foreground: #141416;
-  --secondary: #2f2f33;
+  /* iOS 系统色·暗色变体 */
+  --primary: #0a84ff;
+  --primary-foreground: #ffffff;
+  --secondary: #2c2c2e;
   --secondary-foreground: #ececec;
   --muted: #2a2a2e;
   --muted-foreground: #a6a6b3;
   --accent: #2f2f33;
   --accent-foreground: #ececec;
-  --destructive: #e06c6c;
-  --destructive-foreground: #141416;
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
   --border: #3a3a3f;
-  --input: #4a4a51;
-  --ring: #7a7a85;
+  --input: #48484a;
+  --ring: #0a84ff;
+  --switch-on: #30d158;
+  --tooltip: #48484a;
+  --tooltip-foreground: #ffffff;
 
   --canvas: #141416;
   --sidebar: #1a1a1c;
@@ -104,6 +114,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-tooltip: var(--tooltip);
+  --color-tooltip-foreground: var(--tooltip-foreground);
 
   --color-canvas: var(--canvas);
   --color-sidebar: var(--sidebar);

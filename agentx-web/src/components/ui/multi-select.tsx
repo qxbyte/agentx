@@ -16,6 +16,9 @@ interface MultiSelectProps {
   placeholder?: string
   /** 已选项标签渲染（默认取 option.label；列表外的值回退为原值） */
   renderTag?: (value: string) => string
+  /** 弹层展开方向：贴近弹窗底部的字段用 'top' 向上展开，避免被弹窗底边裁掉
+      （portalled=false 就地渲染不会自动翻转，需显式指定） */
+  side?: 'top' | 'bottom'
 }
 
 /** 轻量多选：触发器展示已选 Badge，弹层内搜索 + 复选。替代 antd Select mode="multiple"。 */
@@ -25,6 +28,7 @@ export function MultiSelect({
   onChange,
   placeholder = '请选择',
   renderTag,
+  side = 'bottom',
 }: MultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -72,7 +76,12 @@ export function MultiSelect({
           <ChevronDown className="size-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent portalled={false} align="start" className="w-(--radix-popover-trigger-width) p-0">
+      <PopoverContent
+        portalled={false}
+        side={side}
+        align="start"
+        className="w-(--radix-popover-trigger-width) p-0"
+      >
         <div className="border-b border-border p-2">
           <input
             className="h-8 w-full rounded-lg bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"

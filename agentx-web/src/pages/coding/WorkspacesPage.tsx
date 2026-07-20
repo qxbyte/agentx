@@ -136,7 +136,7 @@ export default function WorkspacesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-7"
+                    className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                     aria-label="编辑"
                     onClick={(e) => openEdit(ws, e)}
                   >

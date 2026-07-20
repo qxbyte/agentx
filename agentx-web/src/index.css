@@ -21,6 +21,9 @@
   --ax-border-subtle: #ececec;
   /* 交互态加深边框（输入框 hover / 按钮 hover） */
   --ax-border-strong: #c4c4c4;
+  /* 输入框聚焦：边框加深到近墨色 + 一圈低透明度柔和光晕（借鉴 pronto，替代粗黑 outline） */
+  --ax-focus-border: #1f1f23;
+  --ax-focus-ring: rgb(13 13 13 / 8%);
   --ax-border-hover: #cfcfcf;
   --ax-hairline: rgba(0, 0, 0, 0.08);
   /* 弱交互底色（行 hover / 按钮 hover / 图标按钮） */
@@ -40,9 +43,14 @@
 
   --ax-success: #10a37f;
   --ax-warning: #b45309;
-  --ax-danger: #c14444;
-  --ax-danger-bg: #fbf3f2;
-  --ax-danger-border: #efd7d5;
+  --ax-danger: #ff3b30;
+  --ax-danger-bg: #fdf0ef;
+  --ax-danger-border: #f6d4d1;
+  /* iOS 蓝（发送等主操作按钮；与 theme.css --primary 同值同步） */
+  --ax-ios-blue: #007aff;
+  --ax-ios-blue-strong: #0063cc;
+  /* iOS 橙（测试/连接类操作图标，与编辑蓝区分） */
+  --ax-ios-orange: #ff9500;
   --ax-star: #d9a410;
 
   /* 状态色三件套（标签/徽章/状态点） */
@@ -120,6 +128,8 @@ html.dark {
   --ax-border: #3a3a3f;
   --ax-border-subtle: #2e2e33;
   --ax-border-strong: #55555c;
+  --ax-focus-border: #d4d4d8;
+  --ax-focus-ring: rgb(236 236 241 / 18%);
   --ax-border-hover: #4a4a51;
   --ax-hairline: rgba(255, 255, 255, 0.08);
   --ax-hover-weak: rgba(255, 255, 255, 0.04);
@@ -136,9 +146,12 @@ html.dark {
 
   --ax-success: #2fbf96;
   --ax-warning: #dfa04b;
-  --ax-danger: #e06c6c;
-  --ax-danger-bg: #372525;
-  --ax-danger-border: #5a3838;
+  --ax-danger: #ff453a;
+  --ax-danger-bg: #3a2422;
+  --ax-danger-border: #5e3733;
+  --ax-ios-blue: #0a84ff;
+  --ax-ios-blue-strong: #0970dd;
+  --ax-ios-orange: #ff9f0a;
   --ax-star: #e3b341;
 
   --ax-info-text: #8fb3f0;
@@ -1506,6 +1519,17 @@ button:focus-visible,
   --tw-ring-offset-shadow: 0 0 #0000 !important;
 }
 
+/* 输入类控件统一聚焦样式（借鉴 pronto）：去粗黑 outline，改「近墨细边 + 3px 柔光晕」。
+   覆盖原生控件与未走 Input/Textarea 组件的裸 input（搜索框等）。 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable='true']:focus-visible {
+  outline: none;
+  border-color: var(--ax-focus-border);
+  box-shadow: 0 0 0 3px var(--ax-focus-ring);
+}
+
 /* ============================================================
    弹层通用弹出动画（复用层）：从触发点由小放大 + 回弹（macOS 展开质感）。
    用法：内容元素挂 .ax-pop + 对应原点变体（transform-origin 取
@@ -1702,10 +1726,11 @@ button:focus-visible,
   border: 1px solid var(--ax-border);
   border-radius: 24px;
   background: var(--ax-surface);
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .ax-composer:focus-within {
-  border-color: var(--ax-border-strong);
+  border-color: var(--ax-focus-border);
+  box-shadow: 0 0 0 3px var(--ax-focus-ring);
 }
 .ax-composer textarea {
   flex: 1;
@@ -1733,14 +1758,14 @@ button:focus-visible,
   justify-content: center;
   border: none;
   border-radius: 999px;
-  background: var(--ax-primary);
-  color: var(--ax-on-primary);
+  background: var(--ax-ios-blue);
+  color: #ffffff;
   font-size: 15px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .ax-send-btn:hover {
-  background: var(--ax-primary-strong);
+  background: var(--ax-ios-blue-strong);
 }
 .ax-send-btn:disabled {
   background: var(--ax-border);
@@ -2461,6 +2486,21 @@ button:focus-visible,
 .ax-toast > * {
   position: relative;
   z-index: 1;
+}
+/* 按类型分色（标题与图标同步着色；描述文字保持次级灰不受影响）：
+   普通提醒=iOS 蓝 / 成功=绿 / 失败=红 / 警告=琥珀。默认 toast 保持中性 foreground。
+   属性双选择器特异性(0,2,0)覆盖 toast 类上的 text-foreground(0,1,0)。 */
+[data-sonner-toast][data-type='info'] {
+  color: var(--ax-ios-blue);
+}
+[data-sonner-toast][data-type='success'] {
+  color: var(--ax-success);
+}
+[data-sonner-toast][data-type='warning'] {
+  color: var(--ax-warning);
+}
+[data-sonner-toast][data-type='error'] {
+  color: var(--ax-danger);
 }
 /* 暗色玻璃：深色半透渐变 + 白色发丝改弱 + 投影加重（黑底上白玻璃会刺眼） */
 html.dark .ax-toast {

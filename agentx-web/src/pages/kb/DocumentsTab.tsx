@@ -261,7 +261,7 @@ export default function DocumentsTab({ kbId }: { kbId: string }) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-7"
+                            className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                             onClick={() => void handleReingest(doc)}
                           >
                             <RotateCw className="size-4" />

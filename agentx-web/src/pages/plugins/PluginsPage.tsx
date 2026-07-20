@@ -201,7 +201,7 @@ export default function PluginsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 shrink-0"
+                  className="size-7 shrink-0 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                   disabled={updating === `mp:${mp.name}`}
                   onClick={() => void handleUpdateMarketplace(mp.name)}
                 >
@@ -271,7 +271,7 @@ export default function PluginsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="size-7"
+                                  className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                                   disabled={updating === id}
                                   onClick={() => void handleUpdatePlugin(id)}
                                 >

@@ -395,7 +395,7 @@ export default function AgentsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7"
+                          className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                           disabled={agent.source === 'PLUGIN'}
                           onClick={() => openEdit(agent)}
                         >
@@ -516,6 +516,7 @@ export default function AgentsPage() {
                 value={form.kbIds}
                 onChange={(v) => patch({ kbIds: v })}
                 placeholder="选择该 Agent 可检索的知识库"
+                side="top"
               />
             </div>
             <div className="flex items-center gap-2">

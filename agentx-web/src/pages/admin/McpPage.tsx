@@ -325,7 +325,7 @@ export default function McpPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7"
+                          className="size-7 text-[var(--ax-ios-orange)] hover:text-[var(--ax-ios-orange)]"
                           disabled={testingId === record.id}
                           onClick={() => void handleTest(record)}
                         >
@@ -341,7 +341,7 @@ export default function McpPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7"
+                      className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                       onClick={() => openEdit(record)}
                     >
                       <Pencil className="size-4" />

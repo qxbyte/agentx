@@ -183,7 +183,7 @@ export default function KbListPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-7"
+                    className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]"
                     aria-label="编辑知识库"
                     onClick={(e) => openEdit(kb, e)}
                   >

@@ -15,7 +15,8 @@ const TooltipContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'ax-pop ax-pop--tooltip z-50 overflow-hidden rounded-lg bg-primary px-2.5 py-1 text-xs text-primary-foreground shadow-md',
+        // 深色圆角气泡（独立 tooltip token，不复用 primary——否则会跟随按钮变 iOS 蓝）
+        'ax-pop ax-pop--tooltip z-50 overflow-hidden rounded-lg bg-tooltip px-2.5 py-1 text-xs text-tooltip-foreground shadow-md',
         className,
       )}
       {...props}

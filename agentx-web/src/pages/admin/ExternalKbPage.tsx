@@ -266,7 +266,7 @@ export default function ExternalKbPage() {
                   <div className="flex items-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-7"
+                        <Button variant="ghost" size="icon" className="size-7 text-[var(--ax-ios-orange)] hover:text-[var(--ax-ios-orange)]"
                           disabled={testingId === kb.id} onClick={() => void handleTest(kb)}>
                           {testingId === kb.id
                             ? <Loader2 className="size-4 animate-spin" />
@@ -275,7 +275,7 @@ export default function ExternalKbPage() {
                       </TooltipTrigger>
                       <TooltipContent>测试连接（心跳 + 库信息 + 索引状态）</TooltipContent>
                     </Tooltip>
-                    <Button variant="ghost" size="icon" className="size-7" onClick={() => openEdit(kb)}>
+                    <Button variant="ghost" size="icon" className="size-7 text-[var(--ax-ios-blue)] hover:text-[var(--ax-ios-blue)]" onClick={() => openEdit(kb)}>
                       <Pencil className="size-4" />
                     </Button>
                     <Button variant="ghost" size="icon"
