@@ -345,7 +345,7 @@ export default function ChatInput({ streaming, disabled = false, onSend, onStop 
         onCompositionEnd={() => {
           composingRef.current = false
         }}
-        className="max-h-[200px] min-h-[52px] w-full resize-none bg-transparent px-4 pt-3 text-[14px] leading-relaxed text-foreground !outline-none focus:!outline-none focus-visible:!outline-none placeholder:text-[var(--ax-text-faint)]"
+        className="max-h-[200px] min-h-[52px] w-full resize-none bg-transparent px-4 pt-3 text-[14px] leading-relaxed text-foreground !outline-none !shadow-none focus:!outline-none focus:!shadow-none focus-visible:!outline-none focus-visible:!shadow-none placeholder:text-[var(--ax-text-faint)]"
       />
 
       <div className="flex items-center gap-2 px-2.5 pb-2.5 pt-1">
