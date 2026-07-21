@@ -9,6 +9,7 @@ import AgentsPage from './pages/admin/AgentsPage'
 import ExternalKbPage from './pages/admin/ExternalKbPage'
 import McpPage from './pages/admin/McpPage'
 import ModelsPage from './pages/admin/ModelsPage'
+import ProxyPage from './pages/admin/ProxyPage'
 import StatsPage from './pages/admin/StatsPage'
 import ToolsPage from './pages/admin/ToolsPage'
 import UsersPage from './pages/admin/UsersPage'
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="tools" element={<ToolsPage />} />
                 <Route path="agents" element={<AgentsPage />} />
                 <Route path="external-kbs" element={<ExternalKbPage />} />
+                <Route path="proxy" element={<ProxyPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="stats" element={<StatsPage />} />
                 <Route path="*" element={<Navigate to="models" replace />} />
