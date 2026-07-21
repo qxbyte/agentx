@@ -95,16 +95,6 @@ mvn -pl agentx-mcp-server spring-boot:run
 
 > 修改共享模块代码后需 `mvn install` 再重启 server——`spring-boot:run -pl agentx-server` 从本地仓库解析兄弟模块，仅 `compile` 不会生效。
 
-### Docker 部署
-
-```bash
-cp .env.example .env    # 必填 AGENTX_JWT_SECRET 与 AGENTX_MASTER_KEY（openssl rand -base64 32）
-docker compose up -d --build
-# web :80 · server :8080 · mcp-server 模板 :8090 · postgres(pgvector)
-```
-
-注意：容器化部署会失去「本地 app」特性（原生目录选择器、读写宿主机文件、技能脚本执行受限于容器文件系统）。
-
 ### 测试
 
 ```bash
