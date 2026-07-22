@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useChatStore } from '../stores/chat'
 import type {
   ChatMessage,
+  MessageBlock,
   QuestionAnswer,
   QuestionItem,
   QuestionSpec,
@@ -88,22 +89,36 @@ function MessageItem({ message }: MessageItemProps) {
 
   // ASSISTANT
   const streaming = message.streaming === true
-  // updatePlan 由输入框上方的计划面板独立呈现；文件生成用专属文件卡片；
-  // askUserQuestion 用专属提问卡（实时经 SSE 帧，历史从 toolCalls 重建）
+  // updatePlan 不进 blocks（计划面板）；文件生成/提问工具进 blocks 但分流到专属卡片
   const FILE_TOOLS = ['generateDocument', 'generateSpreadsheet']
-  const allCalls = message.toolCalls ?? []
-  const fileCalls = allCalls.filter((c) => FILE_TOOLS.includes(c.name))
-  const toolCalls = allCalls.filter(
-    (c) => c.name !== 'updatePlan' && c.name !== 'askUserQuestion' && !FILE_TOOLS.includes(c.name),
-  )
-  // 提问卡数据源：流式期间用 message.questions（SSE 帧驱动）；
-  // 历史消息（刷新后）从 askUserQuestion 的 toolCalls 记录重建终态卡
+  const blocks = message.blocks ?? []
+  const toolBlocks = blocks.filter((b): b is Extract<MessageBlock, { type: 'tool' }> => b.type === 'tool')
+  const fileCalls = toolBlocks.filter((c) => FILE_TOOLS.includes(c.name))
+
+  // 交替时间线：reasoning 段与「连续工具调用」组按真实顺序排列（专属卡工具跳过不断组）
+  type Segment =
+    | { key: string; kind: 'reasoning'; text: string }
+    | { key: string; kind: 'tools'; calls: ToolCallInfo[] }
+  const segments: Segment[] = []
+  for (const b of blocks) {
+    if (b.type === 'reasoning') {
+      segments.push({ key: `r-${segments.length}`, kind: 'reasoning', text: b.text })
+    } else {
+      if (b.name === 'askUserQuestion' || FILE_TOOLS.includes(b.name)) continue
+      const last = segments[segments.length - 1]
+      if (last?.kind === 'tools') {
+        last.calls.push(b)
+      } else {
+        segments.push({ key: `t-${segments.length}`, kind: 'tools', calls: [b] })
+      }
+    }
+  }
+
   const liveQuestions = message.questions ?? []
   const historyQuestions =
     liveQuestions.length > 0
       ? []
-      : allCalls
-          // 仅重建已完成的调用：执行中（result 未至）的提问卡由 question-request 帧实时渲染
+      : toolBlocks
           .filter((c) => c.name === 'askUserQuestion' && c.result !== undefined)
           .map(toHistoryQuestion)
           .filter((q): q is QuestionItem => q !== null)
@@ -116,13 +131,17 @@ function MessageItem({ message }: MessageItemProps) {
         <Logo size={28} />
       </div>
       <div className="ax-assistant-body">
-        {message.reasoningContent ? (
-          <ReasoningBlock
-            content={message.reasoningContent}
-            streaming={streaming && message.content === ''}
-          />
-        ) : null}
-        <ToolCallGroup calls={toolCalls} />
+        {segments.map((seg, i) =>
+          seg.kind === 'reasoning' ? (
+            <ReasoningBlock
+              key={seg.key}
+              content={seg.text}
+              streaming={streaming && i === segments.length - 1 && message.content === ''}
+            />
+          ) : (
+            <ToolCallGroup key={seg.key} calls={seg.calls} />
+          ),
+        )}
         {fileCalls.map((c) => (
           <FileCard key={c.id} call={c} />
         ))}

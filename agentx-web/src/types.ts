@@ -106,6 +106,11 @@ export interface ToolCallInfo {
   preview?: ApprovalPreview
 }
 
+/** 消息本体的有序 block（对齐 Claude transcript：渲染即回放） */
+export type MessageBlock =
+  | { type: 'reasoning'; text: string }
+  | ({ type: 'tool' } & ToolCallInfo)
+
 export interface TokenUsage {
   promptTokens: number
   completionTokens: number
@@ -323,8 +328,8 @@ export interface ChatMessage {
   id: string
   role: MessageRole
   content: string
-  reasoningContent?: string | null
-  toolCalls?: ToolCallInfo[] | null
+  /** 有序 blocks：思考/工具按真实发生顺序（服务端为 JSON 字符串，normalizeMessage 解析） */
+  blocks?: MessageBlock[] | null
   ragSources?: RagSource[] | null
   tokenUsage?: TokenUsage | null
   /** 用户消息附件元数据（服务端为 JSON 字符串，normalizeMessage 解析为数组） */

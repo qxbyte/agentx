@@ -204,7 +204,7 @@ function parsePlanState(raw: unknown): PlanState | null {
 function normalizeMessage(m: ChatMessage): ChatMessage {
   return {
     ...m,
-    toolCalls: parseJsonField(m.toolCalls),
+    blocks: parseJsonField(m.blocks),
     ragSources: parseJsonField(m.ragSources),
     tokenUsage: parseJsonField(m.tokenUsage),
     attachments: parseJsonField(m.attachments),
@@ -544,8 +544,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       id: assistantId,
       role: 'ASSISTANT',
       content: '',
-      reasoningContent: '',
-      toolCalls: [],
+      blocks: [],
       ragSources: null,
       streaming: true,
     }
@@ -620,10 +619,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
           patchAssistant((m) => ({ ...m, content: m.content + event.delta }))
           break
         case 'reasoning':
-          patchAssistant((m) => ({
-            ...m,
-            reasoningContent: (m.reasoningContent ?? '') + event.delta,
-          }))
+          patchAssistant((m) => {
+            const blocks = [...(m.blocks ?? [])]
+            const last = blocks[blocks.length - 1]
+            if (last?.type === 'reasoning') {
+              blocks[blocks.length - 1] = { ...last, text: last.text + event.delta }
+            } else {
+              blocks.push({ type: 'reasoning', text: event.delta })
+            }
+            return { ...m, blocks }
+          })
           break
         case 'tool-call': {
           // 计划更新走独立面板（输入框上方），不进消息内工具卡
@@ -646,9 +651,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           patchAssistant((m) => ({
             ...m,
-            toolCalls: [
-              ...(m.toolCalls ?? []),
-              { id: event.id, name: event.name, args: event.args, done: false },
+            blocks: [
+              ...(m.blocks ?? []),
+              { type: 'tool', id: event.id, name: event.name, args: event.args,
+                kind: event.kind, done: false },
             ],
           }))
           break
@@ -656,8 +662,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         case 'tool-result':
           patchAssistant((m) => ({
             ...m,
-            toolCalls: (m.toolCalls ?? []).map((call) =>
-              call.id === event.id ? { ...call, result: event.result, done: true } : call,
+            blocks: (m.blocks ?? []).map((b) =>
+              b.type === 'tool' && b.id === event.id
+                ? { ...b, result: event.result, done: true }
+                : b,
             ),
           }))
           break

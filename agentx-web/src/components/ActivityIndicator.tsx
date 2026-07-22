@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolCallInfo } from '../types'
+import type { ChatMessage, MessageBlock, ToolCallInfo } from '../types'
 
 /** 工具名 → 活动文案：流式过程中告诉用户"正在做什么"，而非通用转圈 */
 const TOOL_ACTIVITY: Record<string, string> = {
@@ -24,11 +24,14 @@ function isFinished(c: ToolCallInfo): boolean {
 /** 从消息实时状态推导当前活动文案 */
 export function activityLabel(message: ChatMessage): string {
   if (message.approvals?.some((a) => a.status === 'pending')) return '等待你的审批'
-  const running = (message.toolCalls ?? []).filter((c) => !isFinished(c))
+  const toolBlocks = (message.blocks ?? []).filter(
+    (b): b is Extract<MessageBlock, { type: 'tool' }> => b.type === 'tool',
+  )
+  const running = toolBlocks.filter((c) => !isFinished(c))
   const last = running[running.length - 1]
   if (last) return TOOL_ACTIVITY[last.name] ?? `正在调用 ${last.name}`
   if (message.content) return '正在生成回复'
-  if (message.reasoningContent) return '正在思考'
+  if (message.blocks?.some((b) => b.type === 'reasoning')) return '正在思考'
   return '正在处理'
 }
 
