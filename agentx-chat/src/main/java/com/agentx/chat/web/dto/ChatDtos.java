@@ -25,12 +25,12 @@ public final class ChatDtos {
         }
     }
 
-    public record MessageView(UUID id, MessageRole role, String content, String reasoningContent,
-                              String toolCalls, String ragSources, String tokenUsage,
+    public record MessageView(UUID id, MessageRole role, String content, String blocks,
+                              String ragSources, String tokenUsage,
                               String attachments, Instant createdAt) {
         public static MessageView of(ChatMessage m) {
-            return new MessageView(m.getId(), m.getRole(), m.getContent(), m.getReasoningContent(),
-                    m.getToolCalls(), m.getRagSources(), m.getTokenUsage(),
+            return new MessageView(m.getId(), m.getRole(), m.getContent(), m.getBlocks(),
+                    m.getRagSources(), m.getTokenUsage(),
                     m.getAttachments(), m.getCreatedAt());
         }
     }

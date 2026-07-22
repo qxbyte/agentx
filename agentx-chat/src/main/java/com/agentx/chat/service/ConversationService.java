@@ -216,7 +216,7 @@ public class ConversationService {
                     m.getModelContent() != null ? m.getModelContent() : m.getContent());
             case ASSISTANT -> {
                 String text = m.getContent() == null ? "" : m.getContent().strip();
-                String summary = toolSummaryOf(m.getToolCalls());
+                String summary = toolSummaryOf(m.getBlocks());
                 if (text.isEmpty() && summary.isEmpty()) {
                     yield null;
                 }
@@ -227,15 +227,16 @@ public class ConversationService {
         };
     }
 
-    /** toolCalls JSON → 一行摘要；解析失败按无摘要处理（旧数据/脏数据不阻塞重建）。 */
-    private String toolSummaryOf(String toolCallsJson) {
-        if (toolCallsJson == null || toolCallsJson.isBlank()) {
+    /** blocks JSON → 工具轨迹一行摘要；解析失败按无摘要处理（脏数据不阻塞重建）。 */
+    private String toolSummaryOf(String blocksJson) {
+        if (blocksJson == null || blocksJson.isBlank()) {
             return "";
         }
         try {
-            List<java.util.Map<String, Object>> records = objectMapper.readValue(toolCallsJson,
+            List<java.util.Map<String, Object>> blocks = objectMapper.readValue(blocksJson,
                     new tools.jackson.core.type.TypeReference<List<java.util.Map<String, Object>>>() {});
-            return com.agentx.chat.service.memory.ToolTraceSummary.of(records);
+            return com.agentx.chat.service.memory.ToolTraceSummary.of(blocks.stream()
+                    .filter(b -> "tool".equals(b.get("type"))).toList());
         } catch (RuntimeException e) {
             return "";
         }

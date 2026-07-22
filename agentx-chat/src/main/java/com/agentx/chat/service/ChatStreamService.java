@@ -329,14 +329,19 @@ public class ChatStreamService {
         @Override
         public void onToolCall(String callId, String toolName, String argsJson, String kind,
                                java.util.Map<String, Object> preview) {
-            aggregator.recordToolCall(callId, toolName, argsJson);
-            if (PLAN_TOOL.equals(toolName) && argsJson != null && !argsJson.isBlank()) {
-                try {
-                    conversationService.updatePlanState(conversationId, argsJson);
-                } catch (RuntimeException e) {
-                    log.warn("计划状态回写失败 conversation={}: {}", conversationId, e.getMessage());
+            if (PLAN_TOOL.equals(toolName)) {
+                // 计划是交互编排不是事实操作：只回写会话计划态+发帧，不进 blocks
+                if (argsJson != null && !argsJson.isBlank()) {
+                    try {
+                        conversationService.updatePlanState(conversationId, argsJson);
+                    } catch (RuntimeException e) {
+                        log.warn("计划状态回写失败 conversation={}: {}", conversationId, e.getMessage());
+                    }
                 }
+                sender.send(SseEvent.toolCall(callId, toolName, argsJson, kind, preview));
+                return;
             }
+            aggregator.recordToolCall(callId, toolName, argsJson, kind);
             sender.send(SseEvent.toolCall(callId, toolName, argsJson, kind, preview));
         }
 
@@ -384,13 +389,11 @@ public class ChatStreamService {
         /** 入忆版用户文本（附件占位/skill 展开后）：与业务轨 content 双轨并存 */
         private final String memoryUserText;
         private final StringBuilder content = new StringBuilder();
-        private final StringBuilder reasoning = new StringBuilder();
+        private final BlockAssembler blockAssembler = new BlockAssembler();
         private final long startedAt = System.currentTimeMillis();
         private long promptTokens;
         private long completionTokens;
         private String modelName = "";
-        private final java.util.List<Map<String, Object>> toolCallRecords =
-                java.util.Collections.synchronizedList(new java.util.ArrayList<>());
         private final java.util.List<Map<String, Object>> ragSources =
                 java.util.Collections.synchronizedList(new java.util.ArrayList<>());
 
@@ -416,18 +419,12 @@ public class ChatStreamService {
             this.memoryUserText = memoryUserText;
         }
 
-        void recordToolCall(String callId, String toolName, String argsJson) {
-            toolCallRecords.add(new java.util.LinkedHashMap<>(Map.of(
-                    "id", callId, "name", toolName, "args", argsJson == null ? "" : argsJson)));
+        void recordToolCall(String callId, String toolName, String argsJson, String kind) {
+            blockAssembler.recordToolCall(callId, toolName, argsJson, kind);
         }
 
         void recordToolResult(String callId, String result) {
-            synchronized (toolCallRecords) {
-                toolCallRecords.stream()
-                        .filter(r -> callId.equals(r.get("id")))
-                        .findFirst()
-                        .ifPresent(r -> r.put("result", result == null ? "" : result));
-            }
+            blockAssembler.recordToolResult(callId, result);
         }
 
         /** RetrievalAugmentationAdvisor 的 advisor context 键（字面量避免依赖 spring-ai-rag）。 */
@@ -481,7 +478,7 @@ public class ChatStreamService {
             var output = response.getResult().getOutput();
             if (output instanceof DeepSeekAssistantMessage dsm && dsm.getReasoningContent() != null
                     && !dsm.getReasoningContent().isEmpty()) {
-                reasoning.append(dsm.getReasoningContent());
+                blockAssembler.appendReasoning(dsm.getReasoningContent());
                 sender.send(SseEvent.reasoning(dsm.getReasoningContent()));
             }
             String delta = output.getText();
@@ -530,10 +527,7 @@ public class ChatStreamService {
          */
         private void recordMemory() {
             try {
-                List<Map<String, Object>> records;
-                synchronized (toolCallRecords) {
-                    records = List.copyOf(toolCallRecords);
-                }
+                List<Map<String, Object>> records = blockAssembler.toolRecords();
                 modelMemoryService.recordRound(conversation.getId(), memoryUserText,
                         content.toString(), ToolTraceSummary.of(records));
                 modelMemoryService.maybeCompactAsync(conversation.getId(),
@@ -549,9 +543,8 @@ public class ChatStreamService {
             assistant.setConversationId(conversation.getId());
             assistant.setRole(MessageRole.ASSISTANT);
             assistant.setContent(content.toString());
-            assistant.setReasoningContent(reasoning.isEmpty() ? null : reasoning.toString());
-            if (!toolCallRecords.isEmpty()) {
-                assistant.setToolCalls(objectMapper.writeValueAsString(toolCallRecords));
+            if (!blockAssembler.isEmpty()) {
+                assistant.setBlocks(objectMapper.writeValueAsString(blockAssembler.snapshot()));
             }
             if (!ragSources.isEmpty()) {
                 assistant.setRagSources(objectMapper.writeValueAsString(ragSources));

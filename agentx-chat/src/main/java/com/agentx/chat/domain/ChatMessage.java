@@ -31,12 +31,10 @@ public class ChatMessage {
     @Column(nullable = false)
     private String content = "";
 
-    @Column(name = "reasoning_content")
-    private String reasoningContent;
-
+    /** 有序 blocks（[{type:'reasoning',text}|{type:'tool',id,name,args,result,kind}]）：展示轨唯一真相源 */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "tool_calls", columnDefinition = "jsonb")
-    private String toolCalls;
+    @Column(columnDefinition = "jsonb")
+    private String blocks;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "rag_sources", columnDefinition = "jsonb")
