@@ -58,7 +58,7 @@ public class SseNotifyingToolCallback implements ToolCallback {
             return halt;
         }
         Map<String, Object> preview = previewProvider == null
-                ? null : previewProvider.previewOf(name, toolInput);
+                ? null : previewProvider.previewOf(name, toolInput, toolContext);
         sink.onToolCall(callId, name, toolInput, kind, preview);
         try {
             String result = toolContext == null

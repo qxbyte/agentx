@@ -1,5 +1,6 @@
 package com.agentx.infra.ai.stream;
 
+import org.springframework.ai.chat.model.ToolContext;
 import java.util.Map;
 
 /**
@@ -16,4 +17,10 @@ public interface ToolPreviewProvider {
 
     /** 由入参构建 tool-call 的结构化预览（diff/command 等）；无则返回 null。 */
     Map<String, Object> previewOf(String toolName, String argsJson);
+
+    /** 带执行上下文的预览重载：可读工作区现算增强预览（如 writeFile 的旧 vs 新 diff）。
+     *  默认降级到纯入参版；无沙箱语义的实现方无需感知。 */
+    default Map<String, Object> previewOf(String toolName, String argsJson, ToolContext toolContext) {
+        return previewOf(toolName, argsJson);
+    }
 }
