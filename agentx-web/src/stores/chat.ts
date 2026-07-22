@@ -654,7 +654,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             blocks: [
               ...(m.blocks ?? []),
               { type: 'tool', id: event.id, name: event.name, args: event.args,
-                kind: event.kind, done: false },
+                kind: event.kind, preview: event.preview, done: false },
             ],
           }))
           break

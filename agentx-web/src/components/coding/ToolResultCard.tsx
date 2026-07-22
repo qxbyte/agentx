@@ -39,9 +39,11 @@ const KIND_LABEL: Record<string, string> = {
 
 /** 编码工具调用卡：按 kind 分发到 DiffView / ShellOutput / 代码块。默认折叠。 */
 export default function ToolResultCard({ call }: { call: ToolCallInfo }) {
-  const [open, setOpen] = useState(call.kind === 'patch' || call.kind === 'shell')
+  const [open, setOpen] = useState(
+    call.kind === 'patch' || call.kind === 'shell' || call.kind === 'write' || call.name === 'applyPatch' || call.name === 'writeFile',
+  )
   const finished = call.done === true || call.result !== undefined
-  const kind = call.kind ?? 'generic'
+  const kind = call.kind ?? (call.name === 'applyPatch' ? 'patch' : call.name === 'writeFile' ? 'write' : 'generic')
 
   return (
     <div className="ax-toolcall">
@@ -79,6 +81,20 @@ export function ToolCallBody({ call, kind }: { call: ToolCallInfo; kind: string 
     case 'patch': {
       const diff = preview?.diff ?? argStr(call.args, 'unifiedDiff') ?? resultStr(call.result)
       return <DiffView diff={diff} />
+    }
+    case 'write': {
+      const diff = preview?.diff
+      const path = preview?.path ?? argStr(call.args, 'path')
+      if (diff) {
+        return <DiffView diff={diff} />
+      }
+      const content = argStr(call.args, 'content')
+      return (
+        <>
+          {path && <div className="ax-toolcall-label">{path}</div>}
+          <pre className="ax-toolcall-pre ax-scroll">{content ?? resultStr(call.result)}</pre>
+        </>
+      )
     }
     case 'shell': {
       const command = preview?.command ?? argStr(call.args, 'command')

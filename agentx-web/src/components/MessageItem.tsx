@@ -18,6 +18,7 @@ import FileCard from './FileCard'
 import QuestionCard from './QuestionCard'
 import Logo from './Logo'
 import ToolCallGroup from './ToolCallGroup'
+import ToolResultCard from './coding/ToolResultCard'
 import MarkdownRenderer from './MarkdownRenderer'
 import ReasoningBlock from './ReasoningBlock'
 import { SourceList } from './SourceBadge'
@@ -91,6 +92,7 @@ function MessageItem({ message }: MessageItemProps) {
   const streaming = message.streaming === true
   // updatePlan 不进 blocks（计划面板）；文件生成/提问工具进 blocks 但分流到专属卡片
   const FILE_TOOLS = ['generateDocument', 'generateSpreadsheet']
+  const EDIT_TOOLS = ['applyPatch', 'writeFile']
   const blocks = message.blocks ?? []
   const toolBlocks = blocks.filter((b): b is Extract<MessageBlock, { type: 'tool' }> => b.type === 'tool')
   const fileCalls = toolBlocks.filter((c) => FILE_TOOLS.includes(c.name))
@@ -99,10 +101,14 @@ function MessageItem({ message }: MessageItemProps) {
   type Segment =
     | { key: string; kind: 'reasoning'; text: string }
     | { key: string; kind: 'tools'; calls: ToolCallInfo[] }
+    | { key: string; kind: 'edit'; call: ToolCallInfo }
   const segments: Segment[] = []
   for (const b of blocks) {
     if (b.type === 'reasoning') {
       segments.push({ key: `r-${segments.length}`, kind: 'reasoning', text: b.text })
+    } else if (EDIT_TOOLS.includes(b.name)) {
+      // 编辑操作独立成段：内联默认展开的 diff 卡（Claude Code 形态）
+      segments.push({ key: `e-${segments.length}`, kind: 'edit', call: b })
     } else {
       if (b.name === 'askUserQuestion' || FILE_TOOLS.includes(b.name)) continue
       const last = segments[segments.length - 1]
@@ -138,6 +144,8 @@ function MessageItem({ message }: MessageItemProps) {
               content={seg.text}
               streaming={streaming && i === segments.length - 1 && message.content === ''}
             />
+          ) : seg.kind === 'edit' ? (
+            <ToolResultCard key={seg.key} call={seg.call} />
           ) : (
             <ToolCallGroup key={seg.key} calls={seg.calls} />
           ),
