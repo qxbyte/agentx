@@ -143,7 +143,7 @@ cd agentx-web && npm run build  # 前端构建 + tsc 严格检查
 - `done`/`error` 是终止信号：前端收到即复原发送按钮并中止连接，不依赖服务端关流。
 - **SSE 不设超时**（emitter timeout=0）：长 agent 轮次 + 人机阻塞（审批/提问）随时可能超过任何固定时长；客户端断开由 onError/onCompletion 兜底回收（未决审批/提问随流终止取消）。
 - 审批/提问卡按请求时刻的**内容锚点**嵌入正文流：等待时天然在消息末尾，作答后新内容长在卡片下方随文融入。
-- 反代注意：SSE 端点必须关缓冲/gzip、拉长超时——见 `agentx-web/nginx.conf` 与 `deploy/nginx-sse.conf.example`。
+- 反代注意：若在 nginx 等反向代理后部署，SSE 端点必须关闭缓冲/gzip 并拉长读超时。
 
 ## Skill 技能
 
