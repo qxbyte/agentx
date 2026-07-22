@@ -57,8 +57,14 @@ public class SseNotifyingToolCallback implements ToolCallback {
             sink.onToolResult(callId, name, halt, kind);
             return halt;
         }
-        Map<String, Object> preview = previewProvider == null
-                ? null : previewProvider.previewOf(name, toolInput, toolContext);
+        Map<String, Object> preview = null;
+        if (previewProvider != null) {
+            try {
+                preview = previewProvider.previewOf(name, toolInput, toolContext);
+            } catch (Exception e) {
+                // 预览是锦上添花：富化失败不阻塞工具执行
+            }
+        }
         sink.onToolCall(callId, name, toolInput, kind, preview);
         try {
             String result = toolContext == null

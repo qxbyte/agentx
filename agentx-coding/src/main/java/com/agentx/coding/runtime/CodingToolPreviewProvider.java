@@ -43,7 +43,7 @@ public class CodingToolPreviewProvider implements ToolPreviewProvider {
         try {
             String path = String.valueOf(base.getOrDefault("path", ""));
             String content = String.valueOf(base.getOrDefault("content", ""));
-            if (path.isBlank() || content.length() > MAX_DIFF_SOURCE_BYTES) {
+            if (path.isBlank() || content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_DIFF_SOURCE_BYTES) {
                 return base;
             }
             java.nio.file.Path file = WorkspaceContext.sandboxOf(toolContext).resolve(path);
