@@ -341,7 +341,7 @@ public class ChatStreamService {
                 sender.send(SseEvent.toolCall(callId, toolName, argsJson, kind, preview));
                 return;
             }
-            aggregator.recordToolCall(callId, toolName, argsJson, kind);
+            aggregator.recordToolCall(callId, toolName, argsJson, kind, preview);
             sender.send(SseEvent.toolCall(callId, toolName, argsJson, kind, preview));
         }
 
@@ -419,8 +419,9 @@ public class ChatStreamService {
             this.memoryUserText = memoryUserText;
         }
 
-        void recordToolCall(String callId, String toolName, String argsJson, String kind) {
-            blockAssembler.recordToolCall(callId, toolName, argsJson, kind);
+        void recordToolCall(String callId, String toolName, String argsJson, String kind,
+                            Map<String, Object> preview) {
+            blockAssembler.recordToolCall(callId, toolName, argsJson, kind, preview);
         }
 
         void recordToolResult(String callId, String result) {

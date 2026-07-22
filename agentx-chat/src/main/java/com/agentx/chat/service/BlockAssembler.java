@@ -30,7 +30,8 @@ public final class BlockAssembler {
         blocks.add(block);
     }
 
-    public synchronized void recordToolCall(String id, String name, String args, String kind) {
+    public synchronized void recordToolCall(String id, String name, String args, String kind,
+                                            Map<String, Object> preview) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put("type", "tool");
         block.put("id", id);
@@ -38,6 +39,9 @@ public final class BlockAssembler {
         block.put("args", args == null ? "" : args);
         if (kind != null) {
             block.put("kind", kind);
+        }
+        if (preview != null && !preview.isEmpty()) {
+            block.put("preview", new LinkedHashMap<>(preview));
         }
         blocks.add(block);
     }
