@@ -29,7 +29,7 @@
 | | `external_kb` | 外部知识库（三 API 模板接入） |
 | CodeAgent | `coding_workspace` | 编码工作区（项目目录 + 可绑知识库） |
 
-依赖：PostgreSQL 17 + **pgvector** 扩展（`CREATE EXTENSION vector`，容器部署由 `deploy/init-vector.sql` 自动执行）。
+依赖：PostgreSQL 17 + **pgvector** 扩展（建库后执行 `CREATE EXTENSION IF NOT EXISTS vector;`）。
 
 已废弃：`skill_definition`（V14 建、V15 删——skill 迁移到本地目录 `~/.agentx/skills/`）。
 
