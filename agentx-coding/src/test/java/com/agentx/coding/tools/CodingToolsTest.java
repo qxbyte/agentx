@@ -27,10 +27,10 @@ class CodingToolsTest {
     @Test
     void readAndGrepAndFind() {
         var read = new WorkspaceReadTools();
-        assertThat(read.readFile("src/App.java", null, null, ctx)).contains("int x = 1");
-        assertThat(read.grepFiles("int x", ".java", ctx)).contains("src/App.java:2");
-        assertThat(read.findFiles("**/*.java", ctx)).contains("src/App.java");
-        assertThat(read.listDir(".", 2, ctx)).contains("src/App.java");
+        assertThat(read.readFile("src/App.java", null, null, null, ctx)).contains("int x = 1");
+        assertThat(read.grepFiles("int x", ".java", null, ctx)).contains("src/App.java:2");
+        assertThat(read.findFiles("**/*.java", null, ctx)).contains("src/App.java");
+        assertThat(read.listDir(".", 2, null, ctx)).contains("src/App.java");
     }
 
     @Test
