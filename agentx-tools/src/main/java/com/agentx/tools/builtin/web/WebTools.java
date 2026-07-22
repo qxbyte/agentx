@@ -27,7 +27,9 @@ public class WebTools {
 
     @Tool(description = "抓取网页并提取正文内容。用于阅读在线文档、查资料、打开搜索结果或报错信息里的链接。"
             + "仅支持公网 http/https 地址")
-    public String webFetch(@ToolParam(description = "完整 URL，如 https://example.com/doc") String url) {
+    public String webFetch(
+            @ToolParam(description = "完整 URL，如 https://example.com/doc") String url,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose) {
         try {
             WebFetcher.FetchResult result = fetcher.fetch(url);
             String contentType = result.contentType().toLowerCase(Locale.ROOT);
@@ -71,7 +73,8 @@ public class WebTools {
             + "用 webFetch 打开对应链接")
     public String webSearch(
             @ToolParam(description = "搜索关键词") String query,
-            @ToolParam(required = false, description = "结果条数，默认 5，最多 10") Integer topN) {
+            @ToolParam(required = false, description = "结果条数，默认 5，最多 10") Integer topN,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose) {
         int n = topN == null ? DEFAULT_TOP_N : Math.max(1, Math.min(topN, MAX_TOP_N));
         try {
             List<SearchProvider.SearchResult> results = searchProvider.search(query, n);

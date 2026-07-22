@@ -33,6 +33,7 @@ public class WorkspaceReadTools {
     public String listDir(
             @ToolParam(description = "相对工作区根的目录路径，根目录传空串或 .") String path,
             @ToolParam(description = "递归深度，1 表示只列当前层，建议 1-3", required = false) Integer depth,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Path dir = sandbox.resolve(path == null || path.isBlank() ? "." : path);
@@ -57,6 +58,7 @@ public class WorkspaceReadTools {
             @ToolParam(description = "相对工作区根的文件路径") String path,
             @ToolParam(description = "起始行（1 起，含），不传从头", required = false) Integer fromLine,
             @ToolParam(description = "结束行（含），不传到尾", required = false) Integer toLine,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Path file = sandbox.resolve(path);
@@ -87,6 +89,7 @@ public class WorkspaceReadTools {
     public String grepFiles(
             @ToolParam(description = "正则表达式（Java 语法）") String pattern,
             @ToolParam(description = "文件名后缀过滤，如 .java；不传搜全部文本文件", required = false) String suffix,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         Pattern regex;
@@ -115,6 +118,7 @@ public class WorkspaceReadTools {
     @Tool(description = "在工作区内按 glob 查找文件名，返回相对路径列表")
     public String findFiles(
             @ToolParam(description = "glob，如 **/*.java 或 *Controller.java") String glob,
+            @ToolParam(description = "用几个字说明这一步意图，如：查看项目结构", required = false) String purpose,
             ToolContext toolContext) {
         PathSandbox sandbox = WorkspaceContext.readSandboxOf(toolContext);
         var matcher = sandbox.root().getFileSystem().getPathMatcher("glob:" + glob);
