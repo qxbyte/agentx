@@ -40,8 +40,8 @@ export function summarizeToolCalls(calls: ToolCallInfo[]): string {
     .join(' · ')
 }
 
-/** 各工具的「主参数」字段：purpose（模型自述的动作说明）最优先，其余为具体对象 */
-const HINT_FIELDS = ['purpose', 'description', 'path', 'filename', 'command', 'query', 'pattern', 'url', 'name', 'content']
+/** 各工具的「主参数」字段：具体对象如路径/命令等；purpose 归组头 */
+const HINT_FIELDS = ['description', 'path', 'filename', 'command', 'query', 'pattern', 'url', 'name', 'content']
 const MAX_HINT_CHARS = 48
 
 /** 正在执行的调用的动作自述（purpose 参数）：批次头部「正在：xxx」实时状态用 */
@@ -84,6 +84,27 @@ export function argHint(call: ToolCallInfo): string | null {
     if (typeof value === 'string' && value.trim() !== '') {
       const flat = value.replace(/\s+/g, ' ').trim()
       return flat.length > MAX_HINT_CHARS ? flat.slice(0, MAX_HINT_CHARS) + '…' : flat
+    }
+  }
+  return null
+}
+
+/** 组头语义介绍：取组内首个带 purpose 参数的调用的自述（模型说明这批操作在做什么） */
+export function groupIntro(calls: ToolCallInfo[]): string | null {
+  for (const c of calls) {
+    let args = c.args
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args)
+      } catch {
+        continue
+      }
+    }
+    if (!args || typeof args !== 'object') continue
+    const purpose = (args as Record<string, unknown>)['purpose']
+    if (typeof purpose === 'string' && purpose.trim() !== '') {
+      const flat = purpose.replace(/\s+/g, ' ').trim()
+      return flat.length > 24 ? flat.slice(0, 24) + '…' : flat
     }
   }
   return null

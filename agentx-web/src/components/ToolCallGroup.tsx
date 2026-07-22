@@ -1,7 +1,7 @@
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { ToolCallBody } from './coding/ToolResultCard'
-import { argHint, runningPurpose, summarizeToolCalls } from '../lib/toolCallSummary'
+import { argHint, groupIntro, runningPurpose, summarizeToolCalls } from '../lib/toolCallSummary'
 import { cn } from '@/lib/utils'
 import type { ToolCallInfo } from '../types'
 
@@ -63,12 +63,17 @@ export default function ToolCallGroup({ calls }: { calls: ToolCallInfo[] }) {
   const running = calls.some((c) => !isFinished(c))
   // 运行中优先显示当前动作自述（模型经 purpose 参数说明这步在干什么）；完成后回归归类摘要
   const current = running ? runningPurpose(calls) : null
-  const summary = current ? `正在：${current}` : summarizeToolCalls(calls)
+  const intro = groupIntro(calls)
+  const category = summarizeToolCalls(calls)
+  const summary = current ? `正在：${current}` : intro ? `${intro} · ${category}` : category
 
   // 少量：直接一个整体块平铺紧凑行
   if (!collapsible) {
     return (
       <div className="ax-toolcall mb-2.5 divide-y divide-[var(--ax-border-subtle)]">
+        {intro && (
+          <div className="flex h-7 items-center px-3 text-xs text-muted-foreground">{intro}</div>
+        )}
         {calls.map((c) => (
           <CompactRow key={c.id} call={c} />
         ))}
