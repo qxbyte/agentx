@@ -9,7 +9,6 @@ import MessageItem from '../components/MessageItem'
 import PlanPanel from '../components/PlanPanel'
 import Sidebar from '../components/Sidebar'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { useToastAnchor } from '../hooks/useToastAnchor'
 import { useChatStore } from '../stores/chat'
 
 /** Drawer 内的侧栏是全宽面板，去掉卡片形态 */
@@ -43,8 +42,6 @@ export default function ChatPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const mainRef = useRef<HTMLElement>(null)
-  useToastAnchor(mainRef) // toast 居中于内容区（.ax-main），随侧栏收放跟随
   const stickToBottomRef = useRef(true)
 
   useEffect(() => {
@@ -99,7 +96,7 @@ export default function ChatPage() {
         <Sidebar hidden={!sidebarOpen} onCollapse={() => setSidebarOpen(false)} />
       )}
 
-      <main className="ax-main" ref={mainRef}>
+      <main className="ax-main">
         <div className="ax-topbar">
           {!sidebarVisible && (
             <button

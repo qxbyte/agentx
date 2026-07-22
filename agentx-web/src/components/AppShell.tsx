@@ -1,9 +1,8 @@
 import { PanelLeftOpen } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { useToastAnchor } from '../hooks/useToastAnchor'
 import { useChatStore } from '../stores/chat'
 import Sidebar from './Sidebar'
 
@@ -34,8 +33,6 @@ export default function AppShell({ title, extra, flush, children }: AppShellProp
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const mainRef = useRef<HTMLElement>(null)
-  useToastAnchor(mainRef) // toast 居中于内容区（.ax-main），随侧栏收放跟随
 
   // 直接进入 /kb、/admin 时侧栏会话列表也保持可用
   const loadConversations = useChatStore((s) => s.loadConversations)
@@ -61,7 +58,7 @@ export default function AppShell({ title, extra, flush, children }: AppShellProp
         <Sidebar hidden={!sidebarOpen} onCollapse={() => setSidebarOpen(false)} />
       )}
 
-      <main className="ax-main" ref={mainRef}>
+      <main className="ax-main">
         <div className="ax-topbar">
           {!sidebarVisible && (
             <button

@@ -2432,14 +2432,12 @@ select:focus-visible,
      与 position:relative 冲突导致宽度重算塌成窄条。 */
   pointer-events: none !important;
 }
-/* 居中于「右侧内容区」：强制 left:50% + translateX(-50%)（视口居中），再用 margin-left
-   平移到内容区中心（位移 = 内容区中心 − 视口中心，见 useToastAnchor）。
+/* 整窗水平居中：强制 left:50% + translateX(-50%)（视口居中，不随侧栏偏移）。
    三者都 !important，杜绝 sonner 各态（lifted 等）把 transform 顶成 none。 */
 [data-sonner-toaster][data-x-position='center'] {
   left: 50% !important;
   right: auto !important;
   transform: translateX(-50%) !important;
-  margin-left: var(--ax-toast-shift, 0px) !important;
 }
 [data-sonner-toast] {
   width: max-content !important;
