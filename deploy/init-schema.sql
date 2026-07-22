@@ -1,5 +1,5 @@
 -- ============================================================================
--- AgentX 全量数据库初始化脚本（schema 终态 = Flyway V1..V19 依次执行后的结果）
+-- AgentX 全量数据库初始化脚本（schema 终态 = Flyway V1..V20 依次执行后的结果）
 --
 -- 用途：快速建库 / 离线审阅 / 非 Flyway 环境。正常开发与部署仍以 Flyway 迁移为准
 -- （应用启动自动执行 agentx-server/src/main/resources/db/migration/）。
@@ -7,7 +7,7 @@
 -- 注意：
 --   1. 本脚本与 Flyway 二选一。若用本脚本建库后仍要接入 Flyway，
 --      需先 baseline 到当前版本：spring.flyway.baseline-on-migrate=true
---      + spring.flyway.baseline-version=19，否则 Flyway 会重复建表报错。
+--      + spring.flyway.baseline-version=20，否则 Flyway 会重复建表报错。
 --   2. 向量维度默认 1024（对应 AGENTX_VECTOR_DIM 默认值）；使用其他维度的
 --      embedding 模型时改 vector_store.embedding 的 vector(N)。
 --   3. 无种子数据：管理员账号（admin/admin123）由应用启动时 AdminSeeder 播种。
@@ -82,8 +82,7 @@ CREATE TABLE chat_message (
     conversation_id   UUID        NOT NULL REFERENCES chat_conversation (id) ON DELETE CASCADE,
     role              VARCHAR(16) NOT NULL,        -- USER | ASSISTANT | TOOL | SYSTEM
     content           TEXT        NOT NULL DEFAULT '',
-    reasoning_content TEXT,                        -- 思考过程（deepseek reasoning）
-    tool_calls        JSONB,                       -- 工具调用轨迹 [{id,name,args,result}]
+    blocks            JSONB,                       -- 有序 blocks（reasoning/tool 交替时间线）：展示轨唯一真相源
     rag_sources       JSONB,                       -- RAG 命中来源
     token_usage       JSONB,                       -- {promptTokens, completionTokens}
     attachments       JSONB,                       -- 用户消息附件元数据（气泡芯片渲染）

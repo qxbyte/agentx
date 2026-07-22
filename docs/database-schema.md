@@ -102,8 +102,7 @@
 | conversation_id | UUID FK CASCADE | |
 | role | varchar(16) | USER / ASSISTANT / TOOL / SYSTEM |
 | content | text | 用户原文 / 助手正文 |
-| reasoning_content | text | 思考过程 |
-| tool_calls | jsonb | `[{id,name,args,result}]` |
+| blocks | jsonb | 有序 blocks 数组（reasoning / tool_call 交替时间线），展示轨唯一真相源（V20） |
 | rag_sources | jsonb | RAG 命中来源 |
 | token_usage | jsonb | `{promptTokens, completionTokens}` |
 | attachments | jsonb | 附件元数据（V12，气泡芯片） |

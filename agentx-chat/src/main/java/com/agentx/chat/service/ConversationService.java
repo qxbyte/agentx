@@ -208,7 +208,7 @@ public class ConversationService {
     /**
      * 业务消息 → 模型轨记忆消息（工具/系统消息不入记忆重建）。
      * 保真重建：USER 优先取 modelContent（附件占位/skill 展开的当轮真实入忆文本）；
-     * ASSISTANT 按 toolCalls JSON 重算工具轨迹摘要——与首次入忆的版本一致。
+     * ASSISTANT 按 blocks JSON 重算工具轨迹摘要——与首次入忆的版本一致。
      */
     private Message toMemoryMessage(ChatMessage m) {
         return switch (m.getRole()) {
